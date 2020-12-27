@@ -46,6 +46,8 @@ end
 	
 	local metatype 
 	xpcall(function()
+		print(code)
+
 		ffi.cdef(code)
 	
 		-- also in common with my hydro-cl project
