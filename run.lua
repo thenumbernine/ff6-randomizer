@@ -334,7 +334,17 @@ if outfn then
 
 	for i=0,game.numCharacters-1 do
 		for j=0,ffi.sizeof'character_t'-1 do
-			game.characters[i].ptr[j] = math.random(0,255)
+			if j == 2	-- fight
+			or j == 4	-- magic
+			or j == 5	-- item
+			then
+			elseif j == 3 then	-- special ability
+				game.characters[i].ptr[j] = math.random(0,game.numMenuNames-1)
+			elseif j == 21 then	-- level
+				game.characters[i].ptr[j] = math.random(1,99)
+			else
+				game.characters[i].ptr[j] = math.random(0,255)
+			end
 		end
 	end
 
