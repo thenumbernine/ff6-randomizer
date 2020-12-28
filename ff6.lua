@@ -1641,6 +1641,8 @@ for i=0,numItems-1 do
 	obj.spellForName[name] = i
 end
 
+obj.character_t = character_t
+
 return obj
 
 end

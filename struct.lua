@@ -111,6 +111,7 @@ end
 				return true
 			end,
 			code = code,
+			fields = fields,
 		}
 		metatable.__index = metatable
 		if args.metatable then
