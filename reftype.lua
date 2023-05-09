@@ -7,7 +7,7 @@ local function reftype(args)
 	local options = args.options
 	local getter = args.getter
 	ffi.cdef([[
-typedef struct {
+typedef struct ]]..name..[[ {
 	uint8_t i;
 } ]]..name..[[;
 ]])

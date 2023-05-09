@@ -162,7 +162,7 @@ local function gamestrtype(args)
 	local name = assert(args.name)
 	local size = assert(args.size)
 	ffi.cdef([[
-typedef struct {
+typedef struct ]]..name..[[ {
 	uint8_t ptr[]]..size..[[];
 } ]]..name..[[;
 ]])
@@ -180,7 +180,7 @@ local function rawtype(args)
 	local name = assert(args.name)
 	local size = assert(args.size)
 	ffi.cdef([[
-typedef struct {
+typedef struct ]]..name..[[ {
 	uint8_t ptr[]]..size..[[];
 } ]]..name..[[;
 ]])
