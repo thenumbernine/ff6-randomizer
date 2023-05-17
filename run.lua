@@ -329,11 +329,86 @@ print()
 if outfn then
 	math.randomseed(os.time())
 
+	--[[ randomize ...
+	here's my idea:
+	make swords randomly cast.
+	make espers only do stat-ups
+	make later-equipment teach you spells ... and be super-weak ... and cursed-shield-break into some crap item (turn Paladin Shield into dried meat)
+
+list of spells in order of power / when you should get them
+
+
+
+°Osmose	1
+°Scan	3
+²Antdot	3
+±Poison	3
+±Fire	4
+±Ice	5
+²Cure	5
+°Slow	5
+°Sleep	5
+±Bolt	6
+°Muddle	8
+°Mute	8
+°Haste	10
+°Stop	10
+°Imp	10
+²Regen	10
+°Rasp	12
+°Safe	12
+°Shell	15
+²Remedy	15
+±Drain	15
+°Bserk	16
+°Float	17
+°Vanish	18
+°Warp	20
+±Fire 2	20
+±Ice 2	21
+±Bolt 2	22
+°Rflect	22
+²Cure 2	25
+°Dispel	25
+±Break	25
+°Slow 2	26
+±Bio	26
+²Life	30
+±Demi	33
+±Doom	35
+°Haste2	38
+²Cure 3	40
+±Pearl	40
+±Flare	45
+±Quartr	48
+²Life 3	50
+±Quake	50
+±Fire 3	51
+±Ice 3	52
+±Bolt 3	53
+±X-Zone	53
+²Life 2	60
+±Meteor	62
+±W Wind	75
+±Ultima	80
+±Merton	85
+°Quick	99
+	--]]
+
+	local itemsForType = table()
+	for i=0,game.numItems-1 do
+		local key = game.items[i].itemType
+		itemsForType[key] = itemsForType[key] or table()
+		itemsForType[key]:insert(ffi.new('itemref_t', i))
+	end
+	print(tolua(itemsForType))
+	print('number of swords: '..#itemsForType[1])
+
 	local function pickrandom(t)
 		return t[math.random(#t)]
 	end
 
--- [[
+-- [[ spells ... gobbleygook
 	for i=0,game.numSpells-1 do
 		for j=0,ffi.sizeof'spell_t'-1 do
 			game.spells[i].ptr[j] = math.random(0,255)
@@ -343,11 +418,54 @@ if outfn then
 	end
 --]]
 
+-- [[ swords
+	for _,ref in ipairs(itemsForType[1]) do
+		local item = game.items[ref.i]
+		item.spellCast = math.random(0,53)
+		-- this isn't working...
+		item.castOnAttack = 1
+		item.castOnItemUse = 1
+		item.canUseInBattle = 1	-- this uses the spell
+		item.canBeThrown = 1
+		item.battlePower_defense = 0
+	end
+--]]
+
+-- [[ random learn from all equipment ... and relics?
+	for itemType=2,5 do
+		for _,ref in ipairs(itemsForType[itemType]) do
+			local item = game.items[ref.i]
+			item.spellLearn.rate = math.random(1,100)
+			item.spellLearn.spell.i = math.random(0,53)
+		end
+	end
+
+	game.items[game.itemForName.MithrilKnife].spellCast = game.spellForName.Quick
+--]]
+
+--[[ espers ... gobbleygook everywhere
 	for i=0,game.numEspers-1 do
 		for j=0,ffi.sizeof'esper_t'-1 do
 			game.espers[i].ptr[j] = math.random(0,255)
 		end
 	end
+--]]
+-- [[ espers: no spells and only stats
+	local esperBonuses = range(0, 16)
+	esperBonuses:removeObject(7)	-- not applicable
+	esperBonuses:removeObject(8) 	-- nothing
+	for i=0,game.numEspers-1 do
+		local esper = game.espers[i]
+		-- disable all spells
+		for j=1,5 do
+			esper['spellLearn'..j].rate = 255
+		end
+		-- pick a random bonus
+		esper.bonus.i = pickrandom(esperBonuses)
+	end
+--]]
+
+
 
 -- [[ all the monsto death, countdown, etc is done through here it seems
 -- this makes countdown often

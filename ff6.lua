@@ -452,19 +452,22 @@ local esperAttackNamesAddr = 0x26fe8f
 -- also needs a pointer to 'game'
 local function getEsperName(i) return getSpellName(i + 54) end
 
+local spellLearn_t = struct{
+	name = 'spellLearn_t',
+	fields = {
+		{rate = 'uint8_t'},
+		{spell = 'spellref_t'},
+	},
+}
+
 local esper_t = struct{
 	name = 'esper_t',
 	fields = {
-		{spellLearned1 = 'spellref_t'},
-		{spellLearnRate1 = 'uint8_t'},
-		{spellLearned2 = 'spellref_t'},
-		{spellLearnRate2 = 'uint8_t'},
-		{spellLearned3 = 'spellref_t'},
-		{spellLearnRate3 = 'uint8_t'},
-		{spellLearned4 = 'spellref_t'},
-		{spellLearnRate4 = 'uint8_t'},
-		{spellLearned5 = 'spellref_t'},
-		{spellLearnRate5 = 'uint8_t'},
+		{spellLearn1 = 'spellLearn_t'},
+		{spellLearn2 = 'spellLearn_t'},
+		{spellLearn3 = 'spellLearn_t'},
+		{spellLearn4 = 'spellLearn_t'},
+		{spellLearn5 = 'spellLearn_t'},
 		{bonus = 'esperBonus_t'}, 
 	},
 }
@@ -770,9 +773,7 @@ local item_t = struct{
 		-- 0x01:
 		{equip = 'equipFlags_t'},
 		-- 0x03:
-		{spellLearnRate = 'uint8_t'},
-		-- 0x04:
-		{spellLearned = 'spellref_t'},
+		{spellLearn = 'spellLearn_t'},
 		-- 0x05:
 		{isCharmBangle = 'uint8_t:1'},
 		{isMoogleCharm = 'uint8_t:1'},
@@ -901,8 +902,7 @@ local item_t = struct{
 	end,
 }
 assert(ffi.offsetof('item_t', 'itemType') == 0)
-assert(ffi.offsetof('item_t', 'spellLearnRate') == 3)
-assert(ffi.offsetof('item_t', 'spellLearned') == 4)
+assert(ffi.offsetof('item_t', 'spellLearn') == 3)
 assert(ffi.offsetof('item_t', 'raiseStealChance') == 0x0b)
 assert(ffi.offsetof('item_t', 'changeFightToXFight') == 0x0c)
 assert(ffi.sizeof'item_t' == 0x1e)
