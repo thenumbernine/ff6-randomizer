@@ -467,7 +467,8 @@ list of spells in order of power / when you should get them
 
 
 
--- [[ all the monsto death, countdown, etc is done through here it seems
+-- [[ items ... gobbleygook
+-- all the monsto death, countdown, etc is done through here it seems
 -- this makes countdown often
 	for i=0,game.numItems-1 do		-- is numItems 256 or 255?
 		for j=0,ffi.sizeof'item_t'-1 do
