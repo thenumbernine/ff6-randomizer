@@ -526,7 +526,7 @@ local esperDescOffsetsAddr = 0x0ffe40
 
 ---------------- MONSTERS HEADER ----------------
 
-local numMonsters = 0x180	-- 0x19f ?
+local numMonsters = 0x180
 
 ffi.cdef[[typedef str10_t monsterName_t;]]
 local monsterNamesAddr = 0x0fc050
@@ -737,6 +737,9 @@ assert(ffi.sizeof'formationSize_t' == 4)
 local monsterPalettesAddr = 0x127820
 local numMonsterPalettes = 0x300
 -- ... of type palette8_t 
+
+-- the first 'numMonsters' overlaps, but then there's a few more?
+local numMonsterSprites = 0x1a0
 
 -- TODO there are 0x19f of these, not 0x180 ...
 -- ... same with the monster stat table?
@@ -1442,10 +1445,7 @@ local game_t = struct{
 		{padding_126fe0 = 'uint8_t['..(0x127000 - 0x126fe0)..']'},			-- 0x126fe0 - 0x127000 
 
 		--  = monster visual specifications (384 elements, 5 bytes each)
-		{monsterSprites = 'monsterSprite_t['..numMonsters..']'},			-- 0x127000 - 0x127780
-
-		{padding_127780 = 'uint8_t['..(0x127820 - 0x127780)..']'},			-- 0x127780 - 0x127820
-
+		{monsterSprites = 'monsterSprite_t['..numMonsterSprites..']'},		-- 0x127000 - 0x127820
 		{monsterPalettes = 'palette8_t['..numMonsterPalettes..']'},			-- 0x127820 - 0x12a820
 
 		{monsterSprite8MoldOfs = 'uint16_t'},								-- 0x12a820 - 0x12a822
@@ -1635,6 +1635,7 @@ obj.numSpells = numSpells
 obj.numEsperBonuses = numEsperBonuses
 obj.numEspers = numEspers
 obj.numMonsters = numMonsters
+obj.numMonsterSprites = numMonsterSprites
 obj.numMonsterPalettes = numMonsterPalettes
 obj.numItems = numItems
 obj.numItemTypes = numItemTypes

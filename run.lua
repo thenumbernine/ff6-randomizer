@@ -82,6 +82,9 @@ for i=0,game.numMonsters-1 do
 	-- while we're here ...
 	writeMonsterSprite(game, i)
 end
+for i=game.numMonsters,game.numMonsterSprites-1 do
+	writeMonsterSprite(game, i)
+end
 
 -- ironically this points to the very next byte.
 print('mold8 addr '..('%x'):format(game.monsterSprite8MoldOfs + 0x120000))
