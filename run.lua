@@ -76,7 +76,6 @@ for i=0,game.numMonsters-1 do
 	print(game.monsterItems[i])
 	print('sketches = '..game.monsterSketches[i])
 	if i < game.numRages then print('rages = '..game.monsterRages[i]) end
-	print('sprite = '..game.monsterSprites[i])
 	print()
 
 	-- while we're here ...
@@ -212,6 +211,10 @@ for i=0,game.numShops-1 do
 	print('shop #'..i..': '..game.shops[i])
 end
 print()
+
+for i=0,game.numLocations-1 do
+	print('location #'..i..': '..game.locations[i])
+end
 
 --[[
 args:

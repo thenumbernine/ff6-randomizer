@@ -7,6 +7,8 @@ local createVec = require 'vec-ffi.create_vec'
 -- http://www.rpglegion.com/ff6/hack/ff3info.txt
 -- https://github.com/subtractionsoup/beyondchaos
 
+local function asserteq(a,b) if a ~= b then error(("expected %x == %x"):format(a, b)) end end
+
 return function(rom)
 -- compstr uses game
 local game
@@ -1296,6 +1298,41 @@ local numBattleMessages = 0x100
 
 local numPositionedText = 5	-- might actually be lower
 
+
+local numLocations = 415
+local location_t = struct{
+	name = 'location_t',
+	fields = {
+		-- TODO this is a ref to the location names ...
+		{name = 'uint8_t'},
+		{numLayers = 'uint8_t'},
+		{unknown_2 = 'uint8_t'},
+		{unknown_3 = 'uint8_t'},
+		{tileProps = 'uint8_t'},
+		{attacks = 'uint16_t'},
+		{tileGfx = 'uint32_t'},
+		{tileFormations = 'uint16_t'},
+		{mapData = 'uint32_t'},
+		{unknown_11 = 'uint8_t'},
+		{bg0x = 'uint8_t'},
+		{bg0y = 'uint8_t'},
+		{bg2x = 'uint8_t'},
+		{bg2y = 'uint8_t'},
+		{unknown_16 = 'uint8_t'},
+		{unknown_17 = 'uint8_t'},
+		{unknown_18 = 'uint8_t'},
+		{pal = 'uint8_t'},	-- 0x19
+		{unknown_1a = 'uint8_t'},
+		{unknown_1b = 'uint8_t'},
+		{music = 'uint8_t'},
+		{unknown_1d = 'uint8_t'},
+		{width = 'uint8_t'},
+		{height = 'uint8_t'},
+		{layerProps = 'uint8_t'},
+	},
+}
+asserteq(ffi.sizeof'location_t', 0x21)
+
 ---------------- GAME ----------------
 
 local game_t = struct{
@@ -1444,18 +1481,11 @@ local game_t = struct{
 
 		{padding_126fe0 = 'uint8_t['..(0x127000 - 0x126fe0)..']'},			-- 0x126fe0 - 0x127000 
 
-		--  = monster visual specifications (384 elements, 5 bytes each)
 		{monsterSprites = 'monsterSprite_t['..numMonsterSprites..']'},		-- 0x127000 - 0x127820
 		{monsterPalettes = 'palette8_t['..numMonsterPalettes..']'},			-- 0x127820 - 0x12a820
-
 		{monsterSprite8MoldOfs = 'uint16_t'},								-- 0x12a820 - 0x12a822
 		{monsterSprite16MoldOfs = 'uint16_t'},								-- 0x12a822 - 0x12a824
-		
-		-- 0x12a824 - 0x12ac24 = monster 8-high composition data (128 elemets, 8 bytes each)
-		-- 0x12ac24 - 0x12b224 = monster 16-high composition data (48 elements, 32 bytes each)
-		-- 0x12b224 - 0x12b300 = unused
 		{monsterSpriteMoldData = 'uint8_t['..(0x12b300 - 0x12a824 )..']'},	-- 0x12a824 - 0x12b300
-
 		{itemNames = 'str13_t['..numItems..']'},							-- 0x12b300 - 0x12c000
 
 		{padding_12c000 = 'uint8_t['..(0x12ec00 - 0x12c000)..']'},			-- 0x12c000 - 0x12ec00
@@ -1548,31 +1578,38 @@ local game_t = struct{
 		{itemDescOffsets = 'uint16_t['..numItems..']'},						-- 0x2d7aa0 - 0x2d7ca0
 		{characters = 'character_t['..numCharacters..']'},					-- 0x2d7ca0 - 0x2d8220
 		{expForLevelUp = 'uint16_t['..numExpLevelUps..']'},					-- 0x2d8220 - 0x2d82f4
-	
-		-- 0x2d8f00 - 0x2dc47f = location propeties (416 elements, 33 bytes each)
+
+		{padding_2d82f4 = 'uint8_t['..(0x2d8f00 - 0x2d82f4)..']'},			-- 0x2d82f4 - 0x2d8f00
+
+		--  location propeties (415 elements, 33 bytes each)
+		{locations = 'location_t['..numLocations..']'},						-- 0x2d8f00 - 0x2dc47f
+		
 		-- 0x2dc47f - 0x2dc480 = unused
 		-- 0x2dc480 - 0x2dca80 = location map palettes (48 elements, 16 colors each)
-		{padding_2d82f4  = 'uint8_t['..(0x2dfe00 - 0x2d82f4)..']'},				-- 0x2d82f4 - 0x2dfe00
+		{padding_2dc47f = 'uint8_t['..(0x2dfe00 - 0x2dc47f)..']'},			-- 0x2dc47f - 0x2dfe00
 
 		{longEsperBonusDescBase = 'uint8_t['..(0x2dffd0 - 0x2dfe00)..']'},	-- 0x2dfe00 - 0x2dffd0 
 		{longEsperBonusDescOffsets = 'uint16_t['..numEsperBonuses..']'},	-- 0x2dffd0 - 0x2dfff2
 	
-	-- 0x2e4842 - 0x2e4851     Sprites used for various positions of map character
+		{padding_2dfff2 = 'uint8_t['..(0x2e9b14 - 0x2dfff2)..']'},
 
-	-- 0x2e9b14 - 0x2e9d13     World of Balance Tile Properties
-	-- 0x2e9d14 - 0x2e9f13     World of Ruin Tile Properties
+		-- 0x2e4842 - 0x2e4851     Sprites used for various positions of map character
 
-	-- 0x2ed434 - 0x2f114e     World of Balance Map Data (compressed)
-	-- 0x2f114f - 0x2f324f     World of Balance Tile Graphics (compressed)
+		-- World of Balance Tile Properties
+		{WoBTiles = 'uint8_t['..(0x200)..']'},	-- 0x2e9b14 - 0x2e9d14
+		-- World of Ruin Tile Properties
+		{WoRTiles = 'uint8_t['..(0x200)..']'},	-- 0x2e9d14 - 0x2e9f14
 
-	-- 0x2f4a46 - 0x2f6a55     World of Ruin Tile Graphics (compressed)
-	-- 0x2f6a56 - 0x2f9d16     World of Ruin Map Data (compressed)
+		-- 0x2ed434 - 0x2f114e     World of Balance Map Data (compressed)
+		-- 0x2f114f - 0x2f324f     World of Balance Tile Graphics (compressed)
 
-	-- 0x2fe49b - 0x2fe8b2     World of Balance Miniature Map (compressed)
-	-- 0x2fe8b3 - 0x2fed25     World of Ruin Miniature Map (compressed)
+		-- 0x2f4a46 - 0x2f6a55     World of Ruin Tile Graphics (compressed)
+		-- 0x2f6a56 - 0x2f9d16     World of Ruin Map Data (compressed)
+
+		-- 0x2fe49b - 0x2fe8b2     World of Balance Miniature Map (compressed)
+		-- 0x2fe8b3 - 0x2fed25     World of Ruin Miniature Map (compressed)
 	},
 }
-local function asserteq(a,b) if a ~= b then error(("expected %x == %x"):format(a, b)) end end
 asserteq(ffi.offsetof('game_t', 'spells'), spellsAddr)
 asserteq(ffi.offsetof('game_t', 'characterNames'), characterNamesAddr)
 asserteq(ffi.offsetof('game_t', 'shops'), shopsAddr)
@@ -1651,6 +1688,7 @@ obj.numSwordTechs = numSwordTechs
 obj.numBlitzes = numBlitzes
 obj.numLores = numLores
 obj.numShops = numShops
+obj.numLocations = numLocations
 obj.numLocationNames = numLocationNames
 obj.numDialogs = numDialogs
 obj.numBattleDialogs = numBattleDialogs

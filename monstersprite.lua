@@ -109,10 +109,12 @@ local function writeMonsterSprite(game, index)
 		
 		-- 8 bytes, each byte is a row, each bit is a column flag
 		moldData8 = rom + addr1
+		-- by default points to start of monsterSpriteMoldData  
 		--, nummolds8 * 8)
 		
 		-- 16 shorts, each short is a row, each bit is a column flag
 		moldData16 = rom + addr2
+		-- by default points inside of monsterSpriteMoldData  
 		--, nummolds16 * 32)
 	end
 
