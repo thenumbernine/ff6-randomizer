@@ -328,6 +328,48 @@ end
 
 makefixedraw(12)
 
+---------------- GRAPHICS ----------------
+
+local color_t = struct{
+	name = 'color_t',
+	fields = {
+		{r = 'uint16_t:5'},
+		{g = 'uint16_t:5'},
+		{b = 'uint16_t:5'},
+		{a = 'uint16_t:1'},
+	},
+}
+assert(ffi.sizeof'color_t' == 2)
+
+local palette4_t = createVec{
+	dim = 4,
+	ctype = 'color_t',
+	vectype = 'palette4_t',
+}
+assert(ffi.sizeof'palette4_t' == 2*4)
+
+local palette8_t = createVec{
+	dim = 8,
+	ctype = 'color_t',
+	vectype = 'palette8_t',
+}
+assert(ffi.sizeof'palette8_t' == 2*8)
+
+local palette16_t = createVec{
+	dim = 16,
+	ctype = 'color_t',
+	vectype = 'palette16_t',
+}
+assert(ffi.sizeof'palette16_t' == 2*16)
+
+local palette16_8_t = createVec{
+	dim = 8,
+	ctype = 'palette16_t',
+	vectype = 'palette16_8_t',
+}
+assert(ffi.sizeof'palette16_8_t' == 2*16*8)
+
+
 ---------------- SPELLS ----------------
 
 local numSpells = 0x100
@@ -439,8 +481,8 @@ ffi.cdef[[typedef str9_t esperBonusDesc_t;]]
 local numEsperBonuses = 17
 local esperBonusDescsAddr = 0x0ffeae
 
-local longEsperBonusDescOffsetsAddr =  0x2dffd0
-local longEsperBonusDescBaseAddr =  0x2dfe00
+local longEsperBonusDescOffsetsAddr = 0x2dffd0
+local longEsperBonusDescBaseAddr = 0x2dfe00
 
 -- another one that needs 'game'
 local esperBonus_t = reftype{
@@ -484,7 +526,7 @@ local esperDescOffsetsAddr = 0x0ffe40
 
 ---------------- MONSTERS HEADER ----------------
 
-local numMonsters = 0x180
+local numMonsters = 0x180	-- 0x19f ?
 
 ffi.cdef[[typedef str10_t monsterName_t;]]
 local monsterNamesAddr = 0x0fc050
@@ -691,6 +733,28 @@ local formationSize_t = struct{
 	},
 }
 assert(ffi.sizeof'formationSize_t' == 4)
+
+local monsterPalettesAddr = 0x127820
+local numMonsterPalettes = 0x300
+-- ... of type palette8_t 
+
+-- TODO there are 0x19f of these, not 0x180 ...
+-- ... same with the monster stat table?
+local monsterSpritesAddr = 0x127000
+local monsterSpriteDataAddr = 0x297000
+
+local monsterSprite_t = struct{
+	name = 'monsterSprite_t',
+	fields = {
+		{offset = 'uint16_t:15'},
+		{_3bpp = 'uint16_t:1'},
+		{palHi = 'uint8_t:7'},
+		{tile16 = 'uint8_t:1'},
+		{palLo = 'uint8_t'},
+		{mold = 'uint8_t'},
+	},
+}
+assert(ffi.sizeof'monsterSprite_t' == 5)
 
 ---------------- ITEMS ----------------
 
@@ -1229,40 +1293,6 @@ local numBattleMessages = 0x100
 
 local numPositionedText = 5	-- might actually be lower
 
----------------- GRAPHICS ----------------
-
-local color_t = struct{
-	name = 'color_t',
-	fields = {
-		{r = 'uint16_t:5'},
-		{g = 'uint16_t:5'},
-		{b = 'uint16_t:5'},
-		{a = 'uint16_t:1'},
-	},
-}
-assert(ffi.sizeof'color_t' == 2)
-
-local palette4_t = createVec{
-	dim = 4,
-	ctype = 'color_t',
-	vectype = 'palette4_t',
-}
-assert(ffi.sizeof'palette4_t' == 2*4)
-
-local palette16_t = createVec{
-	dim = 16,
-	ctype = 'color_t',
-	vectype = 'palette16_t',
-}
-assert(ffi.sizeof'palette16_t' == 2*16)
-
-local palette16_8_t = createVec{
-	dim = 8,
-	ctype = 'palette16_t',
-	vectype = 'palette16_8_t',
-}
-assert(ffi.sizeof'palette16_8_t' == 2*16*8)
-
 ---------------- GAME ----------------
 
 local game_t = struct{
@@ -1339,7 +1369,7 @@ local game_t = struct{
 		{rareItemNames = 'rareItemName_t['..numRareItems..']'},				-- 0x0efba0 - 0x0efca4
 	
 		-- all 'ff' repeated, for 12 bytes, not quite 1 more name 
-		{padding5 = select(2, makefixedraw(0x0efcb0 - 0x0efca4))},			-- 0x0efca4 - 0x0efcb0 
+		{padding_0efca4  = select(2, makefixedraw(0x0efcb0 - 0x0efca4))},			-- 0x0efca4 - 0x0efcb0 
 		
 		{rareItemDescBase = 'uint8_t['..(0x0f0000 - 0x0efcb0)..']'},		-- 0x0efcb0 - 0x0f0000
 		{monsters = 'monster_t['..numMonsters..']'},						-- 0x0f0000 - 0x0f3000
@@ -1347,13 +1377,13 @@ local game_t = struct{
 		
 		-- 0x0f3600 - 0x0f37c0 is mostly zeroes
 		-- 0x0f37c0 - 0x0f3940 is something 
-		{padding6 = 'uint8_t['..(0x0f3940 - 0x0f3600)..']'},				-- 0x0f3600 - 0x0f3940
+		{padding_0f3600  = 'uint8_t['..(0x0f3940 - 0x0f3600)..']'},				-- 0x0f3600 - 0x0f3940
 		
 		{esperDescBase = 'uint8_t['..(0x0f3c40 - 0x0f3940)..']'},			-- 0x0f3940 - 0x0f3c40
 		{swordTechNames = 'swordTechName_t['..numSwordTechs..']'},			-- 0x0f3c40 - 0x0f3ca0
 
 		-- all ff
-		{padding7 = 'uint8_t['..(0x0f3d00 - 0x0f3ca0)..']'},				-- 0x0f3ca0 - 0x0f3d00
+		{padding_0f3ca0  = 'uint8_t['..(0x0f3d00 - 0x0f3ca0)..']'},				-- 0x0f3ca0 - 0x0f3d00
 		
 		{monsterSpells = 'spellref4_t['..numMonsters..']'},				-- 0x0f3d00 - 0x0f4300
 		{monsterSketches = 'spellref2_t['..numMonsters..']'},			-- 0x0f4300 - 0x0f4600
@@ -1368,7 +1398,7 @@ local game_t = struct{
 
 		{monsterNames = 'monsterName_t['..numMonsters..']'},				-- 0x0fc050 - 0x0fcf50
 		
-		{padding8 = 'uint8_t[384]'},										-- 0x0fcf50 - 0x0fd0d0 
+		{padding_0fcf50  = 'uint8_t[384]'},										-- 0x0fcf50 - 0x0fd0d0 
 		
 		{monsterAttackNames = 'monsterName_t['..numMonsters..']'},			-- 0x0fd0d0 - 0x0fdfd0
 		
@@ -1382,15 +1412,15 @@ local game_t = struct{
 		{blitzDescBase = 'uint8_t['..(0x0ffd00 - 0x0ffc00)..']'},			-- 0x0ffc00 - 0x0ffd00
 		{swordTechDescBase = 'uint8_t['..(0x0ffe00 - 0x0ffd00)..']'},		-- 0x0ffd00 - 0xfffe00
 		
-		{paddinga = 'uint8_t['..(0x0ffe40 - 0x0ffe00)..']'},				-- 0x0ffe00 - 0x0ffe40 
+		{padding_0ffe00  = 'uint8_t['..(0x0ffe40 - 0x0ffe00)..']'},				-- 0x0ffe00 - 0x0ffe40 
 		
 		{esperDescOffsets = 'uint16_t['..numEspers..']'},					-- 0x0ffe40 - 0x0ffe76
 		
-		{padding12 = 'uint8_t['..(0x0ffeae - 0x0ffe76)..']'},				-- 0x0ffe76 - 0x0ffeae
+		{padding_0ffe76  = 'uint8_t['..(0x0ffeae - 0x0ffe76)..']'},				-- 0x0ffe76 - 0x0ffeae
 		
 		{esperBonusDescs = 'esperBonusDesc_t['..numEsperBonuses..']'},		-- 0x0ffeae - 0x0fff47
 		
-		{paddingb = 'uint8_t[87]'},											-- 0x0fff47 - 0x0fff9e
+		{padding_0fff47  = 'uint8_t[87]'},											-- 0x0fff47 - 0x0fff9e
 		
 		{blitzDescOffsets = 'uint16_t['..numBlitzes..']'},					-- 0x0fff9e - 0x0fffae 
 		{swordTechDescOffsets = 'uint16_t['..numSwordTechs..']'},			-- 0x0fffae - 0x0fffbe 
@@ -1408,14 +1438,23 @@ local game_t = struct{
 		{padding_11f9a0 = 'uint8_t['..(0x126f00 - 0x11f9a0)..']'},			-- 0x11f9a0 - 0x126f00
 
 		{itemTypeNames = 'str7_t['..numItemTypes..']'},						-- 0x126f00 - 0x126fe0
-	
-		-- 0x127000 - 0x12a780 = monster visual specifications (384 elements, 5 bytes each)
-		-- 0x12a820 - 0x12a822 = pointer to 8-high monster composition data
-		-- 0x12a822 - 0x12a824 = pointer to 16-high monster composition data
+
+		{padding_126fe0 = 'uint8_t['..(0x127000 - 0x126fe0)..']'},			-- 0x126fe0 - 0x127000 
+
+		--  = monster visual specifications (384 elements, 5 bytes each)
+		{monsterSprites = 'monsterSprite_t['..numMonsters..']'},			-- 0x127000 - 0x127780
+
+		{padding_127780 = 'uint8_t['..(0x127820 - 0x127780)..']'},			-- 0x127780 - 0x127820
+
+		{monsterPalettes = 'palette8_t['..numMonsterPalettes..']'},			-- 0x127820 - 0x12a820
+
+		{monsterSprite8MoldOfs = 'uint16_t'},								-- 0x12a820 - 0x12a822
+		{monsterSprite16MoldOfs = 'uint16_t'},								-- 0x12a822 - 0x12a824
+		
 		-- 0x12a824 - 0x12ac24 = monster 8-high composition data (128 elemets, 8 bytes each)
 		-- 0x12ac24 - 0x12b224 = monster 16-high composition data (48 elements, 32 bytes each)
 		-- 0x12b224 - 0x12b300 = unused
-		{padding_126fe0 = 'uint8_t['..(0x12b300 - 0x126fe0)..']'},			-- 0x126fe0 - 0x12b300
+		{monsterSpriteMoldData = 'uint8_t['..(0x12b300 - 0x12a824 )..']'},	-- 0x12a824 - 0x12b300
 
 		{itemNames = 'str13_t['..numItems..']'},							-- 0x12b300 - 0x12c000
 
@@ -1435,7 +1474,7 @@ local game_t = struct{
 		{items = 'item_t['..numItems..']'},									-- 0x185000 - 0x186e00
 		{espers = 'esper_t['..numEspers..']'},								-- 0x186e00 - 0x186f29
 		
-		{paddinge = 'uint8_t['..(0x18c9a0 - 0x186f29)..']'},				-- 0x186f29 - 0x18c9a0
+		{padding_186f29 = 'uint8_t['..(0x18c9a0 - 0x186f29)..']'},				-- 0x186f29 - 0x18c9a0
 		
 		{spellDescBase = 'uint8_t['..(0x18cea0 - 0x18c9a0)..']'},			-- 0x18c9a0 - 0x18cea0
 		{menuNames = 'menuName_t['..numMenuNames..']'},						-- 0x18cea0 - 0x18cf80
@@ -1446,7 +1485,7 @@ local game_t = struct{
 		-- 0x19cd90 - 0x19d1b0 = pointers to location map data (352 items), (+0x19d1b0)
 		-- 0x19d1b0 - 0x1e0000 = location map data
 		-- 0x1e0000 - ? = location tile formation
-		{paddingf = 'uint8_t['..(0x1fb400  - 0x18cfec)..']'},				-- 0x18cfec - 0x1fb400
+		{padding_18cfec = 'uint8_t['..(0x1fb400  - 0x18cfec)..']'},				-- 0x18cfec - 0x1fb400
 	
 		{formationMPs = 'uint8_t['..numFormationMPs..']'},					-- 0x1fb400 - 0x1fb600
 		{itemColosseumInfos = 'itemColosseumInfo_t['..numItems..']'},		-- 0x1fb600 - 0x1fba00
@@ -1484,7 +1523,7 @@ local game_t = struct{
 	
 		{padding_271848 = 'uint8_t['..(0x297000 - 0x271848)..']'},			-- 0x271848	- 0x297000
 
-		{monsterGraphics = 'uint8_t['..(0x2d0000 - 0x297000)..']'},			-- 0x297000 - 0x2d0000 ? = monster graphics
+		{monsterSpriteData = 'uint8_t['..(0x2d0000 - 0x297000)..']'},		-- 0x297000 - 0x2d0000 = monster graphics
 		
 		{menuImages = 'uint8_t['..(0x2d0e00 - 0x2d0000)..']'},				-- 0x2d0000 - 0x2d0e00 = menu images 0x200 = bg pattern, 0x180 = borders, so 0x380 total ... x8 per menu scheme
 
@@ -1513,7 +1552,7 @@ local game_t = struct{
 		-- 0x2d8f00 - 0x2dc47f = location propeties (416 elements, 33 bytes each)
 		-- 0x2dc47f - 0x2dc480 = unused
 		-- 0x2dc480 - 0x2dca80 = location map palettes (48 elements, 16 colors each)
-		{padding11 = 'uint8_t['..(0x2dfe00 - 0x2d82f4)..']'},				-- 0x2d82f4 - 0x2dfe00
+		{padding_2d82f4  = 'uint8_t['..(0x2dfe00 - 0x2d82f4)..']'},				-- 0x2d82f4 - 0x2dfe00
 
 		{longEsperBonusDescBase = 'uint8_t['..(0x2dffd0 - 0x2dfe00)..']'},	-- 0x2dfe00 - 0x2dffd0 
 		{longEsperBonusDescOffsets = 'uint16_t['..numEsperBonuses..']'},	-- 0x2dffd0 - 0x2dfff2
@@ -1556,6 +1595,8 @@ asserteq(ffi.offsetof('game_t', 'esperDescOffsets'), esperDescOffsetsAddr)
 asserteq(ffi.offsetof('game_t', 'esperBonusDescs'), esperBonusDescsAddr)
 asserteq(ffi.offsetof('game_t', 'blitzDescOffsets'), blitzDescOffsetsAddr)
 asserteq(ffi.offsetof('game_t', 'swordTechDescOffsets'), swordTechDescOffsetsAddr)
+asserteq(ffi.offsetof('game_t', 'monsterSprites'), monsterSpritesAddr)
+asserteq(ffi.offsetof('game_t', 'monsterPalettes'), monsterPalettesAddr)
 asserteq(ffi.offsetof('game_t', 'itemNames'), itemNamesAddr)
 asserteq(ffi.offsetof('game_t', 'WoBpalettes'), 0x12ec00)
 asserteq(ffi.offsetof('game_t', 'WoRpalettes'), 0x12ed00)
@@ -1571,7 +1612,7 @@ asserteq(ffi.offsetof('game_t', 'spellNames_0to53'), spellNamesAddr)
 asserteq(ffi.offsetof('game_t', 'esperAttackNames'), esperAttackNamesAddr)
 asserteq(ffi.offsetof('game_t', 'mogDanceNames'), mogDanceNamesAddr)
 asserteq(ffi.offsetof('game_t', 'topBackgroundPaletteOffset'), 0x271650)
-asserteq(ffi.offsetof('game_t', 'monsterGraphics'), 0x297000)
+asserteq(ffi.offsetof('game_t', 'monsterSpriteData'), monsterSpriteDataAddr)
 asserteq(ffi.offsetof('game_t', 'menuImages'), 0x2d0000)
 asserteq(ffi.offsetof('game_t', 'menuWindowPalettes'), 0x2d1c00)
 asserteq(ffi.offsetof('game_t', 'characterMenuImages'), 0x2d1d00)
@@ -1594,6 +1635,7 @@ obj.numSpells = numSpells
 obj.numEsperBonuses = numEsperBonuses
 obj.numEspers = numEspers
 obj.numMonsters = numMonsters
+obj.numMonsterPalettes = numMonsterPalettes
 obj.numItems = numItems
 obj.numItemTypes = numItemTypes
 obj.numRareItems = numRareItems

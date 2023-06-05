@@ -60,6 +60,13 @@ for i=0,game.numRareItems-1 do
 	print()
 end
 
+for i=0,game.numMonsterPalettes-1 do
+	print('monster palette #'..i)
+	print(game.monsterPalettes[i])
+	print()
+end
+
+local writeMonsterSprite = require 'monstersprite'
 for i=0,game.numMonsters-1 do
 	print('monster #'..i)
 	print('Name="'..game.monsterNames[i]..'"')
@@ -69,8 +76,17 @@ for i=0,game.numMonsters-1 do
 	print(game.monsterItems[i])
 	print('sketches = '..game.monsterSketches[i])
 	if i < game.numRages then print('rages = '..game.monsterRages[i]) end
+	print('sprite = '..game.monsterSprites[i])
 	print()
+
+	-- while we're here ...
+	writeMonsterSprite(game, i)
 end
+
+-- ironically this points to the very next byte.
+print('mold8 addr '..('%x'):format(game.monsterSprite8MoldOfs + 0x120000))
+-- and this points to something meaningful
+print('mold16 addr '..('%x'):format(game.monsterSprite16MoldOfs + 0x120000))
 
 for i=0,game.numMetamorphSets-1 do
 	print('metamorph set #'..i..' = '..game.metamorphSets[i])
