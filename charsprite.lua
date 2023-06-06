@@ -1,7 +1,10 @@
 local ffi = require 'ffi'
 local Image = require 'image'
-
-local bakeRGB = true
+local graphics = require 'graphics'
+local readpixel = graphics.readpixel
+local readTile = graphics.readTile
+local tileWidth = graphics.tileWidth
+local tileHeight = graphics.tileHeight
 
 -- TODO get this from the game?
 local spriteNames = {
@@ -77,37 +80,6 @@ local frameNames = {
 	'dead2',
 }
 
-local function readpixel(tile, x, y)
-	return	bit.bor(
-		bit.band(1, bit.rshift(tile[2*y], 7-x)),
-		bit.lshift(bit.band(1, bit.rshift(tile[2*y+1], 7-x)), 1),
-		bit.lshift(bit.band(1, bit.rshift(tile[2*y+16], 7-x)), 2),
-		bit.lshift(bit.band(1, bit.rshift(tile[2*y+17], 7-x)), 3))
-end
-
-local function readTile(im, xofs, yofs, tile, pal)
-	for y=0,7 do
-		for x=0,7 do
-			local ch = readpixel(tile, x, y)
-			if bakeRGB then
-				im.buffer[0 + 4*((xofs+x) + im.width*(yofs+y))] = tonumber(pal[ch].r)/0x1f*0xff
-				im.buffer[1 + 4*((xofs+x) + im.width*(yofs+y))] = tonumber(pal[ch].g)/0x1f*0xff
-				im.buffer[2 + 4*((xofs+x) + im.width*(yofs+y))] = tonumber(pal[ch].b)/0x1f*0xff
-				im.buffer[3 + 4*((xofs+x) + im.width*(yofs+y))] = ch==0 and 0 or tonumber(1-pal[ch].a)*0xff
-			else
-				local i = ch/0xf
-				im.buffer[0 + 4*((xofs+x) + im.width*(yofs+y))] = i
-				im.buffer[1 + 4*((xofs+x) + im.width*(yofs+y))] = i
-				im.buffer[2 + 4*((xofs+x) + im.width*(yofs+y))] = i
-				im.buffer[3 + 4*((xofs+x) + im.width*(yofs+y))] = 0xff
-			end
-		end
-	end
-end
-
-local tileWidth = 8
-local tileHeight = 8
-
 local tilesWide = 2
 local tilesHigh = 3
 
@@ -117,7 +89,7 @@ local function readFrame(rom, im, pal, xofs, yofs, charBaseOffset, frameTileOffs
 			local tileOffset = frameTileOffset[x + 2 * y]
 			tileOffset = tileOffset + charBaseOffset
 			local tile = rom + tileOffset
-			readTile(im, x*tileWidth+xofs, y*tileHeight+yofs, tile, pal)
+			readTile(im, x*tileWidth+xofs, y*tileHeight+yofs, tile, pal, 4)
 		end
 	end
 end
