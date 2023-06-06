@@ -756,7 +756,7 @@ local monsterSprite_t = struct{
 		{palHi = 'uint8_t:7'},
 		{tile16 = 'uint8_t:1'},
 		{palLo = 'uint8_t'},
-		{mold = 'uint8_t'},
+		{tileMaskIndex = 'uint8_t'},
 	},
 }
 assert(ffi.sizeof'monsterSprite_t' == 5)
@@ -1526,9 +1526,9 @@ local game_t = struct{
 
 		{monsterSprites = 'monsterSprite_t['..numMonsterSprites..']'},		-- 0x127000 - 0x127820
 		{monsterPalettes = 'palette8_t['..numMonsterPalettes..']'},			-- 0x127820 - 0x12a820
-		{monsterSprite8MoldOfs = 'uint16_t'},								-- 0x12a820 - 0x12a822
-		{monsterSprite16MoldOfs = 'uint16_t'},								-- 0x12a822 - 0x12a824
-		{monsterSpriteMoldData = 'uint8_t['..(0x12b300 - 0x12a824 )..']'},	-- 0x12a824 - 0x12b300
+		{monsterSpriteTileMask8Ofs = 'uint16_t'},								-- 0x12a820 - 0x12a822
+		{monsterSpriteTileMask16Ofs = 'uint16_t'},								-- 0x12a822 - 0x12a824
+		{monsterSpriteTileMaskData = 'uint8_t['..(0x12b300 - 0x12a824 )..']'},	-- 0x12a824 - 0x12b300
 		{itemNames = 'str13_t['..numItems..']'},							-- 0x12b300 - 0x12c000
 
 		{padding_12c000 = 'uint8_t['..(0x12ec00 - 0x12c000)..']'},			-- 0x12c000 - 0x12ec00
