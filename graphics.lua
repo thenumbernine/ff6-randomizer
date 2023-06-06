@@ -6,9 +6,9 @@ local function readpixel(tile, x, y, bitsPerPixel)
 	if bitsPerPixel == 4 then
 		yhistep = 2
 	end
-	
+
 	-- bits 0,1,2
-		
+
 	-- bit 3
 	if bitsPerPixel == 3 then
 		return bit.bor(
