@@ -1336,13 +1336,16 @@ local loreDescBaseAddr = 0x2d77a0
 local loreDescOffsetsAddr = 0x2d7a70
 
 -- animation frames. stand, walk, etc
+-- 41 frames for characters 0 through 21
+-- 9 frames for characters 22 through 31
 local numCharacterSpriteFrames = 41
 
 -- number of sprited playable characters
+-- the first 22 sprites use 41 frame offsets
+-- the rest are NPCs and must use a different # or something ...
 local numCharacterSprites = 0x20
 
 -- these are shared between playable and non-playable and map
--- also matches numMenuNames, but I think that's coincidence
 local numCharacterPalettes = 0x20
 
 local charHiAndSize_t = struct{

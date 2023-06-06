@@ -99,8 +99,8 @@ local function readCharSprite(game, charIndex)
 	local rom = ffi.cast('uint8_t*', game.padding_000000)
 	assert(charIndex >= 0 and charIndex < game.numCharacterSprites)
 
-	local spriteName = spriteNames[charIndex+1] or 'char'..charIndex
-	--local spriteName = 'char'..charIndex
+	--local spriteName = spriteNames[charIndex+1] or 'char'..charIndex
+	local spriteName = 'char'..charIndex
 
 	local width = tileWidth*tilesWide
 	local height = tileHeight*tilesHigh
@@ -113,10 +113,17 @@ local function readCharSprite(game, charIndex)
 
 	local bitsPerPixel = 4
 
-	assert(#frameNames == game.numCharacterSpriteFrames)
-	for frameIndex=0,#frameNames-1 do
-		local frameName = frameNames[frameIndex+1]
-		local frameTileOffset = game.characterFrameTileOffsets + frameIndex * tilesWide * tilesHigh
+	local numFrames
+	if charIndex < 22 then
+		numFrames = 41
+	else
+		numFrames = 9
+	end
+
+	for frameIndex=0,numFrames-1 do
+		--local frameName = frameNames[frameIndex+1] or tostring(frameIndex)
+		local frameName = tostring(frameIndex)
+		
 		local pal = game.characterPalettes[palIndex].s
 		local charBaseOffset = bit.band(
 			bit.bnot(0xc00000),
@@ -126,7 +133,10 @@ local function readCharSprite(game, charIndex)
 			))
 		local im = Image(width, height, 4, 'unsigned char')
 		ffi.fill(im.buffer, width * height * 4)
-		readFrame(im, pal, rom + charBaseOffset, frameTileOffset, bitsPerPixel)
+		readFrame(im, pal,
+			rom + charBaseOffset,
+			game.characterFrameTileOffsets + frameIndex * tilesWide * tilesHigh,
+			bitsPerPixel)
 		local relname = spriteName..'_'..frameName..'.png'
 		im:save('characters/'..relname)
 	end
