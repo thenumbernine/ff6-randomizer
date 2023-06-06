@@ -1338,12 +1338,14 @@ local loreDescOffsetsAddr = 0x2d7a70
 -- animation frames. stand, walk, etc
 -- 41 frames for characters 0 through 21
 -- 9 frames for characters 22 through 31
+-- 1 frames for characters 63 through ...
+-- then 87 and on its a different frame table ...
+-- there's gotta be frame data somewhere ...
+-- oh and all the palettes are messed up too
 local numCharacterSpriteFrames = 41
 
 -- number of sprited playable characters
--- the first 22 sprites use 41 frame offsets
--- the rest are NPCs and must use a different # or something ...
-local numCharacterSprites = 0x20
+local numCharacterSprites = 165
 
 -- these are shared between playable and non-playable and map
 local numCharacterPalettes = 0x20
@@ -1490,20 +1492,18 @@ local game_t = struct{
 		{padding_00d026 = 'uint8_t['..(0x00d0f2  - 0x00d026)..']'},			-- 0x00d026 - 0x00d0f2 
 
 		-- 0x00d0f2 - ? = pointer to map character graphics (2 bytes each)
-		{characterSpriteOffsetLo = 'uint16_t['..numCharacterSprites..']'},	-- 0x00d0f2 - 0x00d132
+		{characterSpriteOffsetLo = 'uint16_t['..numCharacterSprites..']'},	-- 0x00d0f2 - 0x00d23c
 
-		{padding_00d132 = 'uint8_t['..(0x00d23c - 0x00d132)..']'},			-- 0x00d132 - 0x00d23c
-
-		{characterSpriteOffsetHiAndSize = 'charHiAndSize_t['..numCharacterSprites..']'},	-- 0x00d23c - 0x00d27c
-
-		{padding_00d27c = 'uint8_t['..(0x02ce2b - 0x00d27c)..']'},			-- 0x00d27c - 0x02ce2b
-		
-		-- battle character palette assignment (1 byte each)
-		{characterPaletteIndexes = 'uint8_t['..numCharacterSprites..']'},		-- 0x02ce2b - 0x02ce4b
+		{characterSpriteOffsetHiAndSize = 'charHiAndSize_t['..numCharacterSprites..']'},	-- 0x00d23c - 0x00d386
 
 		-- 0x00d23c - ? = bank pointer & # bytes to copy for map char gfx (2 bytes each)
 		-- 0x00dfa0 - 0x00e0a0 = 'DTE table' -rgplegion
-		{padding_02ce4b = 'uint8_t['..(0x02d01a - 0x02ce4b)..']'},			-- 0x02ce4b - 0x02d01a
+		{padding_00d27c = 'uint8_t['..(0x02ce2b - 0x00d386)..']'},			-- 0x00d386 - 0x02ce2b
+		
+		-- battle character palette assignment (1 byte each)
+		{characterPaletteIndexes = 'uint8_t['..numCharacterSprites..']'},		-- 0x02ce2b - 0x02ced0
+
+		{padding_02ced0 = 'uint8_t['..(0x02d01a - 0x02ced0)..']'},			-- 0x02ced0 - 0x02d01a
 
 		{formationSizeOffsets = 'uint16_t['..numFormationSizeOffsets..']'},	-- 0x02d01a - 0x02d034
 		{formationSizes = 'formationSize_t['..numFormationSizes..']'},		-- 0x02d034 - 0x02d0f4
