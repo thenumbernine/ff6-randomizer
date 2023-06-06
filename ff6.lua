@@ -1159,7 +1159,7 @@ local numExpLevelUps = 106
 local numLevels = 98
 
 ffi.cdef[[typedef str7_t menuName_t;]]
-local numMenuNames = 32
+local numMenuNames = 0x20
 local menuNamesAddr = 0x018cea0
 
 local menuref_t = reftype{
@@ -1228,6 +1228,10 @@ local blitzDescOffsetsAddr = 0x0fff9e
 local numLores = 24
 local loreDescBaseAddr = 0x2d77a0
 local loreDescOffsetsAddr = 0x2d7a70
+
+-- these are shared between playable and non-playable and map
+-- also matches numMenuNames, but I think that's coincidence
+local numCharacterPalettes = 0x20
 
 ---------------- MAP ----------------
 
@@ -1335,6 +1339,8 @@ asserteq(ffi.sizeof'location_t', 0x21)
 
 ---------------- GAME ----------------
 
+-- TODO this is clever but ... rigid and with lots of redundancies
+-- the memorymap system of the super metroid randomizer is better.
 local game_t = struct{
 	name = 'game_t',
 	fields = {
@@ -1528,7 +1534,9 @@ local game_t = struct{
 		-- (within it) 0x21c4c0 - 0x21e4c0 = battle background top graphics: building
 		-- 0x25f400 - 0x268000 = ???
 		-- 0x268000 - 0x268400 = map character & town person sprites (16 colors each)
-		{padding_1fba00 = 'uint8_t['..(0x268400 - 0x1fba00)..']'},			-- 0x1fba00 - 0x268400
+		{padding_1fba00 = 'uint8_t['..(0x268000 - 0x1fba00)..']'},			-- 0x1fba00 - 0x268000
+
+		{characterPalettes = 'palette16_t['..numCharacterPalettes..']'},	-- 0x268000 - 0x268400
 		
 		{locationNameOffsets = 'uint16_t['..numLocationNames..']'},			-- 0x268400 - 0x268780
 
