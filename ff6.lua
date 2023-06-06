@@ -1,4 +1,5 @@
 local table = require 'ext.table'
+local class = require 'ext.class'
 local ffi = require 'ffi'
 local struct = require 'struct'
 local createVec = require 'vec-ffi.create_vec'
@@ -12,6 +13,7 @@ local function asserteq(a,b) if a ~= b then error(("expected %x == %x"):format(a
 return function(rom)
 -- compstr uses game
 local game
+local obj 
 
 local function findnext(ptr, data)
 	while true do
@@ -329,6 +331,108 @@ local function makefixedraw(n)
 end
 
 makefixedraw(12)
+
+---------------- COMPRESSED/UNCOMPRESSED STRINGS ----------------
+
+local StringList = class()
+
+--[[
+args:
+	name = section name
+	data = uint8_t[?] buffer in memory for string data
+	addrBase = (optional) base of offsets, data by default
+	offsets = uint16_t[?] buffer in memory for offsets 
+	compressed = boolean
+--]]
+function StringList:init(args)
+	self.name = assert(args.name)
+	
+	self.data = assert(args.data)
+	assert(type(self.data) == 'cdata')
+	
+	self.offsets = assert(args.offsets)
+	assert(type(self.offsets) == 'cdata')
+	
+	self.numOffsets = tostring(ffi.typeof(self.offsets)):match'ctype<unsigned short %(&%)%[(%d+)%]>'
+	assert(self.numOffsets)
+	
+	self.addrBase = args.addrBase
+	self.compressed = args.compressed
+
+	local addrBase = self.addrBase and self.addrBase or self.data
+	local strf = self.compressed and compzstr or gamezstr
+	
+	for i=0,self.numOffsets-1 do
+		local offset = self.offsets[i]
+		if offset ~= 0xffff then
+			self[i] = strf(addrBase + offset)
+		end
+	end
+end
+
+function StringList:__len()
+	return self.numOffsets
+end
+
+function StringList:__tostring()
+	local result = table()
+
+	local addrBase = (self.addrBase and self.addrBase or self.data) - rom
+	local strf = self.compressed and compzstr or gamezstr
+	
+	for i=0,self.numOffsets-1 do
+		if self[i] ~= nil then
+			result:insert(
+				self.name..' #'..i..': '
+				..('0x%04x'):format(self.offsets[i])
+				..' "'..self[i]..'"\n')
+		end
+	end
+
+	-- track memory used
+	local numPtr = tostring(ffi.typeof(self.data)):match'ctype<unsigned char %(&%)%[(%d+)%]>'
+	assert(numPtr)
+	local addrMin = self.data - rom
+	local addrMax = addrMin + numPtr
+	local used = {}
+	for i=0,self.numOffsets-1 do
+		local offset = self.offsets[i]
+		if offset ~= 0xffff then
+			if not (addrBase + offset >= addrMin and addrBase + offset < addrMax) then
+				error("offset "..i.." was out of bound")
+			end
+			local ptr = rom + addrBase + offset
+			local pend = findnext(ptr, {0})
+			local addrEnd = pend - rom
+			for j=addrBase+offset, addrEnd do
+				assert(j >= addrMin and j < addrMax)
+				used[j] = true
+			end
+		end
+	end
+	local count = 0
+	local show = false	-- true
+	local addrSize = addrMax - addrMin
+	local showWidth = math.ceil(math.sqrt(addrSize))	--64
+	for j=addrMin,addrMax-1 do
+		if used[j] then count = count + 1 end
+		if show then
+			io.write(used[j] and '#' or '.')
+			if (j-addrMin) % showWidth == (showWidth-1) then
+				result:insert'\n'
+			end
+		end
+	end
+	if show then
+		if (addrMax-addrMin) % showWidth ~= 0 then print() end
+	end
+	result:insert(self.name..' % used: '..count..'/'..addrSize..' = '..('%.3f%%'):format(100*count/addrSize)..'\n')
+	return result:concat()
+end
+
+function StringList.__concat(a,b)
+	return tostring(a) .. tostring(b)
+end
 
 ---------------- GRAPHICS ----------------
 
@@ -1164,7 +1268,9 @@ local menuNamesAddr = 0x018cea0
 
 local menuref_t = reftype{
 	name = 'menuref_t',
-	getter = function(i) return game.menuNames[i] end,
+	getter = function(i)
+		return game.menuNames[i]
+	end,
 }
 
 ffi.cdef[[typedef str6_t characterName_t;]]
@@ -1326,12 +1432,19 @@ local xy8b_t = struct{
 }
 assert(ffi.sizeof'xy8b_t' == 2)
 
+local locNameRef_t = reftype{
+	name = 'locNameRef_t',
+	getter = function(i)
+		return obj.locationNames[i]
+	end,
+}
+
 local numLocations = 415
 local location_t = struct{
 	name = 'location_t',
 	fields = {
 		-- TODO this is a ref to the location names ...
-		{name = 'uint8_t'},
+		{name = 'locNameRef_t'},
 		{numLayers = 'uint8_t'},
 		{unknown_2 = 'uint8_t'},
 		{unknown_3 = 'uint8_t'},
@@ -1717,7 +1830,7 @@ asserteq(ffi.offsetof('game_t', 'longEsperBonusDescOffsets'), longEsperBonusDesc
 
 game = ffi.cast('game_t*', rom)
 
-local obj = setmetatable({}, {
+obj = setmetatable({}, {
 	__index = game,
 })
 		
@@ -1778,6 +1891,50 @@ for i=0,numItems-1 do
 end
 
 obj.character_t = character_t
+
+obj.locationNames = StringList{
+	name = 'location names',
+	data = game.locationNameBase,
+	offsets = game.locationNameOffsets,
+	compressed = true,
+}
+
+
+
+obj.dialog = StringList{
+	name = 'dialog',
+	data = game.dialogBase,
+	offsets = game.dialogOffsets,
+	compressed = true,
+}
+
+obj.battleDialog = StringList{
+	name = 'battle dialog',
+	data = game.battleDialogBase,
+	offsets = game.battleDialogOffsets,
+	addrBase = rom + 0x0f0000,
+}
+
+obj.battleDialog2 = StringList{
+	name = 'battle dialog2',
+	data = game.battleDialog2Base,
+	offsets = game.battleDialog2Offsets,
+	addrBase = rom + 0x100000,
+}
+
+obj.battleMessages = StringList{
+	name = 'battle message',
+	data = game.battleMessageBase,
+	offsets = game.battleMessageOffsets,
+	addrBase = rom + 0x110000,
+}
+
+obj.positionedText = StringList{
+	name = 'positioned text',
+	data = game.positionedTextBase,
+	offsets = game.positionedTextOffsets,
+	addrBase = rom + 0x030000,
+}
 
 return obj
 

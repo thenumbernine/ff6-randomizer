@@ -213,124 +213,21 @@ for i=0,game.numLocations-1 do
 	print('location #'..i..': '..game.locations[i])
 end
 
---[[
-args:
-	name = section name
-	data = uint8_t[?] buffer in memory for string data
-	addrBase = (optional) base of offsets, data by default
-	offsets = uint16_t[?] buffer in memory for offsets 
-	compressed = boolean
---]]
-local function printStrings(args)
-	local name = assert(args.name)
-	local offsets = assert(args.offsets)
-	assert(type(offsets) == 'cdata')
-	local numOffsets = tostring(ffi.typeof(offsets)):match'ctype<unsigned short %(&%)%[(%d+)%]>'
-	assert(numOffsets)
-	
-	local data = assert(args.data)
-	assert(type(data) == 'cdata')
-	local numPtr = tostring(ffi.typeof(data)):match'ctype<unsigned char %(&%)%[(%d+)%]>'
-	assert(numPtr)
-	local addrMin = data - rom
-	local addrMax = addrMin + numPtr
-	local addrSize = addrMax - addrMin
-	
-	local addrBase = (args.addrBase and args.addrBase or data) - rom
-	local strf = args.compressed and game.compzstr or game.gamezstr
-	
-	for i=0,numOffsets-1 do
-		local offset = offsets[i]
-		if offset ~= 0xffff then
-			print(name..' #'..i..': '..('0x%04x'):format(offset)..' "'..strf(rom + addrBase + offset)..'"')
-		end
-	end
-	
-	-- track memory used
-	local used = {}
-	for i=0,numOffsets-1 do
-		local offset = offsets[i]
-		if offset ~= 0xffff then
-			if not (addrBase + offset >= addrMin and addrBase + offset < addrMax) then
-				error("offset "..i.." was out of bound")
-			end
-			local ptr = rom + addrBase + offset
-			local pend = game.findnext(ptr, {0})
-			local addrEnd = pend - rom
-			for j=addrBase+offset, addrEnd do
-				assert(j >= addrMin and j < addrMax)
-				used[j] = true
-			end
-		end
-	end
-	local count = 0
-	local show = false	-- true
-	local showWidth = math.ceil(math.sqrt(addrSize))	--64
-	for j=addrMin,addrMax-1 do
-		if used[j] then count = count + 1 end
-
-	if show then
-		io.write(used[j] and '#' or '.')
-		if (j-addrMin) % showWidth == (showWidth-1) then print() end
-	end
-	end
-	if show then
-		if (addrMax-addrMin) % showWidth ~= 0 then print() end
-	end
-	print(name..' % used: '..count..'/'..addrSize..' = '..('%.3f%%'):format(100*count/addrSize))
-	print()
-end
-
-printStrings{
-	name = 'location',
-	data = game.locationNameBase,
-	offsets = game.locationNameOffsets,
-	compressed = true,
-}
-
-printStrings{
-	name = 'dialog',
-	data = game.dialogBase,
-	offsets = game.dialogOffsets,
-	compressed = true,
-}
-
-printStrings{
-	name = 'battle dialog',
-	data = game.battleDialogBase,
-	offsets = game.battleDialogOffsets,
-	addrBase = rom + 0x0f0000,
-}
-
-printStrings{
-	name = 'battle dialog2',
-	data = game.battleDialog2Base,
-	offsets = game.battleDialog2Offsets,
-	addrBase = rom + 0x100000,
-}
-
-printStrings{
-	name = 'battle message',
-	data = game.battleMessageBase,
-	offsets = game.battleMessageOffsets,
-	addrBase = rom + 0x110000,
-}
-
-printStrings{
-	name = 'positioned text',
-	data = game.positionedTextBase,
-	offsets = game.positionedTextOffsets,
-	addrBase = rom + 0x030000,
-}
+print(game.locationNames)
+print(game.dialog)
+print(game.battleDialog)
+print(game.battleDialog2)
+print(game.battleMessages)
+print(game.positionedText)
 
 print('WoB palette = '..game.WoBpalettes)
 print('WoR palette = '..game.WoRpalettes)
 print('setzer airship palette = '..game.setzerAirshipPalette)
 print('daryl airship palette = '..game.darylAirshipPalette)
 print('menuWindowPalettes = '..game.menuWindowPalettes)
-print('characterMenuImages = '..game.characterMenuImages)
-print('menuPortraitPalette = '..game.menuPortraitPalette)
-print('handCursorGraphics = '..game.handCursorGraphics)
+--print('characterMenuImages = '..game.characterMenuImages)
+--print('menuPortraitPalette = '..game.menuPortraitPalette)
+--print('handCursorGraphics = '..game.handCursorGraphics)
 print('battleWhitePalette = '..game.battleWhitePalette)
 print('battleGrayPalette = '..game.battleGrayPalette)
 print('battleYellowPalette = '..game.battleYellowPalette)

@@ -23,16 +23,9 @@ local function writeMonsterSprite(game, index)
 		bitsPerPixel = 4
 	end
 
-	-- weir that the tile-is-16-pixels bit is at the end of the 1st and not the 2nd byte ...
-	local paletteIndex = monsterSprite.palLo + monsterSprite.palHi * 0x100
-
 	local tileMaskIndex = monsterSprite.tileMaskIndex
 
 	-- now find a monster image with a matching offset...
-
-	local numColors = bit.lshift(1, bitsPerPixel)
-	local tilesize = bit.rshift(tileWidth * tileHeight * bitsPerPixel, 3)
-	local tileaddr = game.monsterSpriteData + offset * 8
 
 	local tilesWide, tilesHigh
 	if monsterSprite.tile16 == 0 then
@@ -45,6 +38,8 @@ local function writeMonsterSprite(game, index)
 		error("danger danger")
 	end
 
+	-- weir that the tile-is-16-pixels bit is at the end of the 1st and not the 2nd byte ...
+	local paletteIndex = monsterSprite.palLo + monsterSprite.palHi * 0x100
 	local pal = game.monsterPalettes[paletteIndex].s
 
 	local tileMaskData8, tileMaskData16
@@ -66,8 +61,6 @@ local function writeMonsterSprite(game, index)
 		-- by default points inside of monsterSpriteTileMaskData
 		--, numTileMasks16 * 32)
 	end
-
-
 
 	-- bitflags of which 8x8 tiles are used
 	local tileMaskData
@@ -105,6 +98,8 @@ local function writeMonsterSprite(game, index)
 
 	-- monsters have a set of tiles, in-order (cuz there aren't many duplicates),
 	-- flagged on/off (cuz there are often 8x8 transparent holes in the sprites)
+	local tilesize = bit.rshift(tileWidth * tileHeight * bitsPerPixel, 3)
+	local tileaddr = game.monsterSpriteData + offset * 8
 	for y=0,tilesHigh-1 do
 		for x=0,tilesWide-1 do
 			local tileMaskBit = bit.lshift(tileMaskIndex * tileMaskStep, 3) + x + tilesWide * y
