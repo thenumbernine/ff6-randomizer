@@ -546,17 +546,17 @@ local numFormationMPs = 0x200
 local formationAddr = 0xf6200		-- 576 in size
 local formationMPAddr = 0x1fb400	-- 512 in size
 
-local xy_t = struct{
-	name = 'xy_t',
+local xy4b_t = struct{
+	name = 'xy4b_t',
 	fields = {
 		{x = 'uint8_t:4'},
 		{y = 'uint8_t:4'},
 	},
 }
-local xy6_t = createVec{
+local xy4b_6_t = createVec{
 	dim = 6,
-	ctype = 'xy_t',
-	vectype = 'xy6_t',
+	ctype = 'xy4b_t',
+	vectype = 'xy4b_6_t',
 }
 
 local formation_t = struct{
@@ -592,14 +592,14 @@ local formation_t = struct{
 		{monster6 = 'uint8_t'},
 		
 		-- 0x08 - 0x0d
-		--{positions = 'xy6_t'},
+		--{positions = 'xy4b_6_t'},
 		-- can't occlude if x,y are nested
-		{pos1 = 'xy_t'},
-		{pos2 = 'xy_t'},
-		{pos3 = 'xy_t'},
-		{pos4 = 'xy_t'},
-		{pos5 = 'xy_t'},
-		{pos6 = 'xy_t'},
+		{pos1 = 'xy4b_t'},
+		{pos2 = 'xy4b_t'},
+		{pos3 = 'xy4b_t'},
+		{pos4 = 'xy4b_t'},
+		{pos5 = 'xy4b_t'},
+		{pos6 = 'xy4b_t'},
 
 		-- 0x0e
 		{monster1hi = 'uint8_t:1'},
@@ -1229,9 +1229,24 @@ local numLores = 24
 local loreDescBaseAddr = 0x2d77a0
 local loreDescOffsetsAddr = 0x2d7a70
 
+-- animation frames. stand, walk, etc
+local numCharacterSpriteFrames = 41
+
+-- number of sprited playable characters
+local numCharacterSprites = 0x20
+
 -- these are shared between playable and non-playable and map
 -- also matches numMenuNames, but I think that's coincidence
 local numCharacterPalettes = 0x20
+
+local charHiAndSize_t = struct{
+	name = 'charHiAndSize_t',
+	fields = {
+		{hi = 'uint8_t'},
+		{size = 'uint8_t'},	-- in bytes
+	},
+}
+assert(ffi.sizeof'charHiAndSize_t' == 2)
 
 ---------------- MAP ----------------
 
@@ -1302,6 +1317,14 @@ local numBattleMessages = 0x100
 
 local numPositionedText = 5	-- might actually be lower
 
+local xy8b_t = struct{
+	name = 'xy8b_t',
+	fields = {
+		{x = 'uint8_t'},
+		{y = 'uint8_t'},
+	},
+}
+assert(ffi.sizeof'xy8b_t' == 2)
 
 local numLocations = 415
 local location_t = struct{
@@ -1318,10 +1341,8 @@ local location_t = struct{
 		{tileFormations = 'uint16_t'},
 		{mapData = 'uint32_t'},
 		{unknown_11 = 'uint8_t'},
-		{bg0x = 'uint8_t'},
-		{bg0y = 'uint8_t'},
-		{bg2x = 'uint8_t'},
-		{bg2y = 'uint8_t'},
+		{bg0pos = 'xy8b_t'},
+		{bg2pos = 'xy8b_t'},
 		{unknown_16 = 'uint8_t'},
 		{unknown_17 = 'uint8_t'},
 		{unknown_18 = 'uint8_t'},
@@ -1330,8 +1351,7 @@ local location_t = struct{
 		{unknown_1b = 'uint8_t'},
 		{music = 'uint8_t'},
 		{unknown_1d = 'uint8_t'},
-		{width = 'uint8_t'},
-		{height = 'uint8_t'},
+		{size = 'xy8b_t'},
 		{layerProps = 'uint8_t'},
 	},
 }
@@ -1345,13 +1365,30 @@ local game_t = struct{
 	name = 'game_t',
 	fields = {
 		-- 0x00c27f - 0x00c28f = something to do with battle background? -rpglegion
-		-- 0x00ce3a - ? = offset of map character sprite parts (2x2, 2 bytes each)
+		{padding_000000 = 'uint8_t['..(0x00ce3a - 0x000000)..']'},			-- 0x000000 - 0x00ce3a
+
+		-- offset of map character sprite parts
+		-- interleaved row-major, 2x3
+		{characterFrameTileOffsets = 'uint16_t['..(numCharacterSpriteFrames * 6)..']'},	-- 0x00ce3a - 0x00d026
+	
+		{padding_00d026 = 'uint8_t['..(0x00d0f2  - 0x00d026)..']'},			-- 0x00d026 - 0x00d0f2 
+
 		-- 0x00d0f2 - ? = pointer to map character graphics (2 bytes each)
+		{characterSpriteOffsetLo = 'uint16_t['..numCharacterSprites..']'},	-- 0x00d0f2 - 0x00d132
+
+		{padding_00d132 = 'uint8_t['..(0x00d23c - 0x00d132)..']'},			-- 0x00d132 - 0x00d23c
+
+		{characterSpriteOffsetHiAndSize = 'charHiAndSize_t['..numCharacterSprites..']'},	-- 0x00d23c - 0x00d27c
+
+		{padding_00d27c = 'uint8_t['..(0x02ce2b - 0x00d27c)..']'},			-- 0x00d27c - 0x02ce2b
+		
+		-- battle character palette assignment (1 byte each)
+		{characterPaletteIndexes = 'uint8_t['..numCharacterSprites..']'},		-- 0x02ce2b - 0x02ce4b
+
 		-- 0x00d23c - ? = bank pointer & # bytes to copy for map char gfx (2 bytes each)
 		-- 0x00dfa0 - 0x00e0a0 = 'DTE table' -rgplegion
-		-- 0x02ce2b - ? = battle character palette assignment (1 byte each)
-		{padding_000000 = 'uint8_t['..(0x02d01a - 0x000000)..']'},			-- 0x000000 - 0x02d01a
-		
+		{padding_02ce4b = 'uint8_t['..(0x02d01a - 0x02ce4b)..']'},			-- 0x02ce4b - 0x02d01a
+
 		{formationSizeOffsets = 'uint16_t['..numFormationSizeOffsets..']'},	-- 0x02d01a - 0x02d034
 		{formationSizes = 'formationSize_t['..numFormationSizes..']'},		-- 0x02d034 - 0x02d0f4
 
@@ -1618,6 +1655,14 @@ local game_t = struct{
 		-- 0x2fe8b3 - 0x2fed25     World of Ruin Miniature Map (compressed)
 	},
 }
+asserteq(ffi.offsetof('game_t', 'characterFrameTileOffsets'), 0x00ce3a)
+asserteq(ffi.offsetof('game_t', 'characterSpriteOffsetLo'), 0x00d0f2)
+asserteq(ffi.offsetof('game_t', 'characterSpriteOffsetHiAndSize'), 0x00d23c)
+asserteq(ffi.offsetof('game_t', 'characterPaletteIndexes'), 0x02ce2b)
+asserteq(ffi.offsetof('game_t', 'formationSizeOffsets'), 0x02d01a)
+asserteq(ffi.offsetof('game_t', 'formationSizes'), 0x02d034)
+asserteq(ffi.offsetof('game_t', 'positionedTextOffsets'), 0x03c00e)
+asserteq(ffi.offsetof('game_t', 'positionedTextBase'), 0x03c2fc)
 asserteq(ffi.offsetof('game_t', 'spells'), spellsAddr)
 asserteq(ffi.offsetof('game_t', 'characterNames'), characterNamesAddr)
 asserteq(ffi.offsetof('game_t', 'shops'), shopsAddr)
@@ -1691,6 +1736,8 @@ obj.numExpLevelUps = numExpLevelUps
 obj.numLevels = numLevels
 obj.numMenuNames = numMenuNames
 obj.numCharacters = numCharacters
+obj.numCharacterSpriteFrames = numCharacterSpriteFrames 
+obj.numCharacterSprites = numCharacterSprites
 obj.numMogDances = numMogDances
 obj.numSwordTechs = numSwordTechs
 obj.numBlitzes = numBlitzes

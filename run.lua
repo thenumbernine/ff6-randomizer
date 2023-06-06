@@ -66,7 +66,6 @@ for i=0,game.numMonsterPalettes-1 do
 	print()
 end
 
-local writeMonsterSprite = require 'monstersprite'
 for i=0,game.numMonsters-1 do
 	print('monster #'..i)
 	print('Name="'..game.monsterNames[i]..'"')
@@ -77,11 +76,10 @@ for i=0,game.numMonsters-1 do
 	print('sketches = '..game.monsterSketches[i])
 	if i < game.numRages then print('rages = '..game.monsterRages[i]) end
 	print()
-
-	-- while we're here ...
-	writeMonsterSprite(game, i)
 end
-for i=game.numMonsters,game.numMonsterSprites-1 do
+
+local writeMonsterSprite = require 'monstersprite'
+for i=0,game.numMonsterSprites-1 do
 	writeMonsterSprite(game, i)
 end
 
@@ -116,7 +114,6 @@ for i=0,game.numFormationSizes-1 do
 		..' '..game.formationSizes[i])
 end
 print()
-
 
 -- [[ get some statistics on our structure fields
 local mins = {}
@@ -158,6 +155,11 @@ print((require'ext.tolua'({
 	:gsub('={','={\n\t\t')
 ))
 --]]
+
+local readCharSprite = require 'charsprite'
+for i=0,game.numCharacterSprites-1 do
+	readCharSprite(game, i)
+end
 
 
 for i=0,game.numMenuNames-1 do
