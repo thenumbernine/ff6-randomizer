@@ -113,6 +113,6 @@ local function writeMonsterSprite(game, index)
 		end
 	end
 
-	im:save('monsters/monster'..index..'.png')
+	im:save('monsters/monster'..index..' '..game.monsterNames[index]..'.png')
 end
 return writeMonsterSprite

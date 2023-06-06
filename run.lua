@@ -23,6 +23,27 @@ for i=0,game.numSpells-1 do
 	print()
 end
 
+for i=0,game.numSpells-1 do	
+	if game.spells[i].isLore ~= 0 then
+		print('Name="'..game.getSpellName(i)..'"')
+		for j=0,game.numMonsters-1 do
+			for k=0,1 do
+				if game.monsterSketches[j].s[k].i == i then
+					print('\tsketch '..game.monsterNames[j])
+				end
+			end
+			if j < game.numRages then 
+				for k=0,1 do
+					if game.monsterRages[j].s[k].i == i then
+						print('\trage '..game.monsterNames[j])
+					end
+				end
+			end
+		end
+	end
+end
+print()
+
 for i=0,game.numEspers-1 do
 	print('esper #'..i)
 	print('Name="'..game.getEsperName(i)..'"')

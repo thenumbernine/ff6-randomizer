@@ -119,6 +119,7 @@ local function readCharSprite(game, charIndex)
 	elseif charIndex < 63 then
 		numFrames = 9
 	else
+		-- past 87 something is different
 		numFrames = 1
 	end
 
