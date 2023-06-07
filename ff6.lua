@@ -235,12 +235,12 @@ local element_t = bitflagtype{
 local targetting_t = bitflagtype{
 	name = 'targetting_t',
 	options = {
-		'one',
+		'one',			-- can move cursor?
 		'oneSideOnly',
-		'everyone',
-		'groupDefault',
-		'automatic',
-		'group',
+		'everyone',		-- auto select all?
+		'groupDefault',	-- auto select one side
+		'automatic',	-- auto confirm
+		'group',		-- manual party select
 		'enemyDefault',
 		'random',
 	},
@@ -292,7 +292,7 @@ local effect4_t = bitflagtype{
 	name = 'effect4_t',
 	options = {
 		'raging',
-		'frozen',	-- are you sure this isn't 'isRunic'?
+		'frozen',
 		'reraise',
 		'morphed',
 		'casting',
@@ -1025,9 +1025,9 @@ local item_t = struct{
 		-- 0x13:
 		{protectFromMortalBlows = 'uint8_t:1'},	-- memento ring
 		{runicCompatible = 'uint8_t:1'},
-		{unknown_13_2 = 'uint8_t:1'},
-		{unknown_13_3 = 'uint8_t:1'},
-		{unknown_13_4 = 'uint8_t:1'},
+		{unused_13_2 = 'uint8_t:1'},
+		{healsHP = 'uint8_t:1'},
+		{healsMP= 'uint8_t:1'},
 		{sameDamageFromBackRow = 'uint8_t:1'},
 		{canEquipTwoHands = 'uint8_t:1'},
 		{swdTechCompatible = 'uint8_t:1'},
@@ -1084,9 +1084,9 @@ local itemColosseumInfo_t = struct{
 	name = 'itemColosseumInfo_t',
 	fields = {
 		{monster = 'monsterRef_t'},
-		{unknown = 'uint8_t'},
+		{unknown = 'uint8_t'},	-- always 64.  worth experimenting to see if bit 0 here is for the monster ref?
 		{itemWon = 'itemref_t'},
-		{hideName = 'uint8_t'},
+		{hideName = 'uint8_t'},	-- 0 = no, 255 = yes
 	},
 }
 assert(ffi.sizeof'itemColosseumInfo_t' == 4)
@@ -1161,20 +1161,20 @@ local monster_t = struct{
 		{metamorphResist = 'uint8_t:3'},
 		-- 0x12:
 		{diesIfRunOutOfMP = 'uint8_t:1'},
-		{unknown_12_1 = 'uint8_t:1'},
+		{unused_12_1 = 'uint8_t:1'},
 		{hideName = 'uint8_t:1'},
-		{unknown_12_3 = 'uint8_t:1'},
-		{unknown_12_4 = 'uint8_t:1'},
-		{unknown_12_5 = 'uint8_t:1'},
-		{unknown_12_6 = 'uint8_t:1'},
+		{unused_12_3 = 'uint8_t:1'},
+		{human = 'uint8_t:1'},
+		{unused_12_5 = 'uint8_t:1'},
+		{impCritical = 'uint8_t:1'},
 		{undead = 'uint8_t:1'},
 		-- 0x13:
 		{hardToRun = 'uint8_t:1'},
 		{firstStrike = 'uint8_t:1'},
 		{cantSuplex = 'uint8_t:1'},
 		{cantRun = 'uint8_t:1'},
-		{cantScan = 'uint8_t:1'},
-		{cantSketch = 'uint8_t:1'},
+		{unknown_13_4 = 'uint8_t:1'},
+		{unknown_13_5 = 'uint8_t:1'},
 		{specialEvent = 'uint8_t:1'},
 		{cantControl = 'uint8_t:1'},
 		-- 0x14:
@@ -1198,7 +1198,15 @@ local monster_t = struct{
 		-- 0x1d:
 		{hasEffect3 = 'effect3_t'},
 		-- 0x1e:
-		{hasEffect4 = 'effect4_t'},
+		-- for some reason I thought this byte was effect4_t ...
+		{unused_1e_0 = 'uint8_t:1'},
+		{Speck = 'uint8_t:1'},
+		{unused_1e_2 = 'uint8_t:1'},
+		{unused_1e_3 = 'uint8_t:1'},
+		{unused_1e_4 = 'uint8_t:1'},
+		{unused_1e_5 = 'uint8_t:1'},
+		{unused_1e_6 = 'uint8_t:1'},
+		{Paranha = 'uint8_t:1'},
 		-- 0x1f:
 		{specialAttack = 'uint8_t:7'},
 		{specialAttackDealsNoDamage = 'uint8_t:1'},
