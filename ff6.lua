@@ -1170,12 +1170,12 @@ local monster_t = struct{
 		{undead = 'uint8_t:1'},
 		-- 0x13:
 		{hardToRun = 'uint8_t:1'},
-		{unknown_13_1 = 'uint8_t:1'},
-		{cantSuplex = 'uint8_t:1'},	-- rpglegion says can't run
-		{cantRun = 'uint8_t:1'},	-- rpglegion says can't scan
-		{unknown_13_4 = 'uint8_t:1'},
-		{unknown_13_5 = 'uint8_t:1'},
-		{unknown_13_6 = 'uint8_t:1'},
+		{firstStrike = 'uint8_t:1'},
+		{cantSuplex = 'uint8_t:1'},
+		{cantRun = 'uint8_t:1'},
+		{cantScan = 'uint8_t:1'},
+		{cantSketch = 'uint8_t:1'},
+		{specialEvent = 'uint8_t:1'},
 		{cantControl = 'uint8_t:1'},
 		-- 0x14:
 		{immuneToEffect1 = 'effect1_t'},
