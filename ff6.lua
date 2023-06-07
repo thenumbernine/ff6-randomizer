@@ -1173,8 +1173,8 @@ local monster_t = struct{
 		{firstStrike = 'uint8_t:1'},
 		{cantSuplex = 'uint8_t:1'},
 		{cantRun = 'uint8_t:1'},
-		{unknown_13_4 = 'uint8_t:1'},
-		{unknown_13_5 = 'uint8_t:1'},
+		{cantScan = 'uint8_t:1'},
+		{cantSketch = 'uint8_t:1'},
 		{specialEvent = 'uint8_t:1'},
 		{cantControl = 'uint8_t:1'},
 		-- 0x14:
