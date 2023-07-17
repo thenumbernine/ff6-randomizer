@@ -4,7 +4,7 @@ require 'ext'
 
 local infn, outfn = ...
 assert(infn, "missing filename")
-local data = assert(file(infn):read())
+local data = assert(path(infn):read())
 local rom = ffi.cast('uint8_t*', data) + 0x200
 -- you can only load this once, from there all the types' metatables are bound to the game pointer
 -- so even if you load a second game file, all the metatypes will be bound to the first pointer
@@ -517,5 +517,5 @@ list of spells in order of power / when you should get them
 	end
 
 	print'writing...'
-	file(outfn):write(ffi.string(data, #data))
+	path(outfn):write(ffi.string(data, #data))
 end

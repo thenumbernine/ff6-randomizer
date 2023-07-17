@@ -109,7 +109,7 @@ local function readCharSprite(game, charIndex)
 	if palIndex > 8 then palIndex = 0 end
 	if charIndex == 18 then palIndex = 8 end	-- special for morphed terra
 
-	file'characters':mkdir()
+	path'characters':mkdir()
 
 	local bitsPerPixel = 4
 

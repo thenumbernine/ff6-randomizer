@@ -91,7 +91,7 @@ local function writeMonsterSprite(game, index)
 		imgheight = (imgheight + 1) * tileHeight
 	end
 
-	file'monsters':mkdir()
+	path'monsters':mkdir()
 
 	local im = Image(imgwidth, imgheight, 4, 'unsigned char')
 	ffi.fill(im.buffer, imgwidth * imgheight * 4)
