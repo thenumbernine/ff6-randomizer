@@ -140,8 +140,7 @@ for i=0,game.numCharacters-1 do
 	print('Name="'..game.characterNames[i]..'"')
 	print(game.characters[i])
 	print()
-	for _,field in pairs(game.character_t.fields) do
-		local name, ctype = next(field)
+	for name,ctype,field in game.character_t:fielditer() do
 		local value
 		if ctype == 'uint8_t' then
 			value = game.characters[i][name]
