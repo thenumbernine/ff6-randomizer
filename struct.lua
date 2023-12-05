@@ -1,1 +1,3 @@
-return require 'struct.struct'
+local struct = require 'struct.struct'
+struct.packed = true
+return struct
