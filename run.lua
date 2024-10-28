@@ -23,7 +23,7 @@ for i=0,game.numSpells-1 do
 	print()
 end
 
-for i=0,game.numSpells-1 do	
+for i=0,game.numSpells-1 do
 	if game.spells[i].isLore ~= 0 then
 		print('Name="'..game.getSpellName(i)..'"')
 		for j=0,game.numMonsters-1 do
@@ -32,7 +32,7 @@ for i=0,game.numSpells-1 do
 					print('\tsketch '..game.monsterNames[j])
 				end
 			end
-			if j < game.numRages then 
+			if j < game.numRages then
 				for k=0,1 do
 					if game.monsterRages[j].s[k].i == i then
 						print('\trage '..game.monsterNames[j])
@@ -48,7 +48,7 @@ for i=0,game.numEspers-1 do
 	print('esper #'..i)
 	print('Name="'..game.getEsperName(i)..'"')
 	print('AttackName="'..game.esperAttackNames[i]..'"')
-	print('Desc="'..game.gamezstr(game.esperDescBase + game.esperDescOffsets[i])..'"')	
+	print('Desc="'..game.gamezstr(game.esperDescBase + game.esperDescOffsets[i])..'"')
 	print(game.espers[i])
 	print()
 end
@@ -144,7 +144,7 @@ for i=0,game.numCharacters-1 do
 		local value
 		if ctype == 'uint8_t' then
 			value = game.characters[i][name]
-		elseif ctype == 'menuref4_t' 
+		elseif ctype == 'menuref4_t'
 		or ctype == 'itemref_t'
 		or ctype == 'itemref2_t'
 		then
@@ -439,26 +439,26 @@ list of spells in order of power / when you should get them
         game.monsters[i].level = math.random(0,255)
         game.monsters[i].metamorphSet = math.random(0,31)
         game.monsters[i].metamorphResist = math.random(0,7)
-        
+
 		--game.monsters[i].diesIfRunOutOfMP = math.random(0,1)
-		
+
 		game.monsters[i].undead = math.random(0,1)
 		game.monsters[i].cantSuplex = math.random(0,1)
 		game.monsters[i].cantRun = math.random(0,1)
 		game.monsters[i].cantControl = math.random(0,1)
-	
+
 		-- random per bitflag?
 		game.monsters[i].immuneToEffect1.ptr[0] = math.random(0,255)
-		
+
 		game.monsters[i].elementHalfDamage.ptr[0] = math.random(0,255)
 		game.monsters[i].elementAbsorb.ptr[0] = math.random(0,255)
 		game.monsters[i].elementNoEffect.ptr[0] = math.random(0,255)
 		game.monsters[i].elementWeak.ptr[0] = math.random(0,255)
-		
+
 		game.monsters[i].specialAttack = math.random(0,127)
 		game.monsters[i].specialAttackDealsNoDamage = math.random(0,1)
 		--]=]
-		
+
 		for j=0,ffi.sizeof'spellref4_t'-1 do
 			game.monsterSpells[i].s[j].i = math.random(0,255)
 		end

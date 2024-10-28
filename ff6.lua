@@ -2,17 +2,17 @@ local table = require 'ext.table'
 local class = require 'ext.class'
 local assert = require 'ext.assert'
 local ffi = require 'ffi'
-local struct = require 'struct'
+local struct = require 'ff6struct'
 local createVec = require 'vec-ffi.create_vec'
 
--- using 
+-- using
 -- http://www.rpglegion.com/ff6/hack/ff3info.txt
 -- https://github.com/subtractionsoup/beyondchaos
 
 return function(rom)
 -- compstr uses game
 local game
-local obj 
+local obj
 
 local function findnext(ptr, data)
 	while true do
@@ -124,13 +124,13 @@ local function compstr(p, size)
 				elseif p[0] == 16 then
 					c:insert'[PAUSE]'
 				--elseif p[0] == 17 then -- read until 18
-				--elseif p[0] == 18 then -- terminates a 17, or begins a message. 
+				--elseif p[0] == 18 then -- terminates a 17, or begins a message.
 				elseif p[0] == 19 then	-- clear and new message
 					c:insert'\n[CLEAR]'
 					c:insert'\n'
 				--elseif p[0] == 20 then -- read 1 more char ... horizontal tab?
 				elseif p[0] == 21 then
-					c:insert'[PROMPT]'			
+					c:insert'[PROMPT]'
 				--elseif p[0] == 22 then -- read until 18
 				--23, 24, 29: only used between 17 and 18, specifically in opera scene dialog
 				--25, 26, 27, 28, 30, 31: never used
@@ -176,7 +176,7 @@ typedef struct ]]..name..[[ {
 		end,
 		__concat = function(a,b) return tostring(a) .. tostring(b) end,
 	})
-	return metatype 
+	return metatype
 end
 
 local function rawtype(args)
@@ -198,7 +198,7 @@ typedef struct ]]..name..[[ {
 		end,
 		__concat = function(a,b) return tostring(a) .. tostring(b) end,
 	})
-	return metatype 
+	return metatype
 end
 
 --[[
@@ -215,7 +215,7 @@ local function bitflagtype(args)
 			return {[assert(option)] = ctype..':1'}
 		end),
 	}
-end 
+end
 
 local element_t = bitflagtype{
 	name = 'element_t',
@@ -272,7 +272,7 @@ local effect2_t = bitflagtype{
 		'sleep',
 	},
 }
-	
+
 local effect3_t = bitflagtype{
 	name = 'effect3_t',
 	options = {
@@ -322,11 +322,11 @@ local function makefixedraw(n)
 	if cache then return table.unpack(cache) end
 	local name = 'raw'..n..'_t'
 	local mt = rawtype{
-		name = name, 
+		name = name,
 		size = n,
 	}
 	madefixedraw[n] = {mt, name}
-	return mt, name 
+	return mt, name
 end
 
 makefixedraw(12)
@@ -340,27 +340,27 @@ args:
 	name = section name
 	data = uint8_t[?] buffer in memory for string data
 	addrBase = (optional) base of offsets, data by default
-	offsets = uint16_t[?] buffer in memory for offsets 
+	offsets = uint16_t[?] buffer in memory for offsets
 	compressed = boolean
 --]]
 function StringList:init(args)
 	self.name = assert(args.name)
-	
+
 	self.data = assert(args.data)
 	assert(type(self.data) == 'cdata')
-	
+
 	self.offsets = assert(args.offsets)
 	assert(type(self.offsets) == 'cdata')
-	
+
 	self.numOffsets = tostring(ffi.typeof(self.offsets)):match'ctype<unsigned short %(&%)%[(%d+)%]>'
 	assert(self.numOffsets)
-	
+
 	self.addrBase = args.addrBase
 	self.compressed = args.compressed
 
 	local addrBase = self.addrBase and self.addrBase or self.data
 	local strf = self.compressed and compzstr or gamezstr
-	
+
 	for i=0,self.numOffsets-1 do
 		local offset = self.offsets[i]
 		if offset ~= 0xffff then
@@ -378,7 +378,7 @@ function StringList:__tostring()
 
 	local addrBase = (self.addrBase and self.addrBase or self.data) - rom
 	local strf = self.compressed and compzstr or gamezstr
-	
+
 	for i=0,self.numOffsets-1 do
 		if self[i] ~= nil then
 			result:insert(
@@ -615,7 +615,7 @@ local esper_t = struct{
 		{spellLearn3 = 'spellLearn_t'},
 		{spellLearn4 = 'spellLearn_t'},
 		{spellLearn5 = 'spellLearn_t'},
-		{bonus = 'esperBonus_t'}, 
+		{bonus = 'esperBonus_t'},
 	},
 }
 assert(ffi.sizeof'esper_t' == 11)
@@ -680,7 +680,7 @@ local formation_t = struct{
 		{active6 = 'uint8_t:1'},
 		{unused_1_6 = 'uint8_t:1'},
 		{unused_1_7 = 'uint8_t:1'},
-		
+
 		-- 0x02
 		{monster1 = 'uint8_t'},
 		-- 0x03
@@ -693,7 +693,7 @@ local formation_t = struct{
 		{monster5 = 'uint8_t'},
 		-- 0x07
 		{monster6 = 'uint8_t'},
-		
+
 		-- 0x08 - 0x0d
 		--{positions = 'xy4b_6_t'},
 		-- can't occlude if x,y are nested
@@ -719,7 +719,7 @@ local formation_t = struct{
 		mt.fieldToString = function(self, key, ctype)
 			if key:match'^monster%dhi$' then return nil end
 			if key:match'^active%d$' then return nil end
-			
+
 			local i = key:match'^monster(%d)$'
 			if i then
 				if self['active'..i] == 0 then return nil end
@@ -727,12 +727,12 @@ local formation_t = struct{
 				if self['monster'..i..'hi'] ~= 0 then v = v + 0x100 end
 				return '"'..game.monsterNames[v]..'"'
 			end
-			
+
 			local i = key:match'^pos(%d)$'
 			if i then
 				if self['active'..i] == 0 then return nil end
 			end
-		
+
 			if key == 'formationSize' then
 				local v = self[key]
 				local offset = game.formationSizeOffsets[v]
@@ -841,7 +841,7 @@ assert(ffi.sizeof'formationSize_t' == 4)
 
 local monsterPalettesAddr = 0x127820
 local numMonsterPalettes = 0x300
--- ... of type palette8_t 
+-- ... of type palette8_t
 
 -- the first 'numMonsters' overlaps, but then there's a few more?
 local numMonsterSprites = 0x1a0
@@ -873,9 +873,9 @@ local itemNamesAddr = 0x12b300
 
 local itemref_t = reftype{
 	name = 'itemref_t',
-	getter = function(i) 
+	getter = function(i)
 		if i == 0xff then return nil end
-		return game.itemNames[i] 
+		return game.itemNames[i]
 	end,
 	getterSkipNone = true,
 }
@@ -958,7 +958,7 @@ local item_t = struct{
 		-- 0x06:
 		{immuneToEffect1 = 'effect1_t'},
 		-- 0x07:
-		{immuneToEffect2 = 'effect2_t'},	
+		{immuneToEffect2 = 'effect2_t'},
 		-- 0x08:
 		{hasEffect3 = 'effect3_t'},
 		-- 0x09:
@@ -1032,7 +1032,7 @@ local item_t = struct{
 		{swdTechCompatible = 'uint8_t:1'},
 		-- 0x14:
 		-- TODO UNION
-		{battlePower_defense = 'uint8_t'},	
+		{battlePower_defense = 'uint8_t'},
 		-- 0x15:
 		{hitChance_magicDefense = 'uint8_t'},
 		-- 0x16:
@@ -1042,7 +1042,7 @@ local item_t = struct{
 		-- 0x18:
 		{elementWeak = 'element_t'},
 		-- 0x19:
-		{givesEffect2 = 'effect2_t'},	
+		{givesEffect2 = 'effect2_t'},
 		-- 0x1a:
 		{evade = 'uint8_t:4'},
 		{magicBlock = 'uint8_t:4'},	-- 0..5 => 0..5, 6..10 => -1..-5
@@ -1063,7 +1063,7 @@ local item_t = struct{
 				if i == 0xff then return nil end
 				return '"'..getSpellName(i)..'"'
 			elseif name == 'itemUseAbility' then
-				local s = itemUseAbilityNames[self[name]+1]  
+				local s = itemUseAbilityNames[self[name]+1]
 				return s and '"'..s..'"' or tostring(self[name])
 			elseif name == 'itemSpecialAbility' then
 				local s = itemSpecialAbilityNames[self[name]+1]
@@ -1181,13 +1181,13 @@ local monster_t = struct{
 		-- 0x15:
 		{immuneToEffect2 = 'effect2_t'},
 		-- 0x16:
-		{elementHalfDamage = 'element_t'},	
+		{elementHalfDamage = 'element_t'},
 		-- 0x17:
-		{elementAbsorb = 'element_t'},	
+		{elementAbsorb = 'element_t'},
 		-- 0x18:
-		{elementNoEffect = 'element_t'},	
+		{elementNoEffect = 'element_t'},
 		-- 0x19:
-		{elementWeak = 'element_t'},	
+		{elementWeak = 'element_t'},
 		-- 0x1a:
 		{fightAnimation = 'uint8_t'},
 		-- 0x1b:
@@ -1396,12 +1396,12 @@ local shopinfo_t = struct{
 			if name == 'shopType' then
 				local v = self[name]
 				if v == 0 then return nil end
-				local s = shopTypes[v+1]  
+				local s = shopTypes[v+1]
 				return s and '"'..s..'"' or tostring(self[name])
 			elseif name == 'priceType' then
 				local v = self[name]
 				if v == 0 then return nil end
-				local s = shopPriceTypes[v+1]  
+				local s = shopPriceTypes[v+1]
 				return s and '"'..s..'"' or tostring(self[name])
 			end
 			return oldFieldToString(self, name, ctype)
@@ -1488,6 +1488,7 @@ assert.eq(ffi.sizeof'location_t', 0x21)
 -- the memorymap system of the super metroid randomizer is better.
 local game_t = struct{
 	name = 'game_t',
+	notostring = true,	-- too big to serialize
 	fields = {
 		-- 0x00c27f - 0x00c28f = something to do with battle background? -rpglegion
 		{padding_000000 = 'uint8_t['..(0x00ce3a - 0x000000)..']'},			-- 0x000000 - 0x00ce3a
@@ -1495,8 +1496,8 @@ local game_t = struct{
 		-- offset of map character sprite parts
 		-- interleaved row-major, 2x3
 		{characterFrameTileOffsets = 'uint16_t['..(numCharacterSpriteFrames * 6)..']'},	-- 0x00ce3a - 0x00d026
-	
-		{padding_00d026 = 'uint8_t['..(0x00d0f2  - 0x00d026)..']'},			-- 0x00d026 - 0x00d0f2 
+
+		{padding_00d026 = 'uint8_t['..(0x00d0f2  - 0x00d026)..']'},			-- 0x00d026 - 0x00d0f2
 
 		-- 0x00d0f2 - ? = pointer to map character graphics (2 bytes each)
 		{characterSpriteOffsetLo = 'uint16_t['..numCharacterSprites..']'},	-- 0x00d0f2 - 0x00d23c
@@ -1506,7 +1507,7 @@ local game_t = struct{
 		-- 0x00d23c - ? = bank pointer & # bytes to copy for map char gfx (2 bytes each)
 		-- 0x00dfa0 - 0x00e0a0 = 'DTE table' -rgplegion
 		{padding_00d27c = 'uint8_t['..(0x02ce2b - 0x00d386)..']'},			-- 0x00d386 - 0x02ce2b
-		
+
 		-- battle character palette assignment (1 byte each)
 		{characterPaletteIndexes = 'uint8_t['..numCharacterSprites..']'},		-- 0x02ce2b - 0x02ced0
 
@@ -1520,11 +1521,11 @@ local game_t = struct{
 		{padding_02d0f4 = 'uint8_t['..(0x03c00e - 0x02d0f4)..']'},			-- 0x02d0f4 - 0x03c00e
 
 		{positionedTextOffsets = 'uint16_t['..numPositionedText..']'},		-- 0x03c00e - 0x03c018
-		
+
 		{padding = 'uint8_t['..(0x03c2fc - 0x03c018)..']'},					-- 0x03c018 - 0x03c2fc
-		
+
 		{positionedTextBase = 'uint8_t['..(0x03c406 - 0x03c2fc)..']'},		-- 0x03c2fc - 0x03c406
-		
+
 		-- 0x03c326 - 0x03c406 = more positioned text (N items, var length) ... where are the offsets for this?
 		-- "P}BUY  SELL  EXITA:}GPAr GPAz}Owned:Az Equipped:AP Bat PwrAP DefenseAl â¦Af{Hi! Can I help you?Af{Help yourself!Af{How many?Af{Whatcha got?Af{How many?Af{Bye!          Af{You need more GP!Af{Too many!       Af{One's plenty! A"
 
@@ -1535,21 +1536,21 @@ local game_t = struct{
 		-- 0x041d52 - 0x046a6c = npc data
 		-- 0x046a6c - 0x046ac0 = unused
 		{padding_03c406 = 'uint8_t['..(0x046ac0 - 0x03c406)..']'},			-- 0x03c406 - 0x046ac0
-		
+
 		{spells = 'spell_t['..numSpells..']'},								-- 0x046ac0 - 0x0478c0
 		{characterNames = 'characterName_t['..numCharacters..']'},			-- 0x0478c0 - 0x047a40
 		{blitzData = 'raw12_t['..numBlitzes..']'},							-- 0x047a40 - 0x047aa0
-		
-		{padding_047aa0 = select(2, makefixedraw(0x047ac0 - 0x047aa0))},	-- 0x047aa0 - 0x047ac0 
-		
+
+		{padding_047aa0 = select(2, makefixedraw(0x047ac0 - 0x047aa0))},	-- 0x047aa0 - 0x047ac0
+
 		{shops = 'shop_t['..numShops..']'},									-- 0x047ac0 - 0x047f40
 		{metamorphSets = 'itemref4_t['..numMetamorphSets..']'},			-- 0x047f40 - 0x047fa8
-	
+
 		-- 0x0487c0 - 0x048fc0 = font graphics (8x8x2, 8 bytes each, 0x80-0xff)
 		-- 0x048fc0 - 0x049040 = font character cell widths (0x00 - 0x7f)
-		
+
 		-- 0x0490c0 - 0x049900 = font graphics data (16x11x1, 22 bytes each, 0x20-0x7f)
-		
+
 		-- 0x05070e - 0x050710 = length of main SPC code loop
 		-- 0x050710 - 0x051ec7 = main SPC code loop
 
@@ -1560,92 +1561,92 @@ local game_t = struct{
 		{dialogOffsets = 'uint16_t['..numDialogs..']'},						-- 0x0ce600 - 0x0d0000
 		{dialogBase = 'uint8_t['..(0x0ef100 - 0x0d0000)..']'},				-- 0x0d0000 - 0x0ef100
 		{locationNameBase = 'uint8_t['..(0x0ef600 - 0x0ef100)..']'},		-- 0x0ef100 - 0x0ef600
-	
+
 		-- 0x0ef600 - 0x0ef648 looks like offsets into something
 		-- 0x0ef648 - 0x0ef678 looks like arbitrary values
 		-- 0x0ef678 - 0x0efb60 is mostly '06' repeated
 		{padding_0ef600 = 'uint8_t['..(0x0efb60 - 0x0ef600)..']'},			-- 0x0ef600 - 0x0efb60
 
 		{rareItemDescOffsets = 'uint16_t['..numRareItems..']'},				-- 0x0efb60 - 0x0efb88
-		
+
 		-- all 'ff' repeated ... enough for 12 extra offsets ... there are 20 rare items ... 20+12=32
 		{unused_0efb88  = select(2, makefixedraw(0x18))},					-- 0x0efb88 - 0x0efba0
-	
+
 		-- rare item names are 13 chars
 		{rareItemNames = 'rareItemName_t['..numRareItems..']'},				-- 0x0efba0 - 0x0efca4
-	
-		-- all 'ff' repeated, for 12 bytes, not quite 1 more name 
-		{padding_0efca4  = select(2, makefixedraw(0x0efcb0 - 0x0efca4))},			-- 0x0efca4 - 0x0efcb0 
-		
+
+		-- all 'ff' repeated, for 12 bytes, not quite 1 more name
+		{padding_0efca4  = select(2, makefixedraw(0x0efcb0 - 0x0efca4))},			-- 0x0efca4 - 0x0efcb0
+
 		{rareItemDescBase = 'uint8_t['..(0x0f0000 - 0x0efcb0)..']'},		-- 0x0efcb0 - 0x0f0000
 		{monsters = 'monster_t['..numMonsters..']'},						-- 0x0f0000 - 0x0f3000
 		{monsterItems = 'monsterItem_t['..numMonsters..']'},				-- 0x0f3000 - 0x0f3600
-		
+
 		-- 0x0f3600 - 0x0f37c0 is mostly zeroes
-		-- 0x0f37c0 - 0x0f3940 is something 
+		-- 0x0f37c0 - 0x0f3940 is something
 		{padding_0f3600  = 'uint8_t['..(0x0f3940 - 0x0f3600)..']'},				-- 0x0f3600 - 0x0f3940
-		
+
 		{esperDescBase = 'uint8_t['..(0x0f3c40 - 0x0f3940)..']'},			-- 0x0f3940 - 0x0f3c40
 		{swordTechNames = 'swordTechName_t['..numSwordTechs..']'},			-- 0x0f3c40 - 0x0f3ca0
 
 		-- all ff
 		{padding_0f3ca0  = 'uint8_t['..(0x0f3d00 - 0x0f3ca0)..']'},				-- 0x0f3ca0 - 0x0f3d00
-		
+
 		{monsterSpells = 'spellref4_t['..numMonsters..']'},				-- 0x0f3d00 - 0x0f4300
 		{monsterSketches = 'spellref2_t['..numMonsters..']'},			-- 0x0f4300 - 0x0f4600
-		{monsterRages = 'spellref2_t['..numRages..']'},					-- 0x0f4600 - 0x0f4800 
-		
+		{monsterRages = 'spellref2_t['..numRages..']'},					-- 0x0f4600 - 0x0f4800
+
 		{padding_0f4800 = 'uint8_t['..(0x0f5900 - 0x0f4800)..']'},			-- 0x0f4800 - 0x0f5900
-		
+
 		{formation2s = 'formation2_t['..numFormations..']'},				-- 0x0f5900 - 0x0f6200
 		{formations = 'formation_t['..numFormations..']'},					-- 0x0f6200 - 0x0f83c0
-		
+
 		{padding_0f83c0 = 'uint8_t['..(0x0fc050 - 0x0f83c0)..']'},			-- 0x0f83c0 - 0x0fc050
 
 		{monsterNames = 'monsterName_t['..numMonsters..']'},				-- 0x0fc050 - 0x0fcf50
-		
-		{padding_0fcf50  = 'uint8_t[384]'},										-- 0x0fcf50 - 0x0fd0d0 
-		
+
+		{padding_0fcf50  = 'uint8_t[384]'},										-- 0x0fcf50 - 0x0fd0d0
+
 		{monsterAttackNames = 'monsterName_t['..numMonsters..']'},			-- 0x0fd0d0 - 0x0fdfd0
-		
+
 		{padding_0fdfd0 = 'uint8_t['..(0x0fdfe0 - 0x0fdfd0)..']'},			-- 0x0fdfd0 - 0x0fdfe0
 
 		{battleDialogOffsets = 'uint16_t['..numBattleDialogs..']'},			-- 0x0fdfe0 - 0x0fe1e0
 		{battleDialogBase = 'uint8_t['..(0x0ff450 - 0x0fe1e0)..']'},		-- 0x0fe1e0 - 0x0ff450
-		
+
 		{padding_0ff450  = 'uint8_t['..(0x0ffc00 - 0x0ff450)..']'},			-- 0x0ff450 - 0x0ffc00
 
 		{blitzDescBase = 'uint8_t['..(0x0ffd00 - 0x0ffc00)..']'},			-- 0x0ffc00 - 0x0ffd00
 		{swordTechDescBase = 'uint8_t['..(0x0ffe00 - 0x0ffd00)..']'},		-- 0x0ffd00 - 0xfffe00
-		
-		{padding_0ffe00  = 'uint8_t['..(0x0ffe40 - 0x0ffe00)..']'},				-- 0x0ffe00 - 0x0ffe40 
-		
+
+		{padding_0ffe00  = 'uint8_t['..(0x0ffe40 - 0x0ffe00)..']'},				-- 0x0ffe00 - 0x0ffe40
+
 		{esperDescOffsets = 'uint16_t['..numEspers..']'},					-- 0x0ffe40 - 0x0ffe76
-		
+
 		{padding_0ffe76  = 'uint8_t['..(0x0ffeae - 0x0ffe76)..']'},				-- 0x0ffe76 - 0x0ffeae
-		
+
 		{esperBonusDescs = 'esperBonusDesc_t['..numEsperBonuses..']'},		-- 0x0ffeae - 0x0fff47
-		
+
 		{padding_0fff47  = 'uint8_t[87]'},											-- 0x0fff47 - 0x0fff9e
-		
-		{blitzDescOffsets = 'uint16_t['..numBlitzes..']'},					-- 0x0fff9e - 0x0fffae 
-		{swordTechDescOffsets = 'uint16_t['..numSwordTechs..']'},			-- 0x0fffae - 0x0fffbe 
-		
+
+		{blitzDescOffsets = 'uint16_t['..numBlitzes..']'},					-- 0x0fff9e - 0x0fffae
+		{swordTechDescOffsets = 'uint16_t['..numSwordTechs..']'},			-- 0x0fffae - 0x0fffbe
+
 		{padding_0fffbe = 'uint8_t['..(0x10d000 - 0x0fffbe)..']'},			-- 0x0fffbe - 0x10d000
 
 		{battleDialog2Offsets = 'uint16_t['..numBattleDialog2s..']'},		-- 0x10d000 - 0x10d200
 		{battleDialog2Base = 'uint8_t['..(0x10fd00 - 0x10d200)..']'},		-- 0x10d200 - 0x10fd00
-		
-		{padding_10fd00 = 'uint8_t['..(0x11f000 - 0x10fd00)..']'},			-- 0x10fd00 - 0x11f000 
+
+		{padding_10fd00 = 'uint8_t['..(0x11f000 - 0x10fd00)..']'},			-- 0x10fd00 - 0x11f000
 
 		{battleMessageBase = 'uint8_t['..(0x11f7a0 - 0x11f000)..']'},		-- 0x11f000 - 0x11f7a0
 		{battleMessageOffsets = 'uint16_t['..numBattleMessages..']'},		-- 0x11f7a0 - 0x11f9a0
-		
+
 		{padding_11f9a0 = 'uint8_t['..(0x126f00 - 0x11f9a0)..']'},			-- 0x11f9a0 - 0x126f00
 
 		{itemTypeNames = 'str7_t['..numItemTypes..']'},						-- 0x126f00 - 0x126fe0
 
-		{padding_126fe0 = 'uint8_t['..(0x127000 - 0x126fe0)..']'},			-- 0x126fe0 - 0x127000 
+		{padding_126fe0 = 'uint8_t['..(0x127000 - 0x126fe0)..']'},			-- 0x126fe0 - 0x127000
 
 		{monsterSprites = 'monsterSprite_t['..numMonsterSprites..']'},		-- 0x127000 - 0x127820
 		{monsterPalettes = 'palette8_t['..numMonsterPalettes..']'},			-- 0x127820 - 0x12a820
@@ -1658,34 +1659,34 @@ local game_t = struct{
 
 		{WoBpalettes = 'palette16_8_t'},									-- 0x12ec00 - 0x12ed00
 		{WoRpalettes = 'palette16_8_t'},									-- 0x12ed00 - 0x12ee00
-		{setzerAirshipPalette = 'palette16_t'},								-- 0x12ee00 - 0x12ee20 
-		
+		{setzerAirshipPalette = 'palette16_t'},								-- 0x12ee00 - 0x12ee20
+
 		{padding_12ee20 = 'uint8_t['..(0x12ef00 - 0x12ee20)..']'},			-- 0x12ee20 - 0x12ef00
-		
+
 		{darylAirshipPalette = 'palette16_t'},								-- 0x12ef00 - 0x12ef20
-		
+
 		-- 0x150000 - ? = character images, 0x16a0 bytes each
 		{padding_12ef20 = 'uint8_t['..(0x185000 - 0x12ef20)..']'},			-- 0x12ef20 - 0x185000
 
 		{items = 'item_t['..numItems..']'},									-- 0x185000 - 0x186e00
 		{espers = 'esper_t['..numEspers..']'},								-- 0x186e00 - 0x186f29
-		
+
 		{padding_186f29 = 'uint8_t['..(0x18c9a0 - 0x186f29)..']'},				-- 0x186f29 - 0x18c9a0
-		
+
 		{spellDescBase = 'uint8_t['..(0x18cea0 - 0x18c9a0)..']'},			-- 0x18c9a0 - 0x18cea0
 		{menuNames = 'menuName_t['..numMenuNames..']'},						-- 0x18cea0 - 0x18cf80
 		{spellDescOffsets = 'uint16_t[54]'},								-- 0x18cf80 - 0x18cfec
-	
+
 		-- 0x19a800 - 0x19cd10 = location tile properties
 		-- 0x19cd10 - 0x19cd90 = pointers to location tile properties (+0x19a800)
 		-- 0x19cd90 - 0x19d1b0 = pointers to location map data (352 items), (+0x19d1b0)
 		-- 0x19d1b0 - 0x1e0000 = location map data
 		-- 0x1e0000 - ? = location tile formation
 		{padding_18cfec = 'uint8_t['..(0x1fb400  - 0x18cfec)..']'},				-- 0x18cfec - 0x1fb400
-	
+
 		{formationMPs = 'uint8_t['..numFormationMPs..']'},					-- 0x1fb400 - 0x1fb600
 		{itemColosseumInfos = 'itemColosseumInfo_t['..numItems..']'},		-- 0x1fb600 - 0x1fba00
-	
+
 		-- 0x1fba00 - 0x1fbb00 = pointer to location tile formation (128 items) (+0x1e0000)
 		-- 0x1fbb00 - 0x1fbf02 = pointer to entrance triggers (+0x1fbb00)
 		-- 0x1fbf02 - 0x1fda00 = entrance triggers (6 bytes each)
@@ -1697,16 +1698,16 @@ local game_t = struct{
 		{padding_1fba00 = 'uint8_t['..(0x268000 - 0x1fba00)..']'},			-- 0x1fba00 - 0x268000
 
 		{characterPalettes = 'palette16_t['..numCharacterPalettes..']'},	-- 0x268000 - 0x268400
-		
+
 		{locationNameOffsets = 'uint16_t['..numLocationNames..']'},			-- 0x268400 - 0x268780
 
-		{padding_268780 = 'uint8_t['..(0x26f4a0 - 0x268780)..']'},			-- 0x268780 - 0x26f4a0 
+		{padding_268780 = 'uint8_t['..(0x26f4a0 - 0x268780)..']'},			-- 0x268780 - 0x26f4a0
 
 		{hpIncPerLevelUp = 'uint8_t['..numLevels..']'},						-- 0x26f4a0 - 0x26f502
 		{mpIncPerLevelUp = 'uint8_t['..numLevels..']'},						-- 0x26f502 - 0x26f564
 
 		{padding_26f564 = 'uint8_t['..(0x26f567 - 0x26f564)..']'},			-- 0x26f564 - 0x26f567
-		
+
 		{spellNames_0to53 = 'str7_t[54]'}, 									-- 0x26f567 - 0x26f6e1
 		{spellNames_54to80 = 'str8_t[27]'},                             	-- 0x26f6e1 - 0x26f7b9
 		{spellNames_81to255 = 'str10_t[175]'},								-- 0x26f7b9 - 0x26fe8f
@@ -1714,15 +1715,15 @@ local game_t = struct{
 		{mogDanceNames = 'str12_t['..numMogDances..']'},					-- 0x26ff9d - 0x26fffd
 
 		{padding_26fffd = 'uint8_t['..(0x271650 - 0x26fffd)..']'},			-- 0x26fffd - 0x271650
-		
+
 		-- 0x270150 - = bottom battle background palettes (16 colors each)
-		
+
 		{topBackgroundPaletteOffset = 'uint16_t[252]'},						-- 0x271650 - 0x271848	-- pointers to top background palettes (168 elements, 75 used)
-	
+
 		{padding_271848 = 'uint8_t['..(0x297000 - 0x271848)..']'},			-- 0x271848	- 0x297000
 
 		{monsterSpriteData = 'uint8_t['..(0x2d0000 - 0x297000)..']'},		-- 0x297000 - 0x2d0000 = monster graphics
-		
+
 		{menuImages = 'uint8_t['..(0x2d0e00 - 0x2d0000)..']'},				-- 0x2d0000 - 0x2d0e00 = menu images 0x200 = bg pattern, 0x180 = borders, so 0x380 total ... x8 per menu scheme
 
 		{padding_2d0e00 = 'uint8_t['..(0x2d1c00 - 0x2d0e00)..']'},			-- 0x2d0e00 - 0x2d1c00
@@ -1751,14 +1752,14 @@ local game_t = struct{
 
 		--  location propeties (415 elements, 33 bytes each)
 		{locations = 'location_t['..numLocations..']'},						-- 0x2d8f00 - 0x2dc47f
-		
+
 		-- 0x2dc47f - 0x2dc480 = unused
 		-- 0x2dc480 - 0x2dca80 = location map palettes (48 elements, 16 colors each)
 		{padding_2dc47f = 'uint8_t['..(0x2dfe00 - 0x2dc47f)..']'},			-- 0x2dc47f - 0x2dfe00
 
-		{longEsperBonusDescBase = 'uint8_t['..(0x2dffd0 - 0x2dfe00)..']'},	-- 0x2dfe00 - 0x2dffd0 
+		{longEsperBonusDescBase = 'uint8_t['..(0x2dffd0 - 0x2dfe00)..']'},	-- 0x2dfe00 - 0x2dffd0
 		{longEsperBonusDescOffsets = 'uint16_t['..numEsperBonuses..']'},	-- 0x2dffd0 - 0x2dfff2
-	
+
 		{padding_2dfff2 = 'uint8_t['..(0x2e9b14 - 0x2dfff2)..']'},
 
 		-- 0x2e4842 - 0x2e4851     Sprites used for various positions of map character
@@ -1843,7 +1844,7 @@ game = ffi.cast('game_t*', rom)
 obj = setmetatable({}, {
 	__index = game,
 })
-		
+
 obj.numSpells = numSpells
 obj.numEsperBonuses = numEsperBonuses
 obj.numEspers = numEspers
@@ -1859,7 +1860,7 @@ obj.numExpLevelUps = numExpLevelUps
 obj.numLevels = numLevels
 obj.numMenuNames = numMenuNames
 obj.numCharacters = numCharacters
-obj.numCharacterSpriteFrames = numCharacterSpriteFrames 
+obj.numCharacterSpriteFrames = numCharacterSpriteFrames
 obj.numCharacterSprites = numCharacterSprites
 obj.numMogDances = numMogDances
 obj.numSwordTechs = numSwordTechs
@@ -1874,9 +1875,9 @@ obj.numBattleDialog2s = numBattleDialog2s
 obj.numBattleMessages = numBattleMessages
 obj.numFormations = numFormations
 obj.numFormationMPs = numFormationMPs
-obj.numFormationSizeOffsets = numFormationSizeOffsets 
-obj.numFormationSizes = numFormationSizes 
-obj.numPositionedText = numPositionedText 
+obj.numFormationSizeOffsets = numFormationSizeOffsets
+obj.numFormationSizes = numFormationSizes
+obj.numPositionedText = numPositionedText
 
 obj.findnext = findnext
 obj.gamezstr = gamezstr
