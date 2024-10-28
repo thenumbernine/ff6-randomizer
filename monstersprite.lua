@@ -114,5 +114,7 @@ local function writeMonsterSprite(game, index)
 	end
 
 	im:save('monsters/monster'..index..' '..game.monsterNames[index]..'.png')
+
+	return im.width * im.height
 end
 return writeMonsterSprite

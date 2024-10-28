@@ -123,10 +123,11 @@ local function readCharSprite(game, charIndex)
 		numFrames = 1
 	end
 
+	local totalPixels = 0
 	for frameIndex=0,numFrames-1 do
 		--local frameName = frameNames[frameIndex+1] or tostring(frameIndex)
 		local frameName = tostring(frameIndex)
-		
+
 		local pal = game.characterPalettes[palIndex].s
 		local charBaseOffset = bit.band(
 			bit.bnot(0xc00000),
@@ -142,7 +143,10 @@ local function readCharSprite(game, charIndex)
 			bitsPerPixel)
 		local relname = spriteName..'_'..frameName..'.png'
 		im:save('characters/'..relname)
+
+		totalPixels = totalPixels + im.width * im.height
 	end
+	return totalPixels
 end
 
 return readCharSprite

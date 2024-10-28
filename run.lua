@@ -99,10 +99,12 @@ for i=0,game.numMonsters-1 do
 	print()
 end
 
+local totalPixels = 0
 local writeMonsterSprite = require 'monstersprite'
 for i=0,game.numMonsterSprites-1 do
-	writeMonsterSprite(game, i)
+	totalPixels = totalPixels + writeMonsterSprite(game, i)
 end
+print('wrote monster pixels', totalPixels)
 
 for i=0,game.numMetamorphSets-1 do
 	print('metamorph set #'..i..' = '..game.metamorphSets[i])
@@ -173,9 +175,9 @@ print((require'ext.tolua'({
 
 local readCharSprite = require 'charsprite'
 for i=0,game.numCharacterSprites-1 do
-	readCharSprite(game, i)
+	totalPixels = totalPixels + readCharSprite(game, i)
 end
-
+print('wrote total pixels', totalPixels)
 
 for i=0,game.numMenuNames-1 do
 	print('menu #'..i..' = "'..game.menuNames[i]..'"')
