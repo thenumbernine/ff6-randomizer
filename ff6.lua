@@ -474,6 +474,17 @@ local palette16_8_t = createVec{
 }
 assert(ffi.sizeof'palette16_8_t' == 2*16*8)
 
+---------------- AUDIO ----------------
+
+local uint24_t = struct{
+	name = 'uint24_t',
+	fields = {
+		{lo = 'uint16_t'},
+		{hi = 'uint8_t'},
+	},
+}
+assert.eq(ffi.sizeof'uint24_t', 3)
+local numBRRSamples = 63
 
 ---------------- SPELLS ----------------
 
@@ -1544,18 +1555,52 @@ local game_t = struct{
 		{padding_047aa0 = select(2, makefixedraw(0x047ac0 - 0x047aa0))},	-- 0x047aa0 - 0x047ac0
 
 		{shops = 'shop_t['..numShops..']'},									-- 0x047ac0 - 0x047f40
-		{metamorphSets = 'itemref4_t['..numMetamorphSets..']'},			-- 0x047f40 - 0x047fa8
+		{metamorphSets = 'itemref4_t['..numMetamorphSets..']'},				-- 0x047f40 - 0x047fa8
 
-		-- 0x0487c0 - 0x048fc0 = font graphics (8x8x2, 8 bytes each, 0x80-0xff)
-		-- 0x048fc0 - 0x049040 = font character cell widths (0x00 - 0x7f)
+		-- wait is this font too? it is 2048 + 32 bytes ...
+		{padding_047fa8 = 'uint8_t['..(0x0487c0 - 0x047fa8)..']'},			-- 0x047fa8 - 0x0487c0
 
-		-- 0x0490c0 - 0x049900 = font graphics data (16x11x1, 22 bytes each, 0x20-0x7f)
+		-- font graphics (8x8x2, 8 bytes each, 0x80-0xff)
+		{font8_80_to_ff = 'uint8_t['..(0x10 * 0x80)..']'},					-- 0x0487c0 - 0x048fc0
 
-		-- 0x05070e - 0x050710 = length of main SPC code loop
-		-- 0x050710 - 0x051ec7 = main SPC code loop
+		-- font character cell widths (0x00-0x7f)
+		{font8_widths_80_to_ff = 'uint8_t['.. 0x80 ..']'},					-- 0x048fc0 - 0x049040
+
+		{padding_049040 = 'uint8_t['..(0x0490c0 - 0x049040)..']'},			-- 0x049040 - 0x0490c0
+
+		-- font graphics data (16x11x1, 22 bytes each, 0x20-0x7f)
+		{font16_20_to_7f = 'uint8_t['..(22 * (0x7f - 0x20 + 1))..']'},		-- 0x0490c0 - 0x049900
+
+		{padding_049900 = 'uint8_t['..(0x05070e - 0x049900)..']'},			-- 0x049900 - 0x05070e
+
+		-- length of main SPC code loop
+		{spcMainCodeLoopLen = 'uint8_t['..(0x050710 - 0x05070e)..']'},		-- 0x05070e - 0x050710
+
+		-- main SPC code loop
+		{spcMainCode = 'uint8_t['..(0x051ec7 - 0x050710)..']'},				-- 0x050710 - 0x051ec7
+
+		{padding_051ec7 = 'uint8_t['..(0x053c5f - 0x051ec7)..']'},			-- 0x051ec7 - 0x053c5f
+
+		-- BRR sample pointers (x63, 3 bytes each)
+		{brrSamplePtrs = 'uint24_t['..numBRRSamples..']'},					-- 0x053c5f - 0x053d1c
+
+		-- loop start pointers (x63, 2 bytes each)
+		{loopStartPtrs = 'uint16_t['..numBRRSamples..']'},					-- 0x053d1c - 0x053d9a
+
+		-- pitch multipliers (x63, 2 bytes each)
+		{pitchMults = 'uint16_t['..numBRRSamples..']'},						-- 0x053d9a - 0x053e18
+
+		-- ADSR data (x63, 2 bytes each)
+		{adsrData = 'uint16_t['..numBRRSamples..']'},						-- 0x053e18 - 0x053e96
+
+		{padding_053e96 = 'uint8_t['..(0x054a35 - 0x053e96)..']'},			-- 0x053e96 - 0x054a35
+
+		-- 0x054a35 - 0x085c7a = BRR samples (does divide evenly by  3195 x63...)
+		{brrSamples = 'uint8_t['..(0x085c7a - 0x054a35)..']'},				-- 0x054a35 - 0x085c7a
 
 		-- 0x0a0000 - 0x0ce600 = event code
-		{padding_047fa8 = 'uint8_t['..(0x0ce600 - 0x047fa8)..']'},			-- 0x047fa8 - 0x0ce600
+
+		{padding_085c7a = 'uint8_t['..(0x0ce600 - 0x085c7a)..']'},			-- 0x085c7a - 0x0ce600
 
 		-- the first dialog offset points to the dialog which needs the bank byte to increment
 		{dialogOffsets = 'uint16_t['..numDialogs..']'},						-- 0x0ce600 - 0x0d0000
@@ -1791,6 +1836,19 @@ assert.eq(ffi.offsetof('game_t', 'spells'), spellsAddr)
 assert.eq(ffi.offsetof('game_t', 'characterNames'), characterNamesAddr)
 assert.eq(ffi.offsetof('game_t', 'shops'), shopsAddr)
 assert.eq(ffi.offsetof('game_t', 'metamorphSets'), metamorphSetsAddr)
+assert.eq(ffi.offsetof('game_t', 'font8_80_to_ff'), 0x0487c0)
+assert.eq(ffi.offsetof('game_t', 'font8_widths_80_to_ff'), 0x048fc0)
+assert.eq(ffi.offsetof('game_t', 'font16_20_to_7f'), 0x0490c0)
+assert.eq(ffi.offsetof('game_t', 'spcMainCodeLoopLen'), 0x05070e)
+assert.eq(ffi.offsetof('game_t', 'spcMainCode'), 0x050710)
+assert.eq(ffi.offsetof('game_t', 'brrSamplePtrs'), 0x053c5f)
+assert.eq(ffi.offsetof('game_t', 'loopStartPtrs'), 0x053d1c)
+assert.eq(ffi.offsetof('game_t', 'pitchMults'), 0x053d9a)
+assert.eq(ffi.offsetof('game_t', 'adsrData'), 0x053e18)
+assert.eq(ffi.offsetof('game_t', 'brrSamples'), 0x054a35)
+assert.eq(ffi.offsetof('game_t', 'dialogOffsets'), 0x0ce600)
+assert.eq(ffi.offsetof('game_t', 'dialogBase'), 0x0d0000)
+assert.eq(ffi.offsetof('game_t', 'locationNameBase'), 0x0ef100)
 assert.eq(ffi.offsetof('game_t', 'rareItemDescOffsets'), rareItemDescOffsetAddr)
 assert.eq(ffi.offsetof('game_t', 'rareItemNames'), rareItemNamesAddr)
 assert.eq(ffi.offsetof('game_t', 'rareItemDescBase'), rareItemDescBaseAddr)

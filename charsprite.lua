@@ -100,7 +100,7 @@ local function readCharSprite(game, charIndex)
 	assert(charIndex >= 0 and charIndex < game.numCharacterSprites)
 
 	--local spriteName = spriteNames[charIndex+1] or 'char'..charIndex
-	local spriteName = 'char'..charIndex
+	local spriteName = 'char'..('%03d'):format(charIndex)
 
 	local width = tileWidth*tilesWide
 	local height = tileHeight*tilesHigh
@@ -126,7 +126,8 @@ local function readCharSprite(game, charIndex)
 	local totalPixels = 0
 	for frameIndex=0,numFrames-1 do
 		--local frameName = frameNames[frameIndex+1] or tostring(frameIndex)
-		local frameName = tostring(frameIndex)
+		--local frameName = tostring(frameIndex)
+		local frameName = ('%02d'):format(frameIndex)
 
 		local pal = game.characterPalettes[palIndex].s
 		local charBaseOffset = bit.band(
