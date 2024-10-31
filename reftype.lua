@@ -13,9 +13,9 @@ typedef struct ]]..name..[[ {
 ]])
 	local metatype = ffi.metatype(name, {
 		__tostring = function(self)
-			if self.i == 0xff then 
+			if self.i == 0xff then
 				if not (getter and args.getterSkipNone) then
-					return nil	--'"(none)"' 
+					return nil	--'"(none)"'
 				end
 			end
 			if options then
@@ -33,6 +33,6 @@ typedef struct ]]..name..[[ {
 		__concat = function(a,b) return tostring(a)..tostring(b) end,
 	})
 	assert(ffi.sizeof(name) == 1)
-	return metatype 
+	return metatype
 end
 return reftype

@@ -261,6 +261,51 @@ print('battleRedPalette = '..game.battleRedPalette)
 print('battleMenuPalettes = '..game.battleMenuPalettes)
 print()
 
+do
+	local Image = require 'image'
+	local img = Image(8*16, 8*16, 1, 'uint8_t')
+	for j=0,15 do
+		for i=0,15 do
+			local index = i + 16 * j
+			for x=0,7 do
+				for y=0,7 do
+					img.buffer[
+						(x + 8 * i) + img.width * (y + 8 * j)
+					] = bit.bor(
+						bit.band(bit.rshift(game.font[2*y + 0x10 * index], 7-x), 1),
+						bit.lshift(bit.band(bit.rshift(game.font[2*y+1 + 0x10 * index], 7-x), 1), 1)
+					)
+				end
+			end
+		end
+	end
+	img.palette = range(0,3):mapi(function(i)
+		local l = math.floor(i/3*255)
+		return {l,l,l}
+	end)
+	img:save'font.png'
+
+	print('font16 widths: '..range(0,0x7f):mapi(function(i)
+		return ('%02x'):format(game.font16_widths[i])
+	end):concat' ')
+end
+
+--[[
+TODO
+output font ...
+	font16_20_to_7f
+
+output audio ...
+	spcMainCodeLoopLen
+	spcMainCode
+	spcMainCode
+	brrSamplePtrs
+	loopStartPtrs
+	pitchMults
+	adsrData
+	brrSamples
+--]]
+
 
 --print('0x047aa0: ', game.padding_047aa0)
 
@@ -342,10 +387,6 @@ list of spells in order of power / when you should get them
 	print(tolua(itemsForType))
 	print('number of swords: '..#itemsForType[1])
 
-	local function pickrandom(t)
-		return t[math.random(#t)]
-	end
-
 -- [[ spells ... gobbleygook
 	for i=0,game.numSpells-1 do
 		for j=0,ffi.sizeof'spell_t'-1 do
@@ -399,7 +440,7 @@ list of spells in order of power / when you should get them
 			esper['spellLearn'..j].rate = 255
 		end
 		-- pick a random bonus
-		esper.bonus.i = pickrandom(esperBonuses)
+		esper.bonus.i = table.pickRandom(esperBonuses)
 	end
 --]]
 

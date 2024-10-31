@@ -8,6 +8,7 @@ local createVec = require 'vec-ffi.create_vec'
 -- using
 -- http://www.rpglegion.com/ff6/hack/ff3info.txt
 -- https://github.com/subtractionsoup/beyondchaos
+-- https://github.com/everything8215/ff6/blob/main/notes/rom-map.txt
 
 return function(rom)
 -- compstr uses game
@@ -28,16 +29,16 @@ local function findnext(ptr, data)
 	end
 end
 
-
+-- TODO how about unicode?  no objections to fixed-size strings turning into varying-sized strings?
 local gameToAscii = table{
 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
 'Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f',
 'g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v',
 'w','x','y','z','0','1','2','3','4','5','6','7','8','9','!','?',
-'/',':','"',"'",'-','.',',','…',';','#','+','(',')','%','~','*',
-' ',' ','=','`','↑','→','↙',  1,  2,  3,  4,  5,  6,  7,  8,179,
-180,181,182,183,184,185,186,187,178,177,176,' ',' ',' ',' ',' ',
-188,189,190,191,192,193,194,195,196,'{','}',' ',' ',' ',' ',' '}
+'/',':','”',"'",'-','.',',','…',';','#','+','(',')','%','~','*',
+' ',' ','=','“','↑','→','↙','×','🔪','🗡️','⚔️','🔱','🪄','🖌️','𖣘','♦',
+'🃏','🐾','🛡️','🪖','🧥','🏹','📏','💍','⚪','🔴','🔵',' ',' ',' ',' ',' ',
+' ','▏','▎','▍','▌','▋','▊','▉','█','{','}',' ',' ',' ',' ',' '}
 :mapi(function(v)
 	if type(v) == 'number' then return string.char(v) end
 	return v
@@ -1558,18 +1559,23 @@ local game_t = struct{
 		{metamorphSets = 'itemref4_t['..numMetamorphSets..']'},				-- 0x047f40 - 0x047fa8
 
 		-- wait is this font too? it is 2048 + 32 bytes ...
-		{padding_047fa8 = 'uint8_t['..(0x0487c0 - 0x047fa8)..']'},			-- 0x047fa8 - 0x0487c0
+		{padding_047fa8 = 'uint8_t['..(0x047fc0 - 0x047fa8)..']'},			-- 0x047fa8 - 0x047fc0
 
-		-- font graphics (8x8x2, 8 bytes each, 0x80-0xff)
-		{font8_80_to_ff = 'uint8_t['..(0x10 * 0x80)..']'},					-- 0x0487c0 - 0x048fc0
+		-- font graphics (8x8x2bpp, 16 bytes each, 0x00-0xff) ... the first half is blank
+		{font = 'uint8_t['..(0x10 * 0x100)..']'},							-- 0x047fc0 - 0x048fc0
 
 		-- font character cell widths (0x00-0x7f)
-		{font8_widths_80_to_ff = 'uint8_t['.. 0x80 ..']'},					-- 0x048fc0 - 0x049040
+		{font16_widths = 'uint8_t['.. 0x80 ..']'},							-- 0x048fc0 - 0x049040
 
 		{padding_049040 = 'uint8_t['..(0x0490c0 - 0x049040)..']'},			-- 0x049040 - 0x0490c0
 
 		-- font graphics data (16x11x1, 22 bytes each, 0x20-0x7f)
-		{font16_20_to_7f = 'uint8_t['..(22 * (0x7f - 0x20 + 1))..']'},		-- 0x0490c0 - 0x049900
+		{font16_20_to_7f = 'uint8_t['..(22 * (0x7f - 0x20 + 1))..']'},		-- 0x0490c0 - 0x049900 (or 0x04a4c0)
+
+		-- C4BA00-C4C007   Ending Font (compressed)
+		-- C4C008-C4F476   Ending BG Graphics and Tile Formation (compressed)
+		-- C4F477-C4F6FA   Ending Sprite Graphics (compressed)
+		-- C4F6FB-C4FFFF   Ending Sprite Graphics (compressed)
 
 		{padding_049900 = 'uint8_t['..(0x05070e - 0x049900)..']'},			-- 0x049900 - 0x05070e
 
@@ -1836,8 +1842,8 @@ assert.eq(ffi.offsetof('game_t', 'spells'), spellsAddr)
 assert.eq(ffi.offsetof('game_t', 'characterNames'), characterNamesAddr)
 assert.eq(ffi.offsetof('game_t', 'shops'), shopsAddr)
 assert.eq(ffi.offsetof('game_t', 'metamorphSets'), metamorphSetsAddr)
-assert.eq(ffi.offsetof('game_t', 'font8_80_to_ff'), 0x0487c0)
-assert.eq(ffi.offsetof('game_t', 'font8_widths_80_to_ff'), 0x048fc0)
+assert.eq(ffi.offsetof('game_t', 'font'), 0x047fc0)
+assert.eq(ffi.offsetof('game_t', 'font16_widths'), 0x048fc0)
 assert.eq(ffi.offsetof('game_t', 'font16_20_to_7f'), 0x0490c0)
 assert.eq(ffi.offsetof('game_t', 'spcMainCodeLoopLen'), 0x05070e)
 assert.eq(ffi.offsetof('game_t', 'spcMainCode'), 0x050710)
