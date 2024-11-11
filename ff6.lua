@@ -30,6 +30,7 @@ local function findnext(ptr, data)
 end
 
 -- TODO how about unicode?  no objections to fixed-size strings turning into varying-sized strings?
+-- welp this seems good but itemForName :sub(2) no longer works
 local gameToAscii = table{
 'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P',
 'Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f',
@@ -1954,14 +1955,14 @@ obj.getEsperName = getEsperName
 obj.itemForName = {}
 for i=0,numItems-1 do
 	local name = tostring(game.itemNames[i])
-	if i < 231 then name = name:sub(2) end
+	--if i < 231 then name = name:sub(2) end
 	obj.itemForName[name] = i
 end
 
 obj.spellForName = {}
 for i=0,numItems-1 do
 	local name = getSpellName(i)
-	if i < 54 then name = name:sub(2) end
+	--if i < 54 then name = name:sub(2) end
 	obj.spellForName[name] = i
 end
 

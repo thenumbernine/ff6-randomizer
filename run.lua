@@ -390,7 +390,7 @@ list of spells in order of power / when you should get them
 -- [[ spells ... gobbleygook
 	for i=0,game.numSpells-1 do
 		for j=0,ffi.sizeof'spell_t'-1 do
-			game.spells[i].ptr[j] = math.random(0,255)
+			game.spells[i].s[j] = math.random(0,255)
 		end
 		-- should this be a percent?
 		game.spells[i].killsCaster = 0
@@ -419,13 +419,14 @@ list of spells in order of power / when you should get them
 		end
 	end
 
-	game.items[game.itemForName.MithrilKnife].spellCast = game.spellForName.Quick
+	-- mithril knife teaches quick
+	--game.items[1].spellCast = 43
 --]]
 
 --[[ espers ... gobbleygook everywhere
 	for i=0,game.numEspers-1 do
 		for j=0,ffi.sizeof'esper_t'-1 do
-			game.espers[i].ptr[j] = math.random(0,255)
+			game.espers[i].s[j] = math.random(0,255)
 		end
 	end
 --]]
@@ -451,7 +452,7 @@ list of spells in order of power / when you should get them
 -- this makes countdown often
 	for i=0,game.numItems-1 do		-- is numItems 256 or 255?
 		for j=0,ffi.sizeof'item_t'-1 do
-			game.items[i].ptr[j] = math.random(0,255)
+			game.items[i].s[j] = math.random(0,255)
 		end
 		game.items[i].givesEffect2.countdown = 0
 	end
@@ -463,7 +464,7 @@ list of spells in order of power / when you should get them
 	for i=0,game.numMonsters-1 do
 		--[=[ all fields
 		for j=0,ffi.sizeof'monster_t'-1 do
-			game.monsters[i].ptr[j] = math.random(0,255)
+			game.monsters[i].s[j] = math.random(0,255)
 		end
 		--]=]
 		-- [=[ each individually
@@ -491,12 +492,12 @@ list of spells in order of power / when you should get them
 		game.monsters[i].cantControl = math.random(0,1)
 
 		-- random per bitflag?
-		game.monsters[i].immuneToEffect1.ptr[0] = math.random(0,255)
+		game.monsters[i].immuneToEffect1.s[0] = math.random(0,255)
 
-		game.monsters[i].elementHalfDamage.ptr[0] = math.random(0,255)
-		game.monsters[i].elementAbsorb.ptr[0] = math.random(0,255)
-		game.monsters[i].elementNoEffect.ptr[0] = math.random(0,255)
-		game.monsters[i].elementWeak.ptr[0] = math.random(0,255)
+		game.monsters[i].elementHalfDamage.s[0] = math.random(0,255)
+		game.monsters[i].elementAbsorb.s[0] = math.random(0,255)
+		game.monsters[i].elementNoEffect.s[0] = math.random(0,255)
+		game.monsters[i].elementWeak.s[0] = math.random(0,255)
 
 		game.monsters[i].specialAttack = math.random(0,127)
 		game.monsters[i].specialAttackDealsNoDamage = math.random(0,1)
@@ -518,12 +519,12 @@ list of spells in order of power / when you should get them
 
 -- [[ equipping items in the wrong spot has adverse effects
 	for i=0,game.numCharacters-1 do
-		--[=[
+		-- [=[
 		for j=0,ffi.sizeof'character_t'-1 do
-			game.characters[i].ptr[j] = math.random(0,255)
+			game.characters[i].s[j] = math.random(0,255)
 		end
 		--]=]
-		-- [=[
+		--[=[
 		game.characters[i].hp = math.random(0,255)
 		game.characters[i].mp = math.random(0,255)
 		--game.characters[i].menu.s[0].i = math.random(0,game.numMenuNames-1)		-- fight
@@ -549,12 +550,13 @@ list of spells in order of power / when you should get them
 		game.characters[i].relic.s[0].i = 255
 		game.characters[i].relic.s[1].i = 255
 		--game.characters[i].level = math.random(1,99)
+		--]=]
 	end
 --]]
 
 	for i=0,game.numShops-1 do
 		for j=0,ffi.sizeof'shopinfo_t' do
-			game.shops[i].ptr[j] = math.random(0,255)
+			game.shops[i].s[j] = math.random(0,255)
 		end
 	end
 
