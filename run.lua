@@ -332,10 +332,12 @@ for i=0,game.numBRRSamples-1 do
 
 	-- first two bytes fo the samplePtr is the length-in-bytes of the brr sample
 	brrLengths[i] = ffi.cast('uint16_t*', rom+brrAddr)[0]
+	assert.eq(brrLengths[i] % 9, 0, "why isn't the brr length aligned to brr frames?")
 	io.write(' length: '..('0x%04x'):format(brrLengths[i]))
 
 	-- if loopStartPtr is only 16bit then it can't span the full range of the brrSample data, which covers 0x31245 bytes
 	-- so it must be an offset into the structure
+	assert.eq(game.loopStartPtrs[i] % 9, 0, "why isn't the brr loop aligned to brr frames?")
 	io.write(' loopStartPtr: '..('0x%04x'):format(tonumber(game.loopStartPtrs[i])))
 	io.write(' pitchMults: '..('0x%04x'):format(tonumber(game.pitchMults[i])))
 	io.write(' adsrData: '..('0x%04x'):format(tonumber(game.adsrData[i])))
@@ -343,10 +345,16 @@ for i=0,game.numBRRSamples-1 do
 	print()
 	-- then the brr data should decode until it gets to a loop frame, and ideally that'll be right before the next brr's address
 end
+local brrpath = path'brr'
+brrpath:mkdir()
+local wavpath = path'wav'
+wavpath:mkdir()
 print'brr data:'
 for i=0,game.numBRRSamples-1 do
 	local startAddr = brrAddrs[i] + 2			-- skip past the length info
-	local endAddr = startAddr + brrLengths[i]
+	local len = brrLengths[i]
+	local numFrames = len / 9
+	local endAddr = startAddr + len
 	local calcdEndAddr
 	if i < game.numBRRSamples-1 then
 		calcdEndAddr = brrAddrs[i+1]
@@ -356,10 +364,156 @@ for i=0,game.numBRRSamples-1 do
 	assert.eq(endAddr, calcdEndAddr)	-- perfectly fits
 	print(('#%02d: '):format(i)
 		..('$%06x-$%06x: '):format(startAddr, endAddr)
-		..('(%4d brr frames) '):format((endAddr - startAddr)/9)
-		..range(startAddr, endAddr-1):mapi(function(i)
-			return ('%02x'):format(rom[i])
+		..('(%4d brr frames) '):format(numFrames)
+		..range(0, len-1):mapi(function(i)
+			local s = ('%02x'):format(rom[startAddr + i])
+			if i % 9 == 0 then s = '['..s end
+			if i % 9 == 8 then s = s..']' end
+			return s
 		end):concat' ')
+
+	-- write out the brr
+	-- should I put pitch, adsr, loop info at the start of the brr sample?
+	brrpath:write(i..'.brr', ffi.string(rom + startAddr, len))
+	-- write out the wav too
+	-- that means converting it from brr to wav
+	-- that means ... 16bpp samples, x16 samples per brr-frame
+	local numSamples = 16 * numFrames
+	local wavData = ffi.new('int16_t[?]', numSamples)
+	local brrptr = rom + startAddr
+	local wavptr = wavData + 0
+	local lastSample = ffi.new('int16_t[2]', {0,0})	-- for filters
+	for j=0,numFrames-1 do
+		local endflag = bit.band(brrptr[0], 1) ~= 0
+		local loopflag = bit.band(brrptr[0], 2) ~= 0
+		local decodeFilter = bit.band(bit.rshift(brrptr[0], 2), 3)	-- 0-3 = decode filter = combine nibble with previous nibbles ...
+		local shift = bit.band(bit.rshift(brrptr[0], 4), 0xf)
+		-- https://wiki.superfamicom.org/bit-rate-reduction-(brr)
+		-- https://github.com/Optiroc/BRRtools/blob/master/src/brr.c
+		-- https://github.com/boldowa/snesbrr/blob/master/src/brr/BrrCodec.cpp
+		for k=0,15 do
+			local sample
+			if bit.band(k,1) == 0 then
+				sample = bit.band(bit.rshift(brrptr[1+bit.rshift(k,1)], 4), 0xf)
+			else
+				sample = bit.band(brrptr[1+bit.rshift(k,1)], 0xf)
+			end
+
+			-- sample is now 0 to 15 , representing a 4-bit-signed -8 to +7
+			--if sample >= 8 then sample = sample - 16 end
+			sample = bit.bxor(sample, 8) - 8
+			-- sample is now -8 to +7
+
+			-- [[ invalid shift
+			if shift > 0xc then
+				--[=[ BRRtools
+				if sample < 0 then
+					sample = -0x800
+				else
+					sample = 0x800
+				end
+				--]=]
+				-- [=[ snesbrr
+				sample = bit.band(sample, bit.bnot(0x7ff))
+				--]=]
+			else
+				sample = bit.lshift(sample, shift)
+				-- why is this? maybe to do with the filter using the post-sampled value for previous frame values?
+				sample = bit.arshift(sample, 1)
+			end
+			--]]
+
+			local sampleBeforeFilter = sample
+			--[[ https://github.com/Optiroc/BRRtools/blob/master/src/brr.c#L153
+			if decodeFilter == 0 then
+			elseif decodeFilter == 1 then
+				sample = sample + (
+					  lastSample[0]
+					- bit.arshift(lastSample[0], 4)
+				)
+			elseif decodeFilter == 2 then
+				sample = sample + (
+					  bit.arshift(-(lastSample[0] + bit.lshift(lastSample[0], 1)), 5)
+					- lastSample[1]
+					+ bit.arshift(lastSample[1], 4)
+				)
+			elseif decodeFilter == 3 then
+				sample = sample + (
+					  bit.lshift(lastSample[0], 1)
+					+ bit.arshift(-(lastSample[0] + bit.lshift(lastSample[0], 2) + bit.lshift(lastSample[0], 3)), 6)
+					- lastSample[1]
+					+ bit.arshift(lastSample[1] + bit.lshift(lastSample[1], 1), 4)
+				)
+			else
+				error'here'
+			end
+			--]]
+			--[[ https://wiki.superfamicom.org/bit-rate-reduction-(brr)
+			if decodeFilter == 0 then
+			elseif decodeFilter == 1 then
+				sample = sample + lastSample[0] * 15/16
+			elseif decodeFilter == 2 then
+				sample = sample + lastSample[0] * 61/32 - lastSample[0] * 15/16
+			elseif decodeFilter == 3 then
+				sample = sample + lastSample[0] * 115/64 - lastSample[1] * 13/16
+			else
+				error'here'
+			end
+			--]]
+			sample = ffi.cast('int16_t', sample)
+
+			-- [[ snesbrr: "wrap to 15 bits, sign-extend to 16 bits"
+			sample = bit.arshift(bit.lshift(sample, 1), 1)
+			sample = ffi.cast('int16_t', sample)
+			--]]
+
+			--[[ BRRtools:
+			if sample > 0x7fff then
+				sample = 0x7fff
+			elseif sample < -0x8000 then
+				sample = -0x8000
+			end
+			if sample > 0x3fff then
+				sample = sample - 0x8000
+			elseif sample < -0x4000 then
+				sample = sample + 0x8000
+			end
+			--]]
+
+			wavptr[0] = sample
+			--wavptr[0] = bit.lshift(sample, 1)
+			--lastSample[0], lastSample[1] = sampleBeforeFilter, lastSample[0]
+			lastSample[0], lastSample[1] = wavptr[0], lastSample[0]
+			wavptr = wavptr + 1
+		end
+		brrptr = brrptr + 9
+	end
+	assert.eq(wavptr, wavData + numSamples)
+	assert.eq(brrptr, rom + endAddr)
+	-- [[ now gaussian filter
+	do
+		local prev = (372 + 1304) * wavData[0] + 372 * wavData[1]
+		for i=1,numSamples-2 do
+			local k0 = 372 * (wavData[i-1] + wavData[i+1])
+			local k = 1304 * wavData[i]
+			wavData[i-1] = bit.arshift(prev, 11)
+			prev = k0 + k
+		end
+		local last = 372 * wavData[numSamples-2] + (1304 + 372) * wavData[numSamples-1]
+		wavData[numSamples-2] = bit.arshift(prev, 11)
+		wavData[numSamples-1] = bit.arshift(last, 11)
+	end
+	--]]
+	-- now save the wav
+	local AudioWAV = require 'audio.io.wav'
+	AudioWAV():save{
+		filename = wavpath(i..'.wav').path,
+		ctype = 'int16_t',
+		channels = 1,
+		data = wavData,
+		size = numSamples * ffi.sizeof'int16_t',
+		freq = 32000,
+	}
 end
 
 print'end of rom output'
