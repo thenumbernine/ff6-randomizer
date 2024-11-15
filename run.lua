@@ -100,11 +100,13 @@ for i=0,game.numMonsters-1 do
 end
 
 local totalPixels = 0
+--[[
 local writeMonsterSprite = require 'monstersprite'
 for i=0,game.numMonsterSprites-1 do
 	totalPixels = totalPixels + writeMonsterSprite(game, i)
 end
 print('wrote monster pixels', totalPixels)
+--]]
 
 for i=0,game.numMetamorphSets-1 do
 	print('metamorph set #'..i..' = '..game.metamorphSets[i])
@@ -173,11 +175,13 @@ print((require'ext.tolua'({
 ))
 --]]
 
+--[[
 local readCharSprite = require 'charsprite'
 for i=0,game.numCharacterSprites-1 do
 	totalPixels = totalPixels + readCharSprite(game, i)
 end
 print('wrote total pixels', totalPixels)
+--]]
 
 for i=0,game.numMenuNames-1 do
 	print('menu #'..i..' = "'..game.menuNames[i]..'"')
@@ -306,6 +310,59 @@ output audio ...
 	brrSamples
 --]]
 
+print('spcMainCodeLoopLen = '..game.spcMainCodeLoopLen)
+print('spcMainCode = '..
+	range(0,math.min(game.spcMainCodeLoopLen, ffi.sizeof(game.spcMainCode))-1)
+	:mapi(function(i) return (' %02x'):format(game.spcMainCode[i]) end):concat()
+)
+local brrAddrs = table()
+local brrLengths = table()
+print'brr info:'
+for i=0,game.numBRRSamples-1 do
+	-- addrs are in ascending order
+	local brrAddr = bit.bor(
+		game.brrSamplePtrs[i].lo,
+		bit.lshift(game.brrSamplePtrs[i].hi, 16)
+	)
+	assert.ne(bit.band(0xc00000, brrAddr), 0)
+	brrAddr = brrAddr - 0xc00000
+	brrAddrs[i] = brrAddr
+	io.write(('#%02d: '):format(i))
+	io.write(' samplePtr: '..('0x%06x'):format(brrAddr))
+
+	-- first two bytes fo the samplePtr is the length-in-bytes of the brr sample
+	brrLengths[i] = ffi.cast('uint16_t*', rom+brrAddr)[0]
+	io.write(' length: '..('0x%04x'):format(brrLengths[i]))
+
+	-- if loopStartPtr is only 16bit then it can't span the full range of the brrSample data, which covers 0x31245 bytes
+	-- so it must be an offset into the structure
+	io.write(' loopStartPtr: '..('0x%04x'):format(tonumber(game.loopStartPtrs[i])))
+	io.write(' pitchMults: '..('0x%04x'):format(tonumber(game.pitchMults[i])))
+	io.write(' adsrData: '..('0x%04x'):format(tonumber(game.adsrData[i])))
+
+	print()
+	-- then the brr data should decode until it gets to a loop frame, and ideally that'll be right before the next brr's address
+end
+print'brr data:'
+for i=0,game.numBRRSamples-1 do
+	local startAddr = brrAddrs[i] + 2			-- skip past the length info
+	local endAddr = startAddr + brrLengths[i]
+	local calcdEndAddr
+	if i < game.numBRRSamples-1 then
+		calcdEndAddr = brrAddrs[i+1]
+	else
+		calcdEndAddr = (ffi.cast('uint8_t*', game.brrSamples) + ffi.sizeof(game.brrSamples) - rom)
+	end
+	assert.eq(endAddr, calcdEndAddr)	-- perfectly fits
+	print(('#%02d: '):format(i)
+		..('$%06x-$%06x: '):format(startAddr, endAddr)
+		..('(%4d brr frames) '):format((endAddr - startAddr)/9)
+		..range(startAddr, endAddr-1):mapi(function(i)
+			return ('%02x'):format(rom[i])
+		end):concat' ')
+end
+
+print'end of rom output'
 
 --print('0x047aa0: ', game.padding_047aa0)
 
@@ -320,62 +377,60 @@ if outfn then
 
 list of spells in order of power / when you should get them
 
-
-
-°Osmose	1
-°Scan	3
-²Antdot	3
-±Poison	3
-±Fire	4
-±Ice	5
-²Cure	5
-°Slow	5
-°Sleep	5
-±Bolt	6
-°Muddle	8
-°Mute	8
-°Haste	10
-°Stop	10
-°Imp	10
-²Regen	10
-°Rasp	12
-°Safe	12
-°Shell	15
-²Remedy	15
-±Drain	15
-°Bserk	16
-°Float	17
-°Vanish	18
-°Warp	20
-±Fire 2	20
-±Ice 2	21
-±Bolt 2	22
-°Rflect	22
-²Cure 2	25
-°Dispel	25
-±Break	25
-°Slow 2	26
-±Bio	26
-²Life	30
-±Demi	33
-±Doom	35
-°Haste2	38
-²Cure 3	40
-±Pearl	40
-±Flare	45
-±Quartr	48
-²Life 3	50
-±Quake	50
-±Fire 3	51
-±Ice 3	52
-±Bolt 3	53
-±X-Zone	53
-²Life 2	60
-±Meteor	62
-±W Wind	75
-±Ultima	80
-±Merton	85
-°Quick	99
+Osmose	1
+Scan	3
+Antdot	3
+Poison	3
+Fire	4
+Ice	5
+Cure	5
+Slow	5
+Sleep	5
+Bolt	6
+Muddle	8
+Mute	8
+Haste	10
+Stop	10
+Imp	10
+Regen	10
+Rasp	12
+Safe	12
+Shell	15
+Remedy	15
+Drain	15
+Bserk	16
+Float	17
+Vanish	18
+Warp	20
+Fire 2	20
+Ice 2	21
+Bolt 2	22
+Rflect	22
+Cure 2	25
+Dispel	25
+Break	25
+Slow 2	26
+Bio	26
+Life	30
+Demi	33
+Doom	35
+Haste2	38
+Cure 3	40
+Pearl	40
+Flare	45
+Quartr	48
+Life 3	50
+Quake	50
+Fire 3	51
+Ice 3	52
+Bolt 3	53
+X-Zone	53
+Life 2	60
+Meteor	62
+W Wind	75
+Ultima	80
+Merton	85
+Quick	99
 	--]]
 
 	local itemsForType = table()
@@ -388,16 +443,19 @@ list of spells in order of power / when you should get them
 	print('number of swords: '..#itemsForType[1])
 
 -- [[ spells ... gobbleygook
+-- this made the screen go garbage at the first battle
 	for i=0,game.numSpells-1 do
+		local spell = game.spells+i
 		for j=0,ffi.sizeof'spell_t'-1 do
-			game.spells[i].s[j] = math.random(0,255)
+			spell.s[j] = math.random(0,255)
 		end
+		spell.unused_7_2 = 0
 		-- should this be a percent?
-		game.spells[i].killsCaster = 0
+		spell.killsCaster = 0
 	end
 --]]
 
--- [[ swords
+-- [[ swords cast random things
 	for _,ref in ipairs(itemsForType[1]) do
 		local item = game.items[ref.i]
 		item.spellCast = math.random(0,53)
@@ -445,16 +503,28 @@ list of spells in order of power / when you should get them
 	end
 --]]
 
-
-
--- [[ items ... gobbleygook
+--[[ items
 -- all the monsto death, countdown, etc is done through here it seems
 -- this makes countdown often
 	for i=0,game.numItems-1 do		-- is numItems 256 or 255?
+		local item = game.items+i
 		for j=0,ffi.sizeof'item_t'-1 do
-			game.items[i].s[j] = math.random(0,255)
+			item.s[j] = math.random(0,255)
 		end
-		game.items[i].givesEffect2.countdown = 0
+		-- I think this is what causes glitches ... maybe ...
+		item.unused_0_7 = 0
+		item.unused_5_2 = 0
+		item.unused_5_3 = 0
+		item.unused_5_4 = 0
+		item.unused_5_6 = 0
+		item.unused_b_1 = 0
+		item.unused_c_7 = 0
+		item.unused_d_2 = 0
+		item.unused_d_5 = 0
+		item.unused_d_6 = 0
+		item.unused_13_2 = 0
+		--item.givesEffect2.countdown = 0
+		--item.givesEffect2.muddle = 0
 	end
 --]]
 
@@ -469,15 +539,15 @@ list of spells in order of power / when you should get them
 		--]=]
 		-- [=[ each individually
 		game.monsters[i].speed = math.random(0,255)
-		game.monsters[i].battlePower = math.random(0,255)
+--		game.monsters[i].battlePower = math.random(0,255)
 		game.monsters[i].hitChance = math.random(0,255)
 		game.monsters[i].evade = math.random(0,255)
         game.monsters[i].magicBlock = math.random(0,255)
         game.monsters[i].defense = math.random(0,255)
         game.monsters[i].magicDefense = math.random(0,255)
         game.monsters[i].magicPower = math.random(0,255)
-        game.monsters[i].hp = math.random(0,65535)
-        game.monsters[i].mp = math.random(0,65535)
+ --       game.monsters[i].hp = math.random(0,65535)
+  --      game.monsters[i].mp = math.random(0,65535)
         game.monsters[i].exp = math.random(0,65535)
         game.monsters[i].gold = math.random(0,65535)
         game.monsters[i].level = math.random(0,255)
@@ -517,21 +587,31 @@ list of spells in order of power / when you should get them
 	end
 --]]
 
+	-- good menu stuff:
+	-- exclude Fight Item Magic Def Row
+	local goodMenus = range(0,29)
+	for _,i in ipairs{0,1,2,4,20,21} do
+		goodMenus:removeObject(i)
+	end
+	-- TODO if you pick Leap then you should proly change Fight to Rage too  ... or not?
+
 -- [[ equipping items in the wrong spot has adverse effects
 	for i=0,game.numCharacters-1 do
-		-- [=[
+		--[=[
 		for j=0,ffi.sizeof'character_t'-1 do
 			game.characters[i].s[j] = math.random(0,255)
 		end
 		--]=]
-		--[=[
+		-- [=[
 		game.characters[i].hp = math.random(0,255)
 		game.characters[i].mp = math.random(0,255)
 		--game.characters[i].menu.s[0].i = math.random(0,game.numMenuNames-1)		-- fight
-		game.characters[i].menu.s[1].i = math.random(0,game.numMenuNames-1)
+		--game.characters[i].menu.s[1].i = math.random(0,game.numMenuNames-1)
+		--game.characters[i].menu.s[0].i = goodMenus:pickRandom()
+		game.characters[i].menu.s[1].i = goodMenus:pickRandom()
 		--game.characters[i].menu.s[2].i = math.random(0,game.numMenuNames-1)		-- magic
 		--game.characters[i].menu.s[3].i = math.random(0,game.numMenuNames-1)		-- item
-		--[==[
+		-- [==[
 		game.characters[i].vigor = math.random(0,255)
 		game.characters[i].speed = math.random(0,255)
         game.characters[i].stamina = math.random(0,255)
@@ -542,13 +622,15 @@ list of spells in order of power / when you should get them
         game.characters[i].evade = math.random(0,255)
         game.characters[i].magicBlock = math.random(0,255)
 		--]==]
-        -- TODO verify that the item is equippable
-		game.characters[i].lhand.i = 255
-		game.characters[i].rhand.i = 255
-		game.characters[i].head.i = 255
-		game.characters[i].body.i = 255
-		game.characters[i].relic.s[0].i = 255
-		game.characters[i].relic.s[1].i = 255
+        -- [==[
+		-- TODO verify that the item is equippable
+		game.characters[i].lhand.i = math.random(0,255)
+		game.characters[i].rhand.i = math.random(0,255)
+		game.characters[i].head.i = math.random(0,255)
+		game.characters[i].body.i = math.random(0,255)
+		game.characters[i].relic.s[0].i = math.random(0,255)
+		game.characters[i].relic.s[1].i = math.random(0,255)
+		--]==]
 		--game.characters[i].level = math.random(1,99)
 		--]=]
 	end
