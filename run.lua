@@ -383,6 +383,9 @@ for i=0,game.numBRRSamples-1 do
 	local brrptr = rom + startAddr
 	local wavptr = wavData + 0
 	local lastSample = ffi.new('int16_t[2]', {0,0})	-- for filters
+	local function clampbits(x, b)
+		return math.clamp(x, bit.lshift(-1, b-1), bit.lshift(1, b-1)-1)
+	end
 	for j=0,numFrames-1 do
 		local endflag = bit.band(brrptr[0], 1) ~= 0
 		local loopflag = bit.band(brrptr[0], 2) ~= 0
@@ -427,29 +430,18 @@ for i=0,game.numBRRSamples-1 do
 					+ bit.arshift(-(lastSample[0] + bit.lshift(lastSample[0], 1)), 5)
 					- lastSample[1]
 					+ bit.arshift(lastSample[1], 4)
+				sample = clampbits(sample, 16)
 			elseif decodeFilter == 3 then
 				sample = sample + 
 					  bit.lshift(lastSample[0], 1)
 					+ bit.arshift(-(lastSample[0] + bit.lshift(lastSample[0], 2) + bit.lshift(lastSample[0], 3)), 6)
 					- lastSample[1]
 					+ bit.arshift(lastSample[1] + bit.lshift(lastSample[1], 1), 4)
+				sample = clampbits(sample, 16)
 			else
 				error'here'
 			end
 			--]]
-			--[[ https://wiki.superfamicom.org/bit-rate-reduction-(brr)
-			if decodeFilter == 0 then
-			elseif decodeFilter == 1 then
-				sample = sample + lastSample[0] * 15/16
-			elseif decodeFilter == 2 then
-				sample = sample + lastSample[0] * 61/32 - lastSample[0] * 15/16
-			elseif decodeFilter == 3 then
-				sample = sample + lastSample[0] * 115/64 - lastSample[1] * 13/16
-			else
-				error'here'
-			end
-			--]]
-			--sample = ffi.cast('int16_t', sample)
 
 			-- [[ snesbrr: "wrap to 15 bits, sign-extend to 16 bits"
 			sample = bit.arshift(bit.lshift(sample, 1), 1)
