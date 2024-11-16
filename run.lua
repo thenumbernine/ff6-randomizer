@@ -365,12 +365,15 @@ for i=0,game.numBRRSamples-1 do
 	print(('#%02d: '):format(i)
 		..('$%06x-$%06x: '):format(startAddr, endAddr)
 		..('(%4d brr frames) '):format(numFrames)
+		--[[ this is a lot
 		..range(0, len-1):mapi(function(i)
 			local s = ('%02x'):format(rom[startAddr + i])
 			if i % 9 == 0 then s = '['..s end
 			if i % 9 == 8 then s = s..']' end
 			return s
-		end):concat' ')
+		end):concat' '
+		--]]
+	)
 
 	-- write out the brr
 	-- should I put pitch, adsr, loop info at the start of the brr sample?
@@ -451,7 +454,9 @@ for i=0,game.numBRRSamples-1 do
 			lastSample[1] = lastSample[0]
 			lastSample[0] = sample
 
-			wavptr[0] = sample
+			--sample = bit.arshift(sample * 0x7f, 7)	-- volume ... ?
+			wavptr[0] = bit.lshift(sample, 1)
+
 			--wavptr[0] = bit.lshift(sample, 1)
 			--lastSample[0], lastSample[1] = sampleBeforeFilter, lastSample[0]
 			wavptr = wavptr + 1
@@ -475,20 +480,27 @@ for i=0,game.numBRRSamples-1 do
 	end
 	--]]
 	-- now save the wav
+	local basename = ('%02X'):format(i+1)
 	local freq = 32000
 	local AudioWAV = require 'audio.io.wav'
 	AudioWAV():save{
-		filename = wavpath(i..'.wav').path,
+		filename = wavpath(basename..'.wav').path,
 		ctype = 'int16_t',
 		channels = 1,
 		data = wavData,
 		size = numSamples * ffi.sizeof'int16_t',
 		freq = freq,
 	}
+	-- and its associated info
+	wavpath(basename..'.txt'):write(table{
+		('adsr=0x%04X'):format(tonumber(game.adsrData[i])),
+		('pitch=0x%04X'):format(tonumber(game.pitchMults[i])),
+		('loopOffset=0x%04X/9*32'):format(tonumber(game.loopStartOfs[i])),
+	}:concat'\n'..'\n')
 	-- [[ debug plot it so i can see the waveform.
 	require'gnuplot'{
 		terminal = 'svg size '..math.floor(4*numSamples)..',512',
-		output = wavpath(i..'.svg').path,
+		output = wavpath(basename..'.svg').path,
 		--samples = numSamples,
 		style = 'data linespoints',
 		unset = {'colorbox'},
