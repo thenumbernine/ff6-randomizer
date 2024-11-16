@@ -1592,7 +1592,7 @@ local game_t = struct{
 		{brrSamplePtrs = 'uint24_t['..numBRRSamples..']'},						-- 0x053c5f - 0x053d1c
 
 		-- loop start pointers (x63, 2 bytes each)
-		{loopStartPtrs = 'uint16_t['..numBRRSamples..']'},						-- 0x053d1c - 0x053d9a
+		{loopStartOfs = 'uint16_t['..numBRRSamples..']'},						-- 0x053d1c - 0x053d9a
 
 		-- pitch multipliers (x63, 2 bytes each)
 		{pitchMults = 'uint16_t['..numBRRSamples..']'},							-- 0x053d9a - 0x053e18
@@ -1849,7 +1849,7 @@ assert.eq(ffi.offsetof('game_t', 'font16_20_to_7f'), 0x0490c0)
 assert.eq(ffi.offsetof('game_t', 'spcMainCodeLoopLen'), 0x05070e)
 assert.eq(ffi.offsetof('game_t', 'spcMainCode'), 0x050710)
 assert.eq(ffi.offsetof('game_t', 'brrSamplePtrs'), 0x053c5f)
-assert.eq(ffi.offsetof('game_t', 'loopStartPtrs'), 0x053d1c)
+assert.eq(ffi.offsetof('game_t', 'loopStartOfs'), 0x053d1c)
 assert.eq(ffi.offsetof('game_t', 'pitchMults'), 0x053d9a)
 assert.eq(ffi.offsetof('game_t', 'adsrData'), 0x053e18)
 assert.eq(ffi.offsetof('game_t', 'brrSamples'), 0x054a35)

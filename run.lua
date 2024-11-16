@@ -304,7 +304,7 @@ output audio ...
 	spcMainCode
 	spcMainCode
 	brrSamplePtrs
-	loopStartPtrs
+	loopStartOfs
 	pitchMults
 	adsrData
 	brrSamples
@@ -337,8 +337,8 @@ for i=0,game.numBRRSamples-1 do
 
 	-- if loopStartPtr is only 16bit then it can't span the full range of the brrSample data, which covers 0x31245 bytes
 	-- so it must be an offset into the structure
-	assert.eq(game.loopStartPtrs[i] % 9, 0, "why isn't the brr loop aligned to brr frames?")
-	io.write(' loopStartPtr: '..('0x%04x'):format(tonumber(game.loopStartPtrs[i])))
+	assert.eq(game.loopStartOfs[i] % 9, 0, "why isn't the brr loop aligned to brr frames?")
+	io.write(' loopStartPtr: '..('0x%04x'):format(tonumber(game.loopStartOfs[i])))
 	io.write(' pitchMults: '..('0x%04x'):format(tonumber(game.pitchMults[i])))
 	io.write(' adsrData: '..('0x%04x'):format(tonumber(game.adsrData[i])))
 
@@ -406,16 +406,7 @@ for i=0,game.numBRRSamples-1 do
 
 			-- [[ invalid shift
 			if shift > 0xc then
-				--[=[ BRRtools
-				if sample < 0 then
-					sample = -0x800
-				else
-					sample = 0x800
-				end
-				--]=]
-				-- [=[ snesbrr
 				sample = bit.band(sample, bit.bnot(0x7ff))
-				--]=]
 			else
 				sample = bit.lshift(sample, shift)
 				-- why is this? maybe to do with the filter using the post-sampled value for previous frame values?
@@ -424,26 +415,24 @@ for i=0,game.numBRRSamples-1 do
 			--]]
 
 			local sampleBeforeFilter = sample
-			--[[ https://github.com/Optiroc/BRRtools/blob/master/src/brr.c#L153
+			-- [[ https://github.com/boldowa/snesbrr/blob/master/src/brr/BrrCodec.cpp
 			if decodeFilter == 0 then
 			elseif decodeFilter == 1 then
-				sample = sample + (
-					  lastSample[0]
+				sample = sample 
+					+ lastSample[0]
 					- bit.arshift(lastSample[0], 4)
-				)
 			elseif decodeFilter == 2 then
-				sample = sample + (
-					  bit.arshift(-(lastSample[0] + bit.lshift(lastSample[0], 1)), 5)
+				sample = sample
+					+ bit.lshift(lastSample[0], 1)
+					+ bit.arshift(-(lastSample[0] + bit.lshift(lastSample[0], 1)), 5)
 					- lastSample[1]
 					+ bit.arshift(lastSample[1], 4)
-				)
 			elseif decodeFilter == 3 then
-				sample = sample + (
+				sample = sample + 
 					  bit.lshift(lastSample[0], 1)
 					+ bit.arshift(-(lastSample[0] + bit.lshift(lastSample[0], 2) + bit.lshift(lastSample[0], 3)), 6)
 					- lastSample[1]
 					+ bit.arshift(lastSample[1] + bit.lshift(lastSample[1], 1), 4)
-				)
 			else
 				error'here'
 			end
@@ -460,30 +449,19 @@ for i=0,game.numBRRSamples-1 do
 				error'here'
 			end
 			--]]
-			sample = ffi.cast('int16_t', sample)
+			--sample = ffi.cast('int16_t', sample)
 
 			-- [[ snesbrr: "wrap to 15 bits, sign-extend to 16 bits"
 			sample = bit.arshift(bit.lshift(sample, 1), 1)
 			sample = ffi.cast('int16_t', sample)
 			--]]
-
-			--[[ BRRtools:
-			if sample > 0x7fff then
-				sample = 0x7fff
-			elseif sample < -0x8000 then
-				sample = -0x8000
-			end
-			if sample > 0x3fff then
-				sample = sample - 0x8000
-			elseif sample < -0x4000 then
-				sample = sample + 0x8000
-			end
-			--]]
+			
+			lastSample[1] = lastSample[0]
+			lastSample[0] = sample
 
 			wavptr[0] = sample
 			--wavptr[0] = bit.lshift(sample, 1)
 			--lastSample[0], lastSample[1] = sampleBeforeFilter, lastSample[0]
-			lastSample[0], lastSample[1] = wavptr[0], lastSample[0]
 			wavptr = wavptr + 1
 		end
 		brrptr = brrptr + 9
@@ -505,6 +483,7 @@ for i=0,game.numBRRSamples-1 do
 	end
 	--]]
 	-- now save the wav
+	local freq = 32000
 	local AudioWAV = require 'audio.io.wav'
 	AudioWAV():save{
 		filename = wavpath(i..'.wav').path,
@@ -512,8 +491,28 @@ for i=0,game.numBRRSamples-1 do
 		channels = 1,
 		data = wavData,
 		size = numSamples * ffi.sizeof'int16_t',
-		freq = 32000,
+		freq = freq,
 	}
+	-- [[ debug plot it so i can see the waveform.
+	require'gnuplot'{
+		terminal = 'svg size '..math.floor(4*numSamples)..',512',
+		output = wavpath(i..'.svg').path,
+		--samples = numSamples,
+		style = 'data linespoints',
+		unset = {'colorbox'},
+		range = {numSamples/freq, 1},
+		cbrange = {0,1},
+		data = {
+			range(0,numSamples-1):mapi(function(j) return j/freq end),
+			range(0,numSamples-1):mapi(function(j) return tonumber(wavData[j])/32768 end),
+			range(0,numSamples-1):mapi(function(j)
+				local brraddr = j/16*9
+				return brraddr >= game.loopStartOfs[i] and .5 or 0
+			end)
+		},
+		{using='1:2:3', notitle=true, palette=true},
+	}
+	--]]
 end
 
 print'end of rom output'
