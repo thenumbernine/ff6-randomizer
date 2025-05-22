@@ -1,0 +1,17 @@
+name = "ff6-randomizer"
+files = {
+	["README.md"] = "ff6-randomizer/README.md",
+	["charsprite.lua"] = "ff6-randomizer/charsprite.lua",
+	["ff6.lua"] = "ff6-randomizer/ff6.lua",
+	["ff6struct.lua"] = "ff6-randomizer/ff6struct.lua",
+	["graphics.lua"] = "ff6-randomizer/graphics.lua",
+	["monstersprite.lua"] = "ff6-randomizer/monstersprite.lua",
+	["reftype.lua"] = "ff6-randomizer/reftype.lua",
+	["run.lua"] = "ff6-randomizer/run.lua",
+}
+deps = {
+	"ext",
+	"image",
+	"struct",
+	"vec-ffi",
+}
