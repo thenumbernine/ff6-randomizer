@@ -1,5 +1,7 @@
 #!/usr/bin/env luajit
 local ffi = require 'ffi'
+local Image = require 'image'
+local makePalette = require 'graphics'.makePalette
 require 'ext'
 
 local infn, outfn = ...
@@ -100,7 +102,7 @@ for i=0,game.numMonsters-1 do
 end
 
 local totalPixels = 0
---[[
+-- [[
 local writeMonsterSprite = require 'monstersprite'
 for i=0,game.numMonsterSprites-1 do
 	totalPixels = totalPixels + writeMonsterSprite(game, i)
@@ -175,11 +177,92 @@ print((require'ext.tolua'({
 ))
 --]]
 
---[[
+-- [[
 local readCharSprite = require 'charsprite'
-for i=0,game.numCharacterSprites-1 do
-	totalPixels = totalPixels + readCharSprite(game, i)
+local totalPixels = 0
+-- [=[
+local chx, chy = 0, 0
+local sheetIndex = 0
+local charSheet = Image(256, 256, 1, 'uint8_t')
+local function flushCharSheet()
+	charSheet.palette = makePalette(game.characterPalettes, 256)
+	charSheet:save('characters/sheet'..sheetIndex..'.png')
+	ffi.fill(charSheet.buffer, charSheet:getBufferSize())
+	sheetIndex = sheetIndex + 1
+	chx, chy = 0, 0
 end
+local function pushSpriteFrame(charIndex, frameIndex, im, palIndex)
+	-- offset into our palette
+	im = im + bit.lshift(palIndex, 4)
+	-- [==[ hack to fit 4 chars into one sheet
+	if frameIndex == 38 	-- only exists for Terra I think
+	--or frameIndex == 39 	-- tent
+	then return end
+	--]==]
+	charSheet:pasteInto{
+		x = chx,
+		y = chy,
+		image = im,
+	}
+	chx = chx + im.width
+	if chx + im.width > charSheet.width then
+		chx = 0
+		chy = chy + im.height
+		if chy + im.height > charSheet.height then
+			flushCharSheet()
+		end
+	end
+end
+--]=]
+for charIndex=0,game.numCharacterSprites-1 do
+	--local spriteName = spriteNames[charIndex+1] or 'char'..charIndex
+	local spriteName = 'char'..('%03d'):format(charIndex)
+	--[=[ save to char sheet
+	local charSheet = Image(256, 256, 1, 'uint8_t')
+	ffi.fill(charSheet.buffer, charSheet:getBufferSize())
+	local chx, chy = 0, 0
+	--]=]
+	readCharSprite(game, charIndex, function(charIndex, frameIndex, im, palIndex)
+		-- [=[ save each frame individually...
+		--local frameName = frameNames[frameIndex+1] or tostring(frameIndex)
+		--local frameName = tostring(frameIndex)
+		local frameName = ('%02d'):format(frameIndex)
+		local relname = spriteName..'_'..frameName..'.png'
+		im.palette = makePalette(game.characterPalettes + palIndex, 16)
+		im:save('characters/'..relname)
+		--]=]
+		--[=[ save to our char sheet
+		charSheet:pasteInto{
+			x = chx,
+			y = chy,
+			image = im,
+		}
+		chx = chx + im.width
+		if chx + im.width > charSheet.width then
+			chx = 0
+			chy = chy + im.height
+		end
+		--]=]
+		-- [=[ compact sheets
+		pushSpriteFrame(charIndex, frameIndex, im, palIndex)
+		--]=]
+		totalPixels = totalPixels + im.width * im.height
+	end)
+	--[=[ save to our char sheet
+	charSheet:save('characters/sheet'..spriteName..'.png')
+	--]=]
+	--[=[ extra sheet condition to not wrap or something idk
+	-- it is specific to the char # so meh gotta guess here
+	if chy + 3*8*4 > charSheet.height then
+		flushCharSheet()
+	end
+	--]=]
+end
+-- [=[
+if chx > 0 or chy > 0 then
+	flushCharSheet()
+end
+--]=]
 print('wrote total pixels', totalPixels)
 --]]
 
@@ -424,7 +507,7 @@ for i=0,game.numBRRSamples-1 do
 			-- [[ https://github.com/boldowa/snesbrr/blob/master/src/brr/BrrCodec.cpp
 			if decodeFilter == 0 then
 			elseif decodeFilter == 1 then
-				sample = sample 
+				sample = sample
 					+ lastSample[0]
 					- bit.arshift(lastSample[0], 4)
 			elseif decodeFilter == 2 then
@@ -435,7 +518,7 @@ for i=0,game.numBRRSamples-1 do
 					+ bit.arshift(lastSample[1], 4)
 				sample = clampbits(sample, 16)
 			elseif decodeFilter == 3 then
-				sample = sample + 
+				sample = sample +
 					  bit.lshift(lastSample[0], 1)
 					+ bit.arshift(-(lastSample[0] + bit.lshift(lastSample[0], 2) + bit.lshift(lastSample[0], 3)), 6)
 					- lastSample[1]
@@ -450,7 +533,7 @@ for i=0,game.numBRRSamples-1 do
 			sample = bit.arshift(bit.lshift(sample, 1), 1)
 			sample = ffi.cast('int16_t', sample)
 			--]]
-			
+
 			lastSample[1] = lastSample[0]
 			lastSample[0] = sample
 

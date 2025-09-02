@@ -3,6 +3,7 @@ local Image = require 'image'
 local graphics = require 'graphics'
 local readpixel = graphics.readpixel
 local readTile = graphics.readTile
+local makePalette = graphics.makePalette
 local tileWidth = graphics.tileWidth
 local tileHeight = graphics.tileHeight
 
@@ -40,7 +41,7 @@ local function writeMonsterSprite(game, index)
 
 	-- weir that the tile-is-16-pixels bit is at the end of the 1st and not the 2nd byte ...
 	local paletteIndex = monsterSprite.palLo + monsterSprite.palHi * 0x100
-	local pal = game.monsterPalettes[paletteIndex].s
+	local pal = game.monsterPalettes + paletteIndex
 
 	local tileMaskData8, tileMaskData16
 	do
@@ -93,8 +94,8 @@ local function writeMonsterSprite(game, index)
 
 	path'monsters':mkdir()
 
-	local im = Image(imgwidth, imgheight, 4, 'unsigned char')
-	ffi.fill(im.buffer, imgwidth * imgheight * 4)
+	local im = Image(imgwidth, imgheight, 1, 'uint8_t')
+	ffi.fill(im.buffer, im:getBufferSize())
 
 	-- monsters have a set of tiles, in-order (cuz there aren't many duplicates),
 	-- flagged on/off (cuz there are often 8x8 transparent holes in the sprites)
@@ -107,12 +108,12 @@ local function writeMonsterSprite(game, index)
 				tileMaskData[bit.rshift(tileMaskBit, 3)],
 				7 - bit.band(tileMaskBit, 7)
 			) ~= 0 then
-				readTile(im, x*tileWidth, y*tileHeight, tileaddr, pal, bitsPerPixel)
+				readTile(im, x*tileWidth, y*tileHeight, tileaddr, bitsPerPixel)
 				tileaddr = tileaddr + tilesize
 			end
 		end
 	end
-
+	im.palette = makePalette(pal, 16)
 	im:save('monsters/monster'..index..' '..game.monsterNames[index]..'.png')
 
 	return im.width * im.height
