@@ -265,6 +265,14 @@ end
 --]=]
 print('wrote total pixels', totalPixels)
 --]]
+-- [[ while we're here , why not write out the char palettes
+do
+	local palette = makePalette(game.characterPalettes, 256)
+	Image(16, 16, 4, 'uint8_t', range(0,16*16*4-1):mapi(function(i)
+		return palette[bit.rshift(i,2)+1][bit.band(i,3)+1]
+	end)):save'char_pal.png'
+end
+--]]
 
 for i=0,game.numMenuNames-1 do
 	print('menu #'..i..' = "'..game.menuNames[i]..'"')
