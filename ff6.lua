@@ -1495,6 +1495,36 @@ local location_t = struct{
 }
 assert.eq(ffi.sizeof'location_t', 0x21)
 
+local numLocationTileFormationOfs = 128
+local locationTileFormationOfsAddr = 0x1fba00 
+
+local numEntranceTriggerOfs = 513
+local entranceTrigger_t = struct{
+	name = 'entranceTrigger_t',
+	fields = {
+		{srcX = 'uint8_t'},
+		{srcY = 'uint8_t'},
+		{destIndex = 'uint16_t:11'},
+		{destShowName = 'uint16_t:1'},
+		{destFacingDir = 'uint16_t:2'},
+		{unknown_3_7 = 'uint16_t:2'},
+		{destX = 'uint8_t'},
+		{destY = 'uint8_t'},
+	},
+}
+assert.eq(ffi.sizeof'entranceTrigger_t', 6)
+
+
+local mapEventTrigger_t = struct{
+	name = 'mapEventTrigger_t',
+	fields = {
+		{srcX = 'uint8_t'},
+		{srcY = 'uint8_t'},
+		{eventCode = 'uint24_t'},
+	},
+}
+assert.eq(ffi.sizeof'mapEventTrigger_t', 5)
+
 ---------------- GAME ----------------
 
 -- TODO this is clever but ... rigid and with lots of redundancies
@@ -1504,25 +1534,25 @@ local game_t = struct{
 	notostring = true,	-- too big to serialize
 	fields = {
 		-- 0x00c27f - 0x00c28f = something to do with battle background? -rpglegion
-		{padding_000000 = 'uint8_t['..(0x00ce3a - 0x000000)..']'},				-- 0x000000 - 0x00ce3a
+		{padding_000000 = 'uint8_t['..(0x00ce3a - 0x000000)..']'},							-- 0x000000 - 0x00ce3a
 
 		-- offset of map character sprite parts
 		-- interleaved row-major, 2x3
-		{characterFrameTileOffsets = 'uint16_t['..(numCharacterSpriteFrames * 6)..']'},	-- 0x00ce3a - 0x00d026
+		{characterFrameTileOffsets = 'uint16_t['..(numCharacterSpriteFrames * 6)..']'},		-- 0x00ce3a - 0x00d026
 
-		{padding_00d026 = 'uint8_t['..(0x00d0f2  - 0x00d026)..']'},				-- 0x00d026 - 0x00d0f2
+		{padding_00d026 = 'uint8_t['..(0x00d0f2  - 0x00d026)..']'},							-- 0x00d026 - 0x00d0f2
 
 		-- 0x00d0f2 - ? = pointer to map character graphics (2 bytes each)
-		{characterSpriteOffsetLo = 'uint16_t['..numCharacterSprites..']'},		-- 0x00d0f2 - 0x00d23c
+		{characterSpriteOffsetLo = 'uint16_t['..numCharacterSprites..']'},					-- 0x00d0f2 - 0x00d23c
 
 		{characterSpriteOffsetHiAndSize = 'charHiAndSize_t['..numCharacterSprites..']'},	-- 0x00d23c - 0x00d386
 
 		-- 0x00d23c - ? = bank pointer & # bytes to copy for map char gfx (2 bytes each)
 		-- 0x00dfa0 - 0x00e0a0 = 'DTE table' -rgplegion
-		{padding_00d27c = 'uint8_t['..(0x02ce2b - 0x00d386)..']'},				-- 0x00d386 - 0x02ce2b
+		{padding_00d27c = 'uint8_t['..(0x02ce2b - 0x00d386)..']'},							-- 0x00d386 - 0x02ce2b
 
 		-- battle character palette assignment (1 byte each)
-		{characterPaletteIndexes = 'uint8_t['..numCharacterSprites..']'},		-- 0x02ce2b - 0x02ced0
+		{characterPaletteIndexes = 'uint8_t['..numCharacterSprites..']'},					-- 0x02ce2b - 0x02ced0
 
 		{padding_02ced0 = 'uint8_t['..(0x02d01a - 0x02ced0)..']'},				-- 0x02ced0 - 0x02d01a
 
@@ -1541,14 +1571,15 @@ local game_t = struct{
 
 		-- 0x03c326 - 0x03c406 = more positioned text (N items, var length) ... where are the offsets for this?
 		-- "P}BUY  SELL  EXITA:}GPAr GPAz}Owned:Az Equipped:AP Bat PwrAP DefenseAl â¦Af{Hi! Can I help you?Af{Help yourself!Af{How many?Af{Whatcha got?Af{How many?Af{Bye!          Af{You need more GP!Af{Too many!       Af{One's plenty! A"
+		{padding_03c406 = 'uint8_t['..(0x040000 - 0x03c406)..']'},				-- 0x03c406 - 0x040000
 
-		-- 0x040000 - 0x040342 = map event trigger pointers (+0x040000)
-		-- 0x040342 - 0x0419fe = map event triggers (5 bytes each)
-		-- 0x0419fe - 0x041a10 = unused
+		{mapEventTriggerOfs = 'uint16_t['..((0x040342 - 0x040000)/2)..']'},		-- 0x040000 - 0x040342 = offset by +0x040000
+		{mapEventTriggerData = 'uint8_t['..(0x041a10 - 0x040342)..']'},			-- 0x040342 - 0x041a10 = map event triggers (5 bytes each)
+
 		-- 0x041a10 - 0x041d52 = npc data pointers (+0x041a10)
 		-- 0x041d52 - 0x046a6c = npc data
 		-- 0x046a6c - 0x046ac0 = unused
-		{padding_03c406 = 'uint8_t['..(0x046ac0 - 0x03c406)..']'},				-- 0x03c406 - 0x046ac0
+		{padding_041a10 = 'uint8_t['..(0x046ac0 - 0x041a10)..']'},				-- 0x041a10 - 0x046ac0
 
 		{spells = 'spell_t['..numSpells..']'},									-- 0x046ac0 - 0x0478c0
 		{characterNames = 'characterName_t['..numCharacters..']'},				-- 0x0478c0 - 0x047a40
@@ -1734,20 +1765,20 @@ local game_t = struct{
 		-- 0x19cd90 - 0x19d1b0 = pointers to location map data (352 items), (+0x19d1b0)
 		-- 0x19d1b0 - 0x1e0000 = location map data
 		-- 0x1e0000 - ? = location tile formation
-		{padding_18cfec = 'uint8_t['..(0x1fb400  - 0x18cfec)..']'},				-- 0x18cfec - 0x1fb400
+		{padding_18cfec = 'uint8_t['..(0x1fb400  - 0x18cfec)..']'},						-- 0x18cfec - 0x1fb400
 
-		{formationMPs = 'uint8_t['..numFormationMPs..']'},					-- 0x1fb400 - 0x1fb600
-		{itemColosseumInfos = 'itemColosseumInfo_t['..numItems..']'},		-- 0x1fb600 - 0x1fba00
+		{formationMPs = 'uint8_t['..numFormationMPs..']'},								-- 0x1fb400 - 0x1fb600
+		{itemColosseumInfos = 'itemColosseumInfo_t['..numItems..']'},					-- 0x1fb600 - 0x1fba00
+		{locationTileFormationOfs = 'uint16_t['..numLocationTileFormationOfs..']'},		-- 0x1fba00 - 0x1fbb00 -- offset by +0x1e0000
+		{entranceTriggerOfs = 'uint16_t['..numEntranceTriggerOfs..']'},					-- 0x1fbb00 - 0x1fbf02 -- offset by +0x1fbb00
+		{entranceTriggerData = 'uint8_t['..(0x1fda00 - 0x1fbf02)..']'},		-- 0x1fbf02 - 0x1fda00
 
-		-- 0x1fba00 - 0x1fbb00 = pointer to location tile formation (128 items) (+0x1e0000)
-		-- 0x1fbb00 - 0x1fbf02 = pointer to entrance triggers (+0x1fbb00)
-		-- 0x1fbf02 - 0x1fda00 = entrance triggers (6 bytes each)
 		-- 0x1fda00 - 0x1fdb00 = town tile graphics pointers (128 items) (+0x1fdb00)
 		-- 0x1fdb00 - 0x25f400 = town tile graphics
 		-- (within it) 0x21c4c0 - 0x21e4c0 = battle background top graphics: building
 		-- 0x25f400 - 0x268000 = ???
 		-- 0x268000 - 0x268400 = map character & town person sprites (16 colors each)
-		{padding_1fba00 = 'uint8_t['..(0x268000 - 0x1fba00)..']'},			-- 0x1fba00 - 0x268000
+		{padding_1fda00 = 'uint8_t['..(0x268000 - 0x1fda00)..']'},			-- 0x1fda00 - 0x268000
 
 		{characterPalettes = 'palette16_t['..numCharacterPalettes..']'},	-- 0x268000 - 0x268400
 
@@ -1887,6 +1918,7 @@ assert.eq(ffi.offsetof('game_t', 'spellDescBase'), spellDescBaseAddr)
 assert.eq(ffi.offsetof('game_t', 'menuNames'), menuNamesAddr)
 assert.eq(ffi.offsetof('game_t', 'spellDescOffsets'), spellDescOffsetsAddr)
 assert.eq(ffi.offsetof('game_t', 'itemColosseumInfos'), itemColosseumInfosAddr)
+assert.eq(ffi.offsetof('game_t', 'locationTileFormationOfs'), locationTileFormationOfsAddr)
 assert.eq(ffi.offsetof('game_t', 'spellNames_0to53'), spellNamesAddr)
 assert.eq(ffi.offsetof('game_t', 'esperAttackNames'), esperAttackNamesAddr)
 assert.eq(ffi.offsetof('game_t', 'mogDanceNames'), mogDanceNamesAddr)
@@ -1934,6 +1966,8 @@ obj.numLores = numLores
 obj.numShops = numShops
 obj.numLocations = numLocations
 obj.numLocationNames = numLocationNames
+obj.numLocationTileFormationOfs = numLocationTileFormationOfs 
+obj.numEntranceTriggerOfs = numEntranceTriggerOfs 
 obj.numDialogs = numDialogs
 obj.numBattleDialogs = numBattleDialogs
 obj.numBattleDialog2s = numBattleDialog2s

@@ -103,8 +103,14 @@ local function readCharSprite(game, charIndex, processFrame)
 	local height = tileHeight*tilesHigh
 
 	local palIndex = game.characterPaletteIndexes[charIndex]
-	if palIndex > 8 then palIndex = 0 end	-- TODO or idk
+--print('charIndex', charIndex, 'palIndex', palIndex)	
+--[[	
+	if palIndex >= 8 then palIndex = 0 end	-- TODO or idk
 	if charIndex == 18 then palIndex = 8 end	-- special for morphed terra
+--]]
+-- [[
+	palIndex = bit.band(palIndex, 7)
+--]]
 
 	path'characters':mkdir()
 

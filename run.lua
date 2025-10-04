@@ -324,12 +324,36 @@ print()
 for i=0,game.numShops-1 do
 	print('shop #'..i..': '..game.shops[i])
 end
-print()
 
+print()
 for i=0,game.numLocations-1 do
 	print('location #'..i..': '..game.locations[i])
 end
 
+print()
+for i=0,(0x040342 - 0x040000)/2-1 do
+	local addr = game.mapEventTriggerOfs[i] + ffi.offsetof('game_t', 'mapEventTriggerOfs')
+	local mapEventTrigger = ffi.cast('mapEventTrigger_t*', rom + addr)
+	print('mapEventTrigger #'..i..': $'..('%04x'):format(addr))
+	print(' '..mapEventTrigger)
+end
+
+print()
+for i=0,game.numLocationTileFormationOfs-1 do
+	print('location tile formation offset: $'..('%04x'):format(game.locationTileFormationOfs[i]))
+end
+
+print()
+for i=0,game.numEntranceTriggerOfs-1 do
+	-- TODO use ref_t or whateever
+	local addr = game.entranceTriggerOfs[i] + ffi.offsetof('game_t', 'entranceTriggerOfs')
+	print('location entrance trigger #'..i)
+	print(' addr: $'..('%06x'):format(addr))
+	local entranceTrigger = ffi.cast('entranceTrigger_t*', rom + addr)
+	print(' '..entranceTrigger)
+end
+
+print()
 print(game.locationNames)
 print(game.dialog)
 print(game.battleDialog)
