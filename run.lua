@@ -634,6 +634,66 @@ for i=0,game.numBRRSamples-1 do
 	--]]
 end
 
+-- decompress one block of 2048 bytes
+local function decompress0x800(ptr, len)
+	local vector = require 'ffi.cpp.vector-lua'
+	local out = vector'uint8_t'
+	local buf = ffi.new('uint8_t[0x800]')
+	ffi.fill(buf, ffi.sizeof(buf))
+	local bufOfs = 0x7de
+print('decompressing len', len)
+	local compressedSize = ffi.cast('uint16_t*', ptr)[0]
+	ffi.cast('uint16_t*', buf + bufOfs)[0] = compressedSize
+	local endptr = ptr + compressedSize	-- end relative to start before size
+	ptr = ptr + 2
+print('compressed stored len', compressedSize)
+	while ptr < endptr do
+		local header = ptr[0]
+		ptr = ptr + 1
+		for i=0,7 do
+			if bit.band(bit.rshift(header, i), 1) == 1 then
+--print('writing', ptr[0])
+				local src = ptr[0]
+				ptr = ptr + 1
+				out:emplace_back()[0] = src
+				buf[bufOfs] = src
+				bufOfs = bit.band(bufOfs + 1, 0x7ff)
+			else
+				local w = ffi.cast('uint16_t*', ptr)[0]
+				ptr = ptr + 2
+				local ofs = bit.band(w, 0x7ff)
+				local size = bit.rshift(w, 11) + 3
+--print('decompress block ofs', ofs, 'size', size)
+				for j=0,size-1 do
+					local src = buf[bit.band(ofs + j, 0x7ff)]
+					out:emplace_back()[0] = src
+					buf[bufOfs] = src
+					bufOfs = bit.band(bufOfs + 1, 0x7ff)
+				end
+			end
+		end
+	end
+	--return ffi.string(buf, ffi.sizeof(buf)), ptr
+	return out:dataToStr(), ptr
+end
+
+local function decompress(ptr, len)
+	local endptr = ptr + len
+	local s = table()
+	while ptr < endptr do
+		local row
+		row, ptr = decompress0x800(ptr, endptr - ptr)
+		s:insert(row)
+	end
+	return s:concat()
+end
+
+-- 141002 bytes ... needs 131072 bytes ... has 9930 extra bytes ...
+local WoBMapDataDecompressed = decompress(game.WoBMapData+0, ffi.sizeof(game.WoBMapData))
+print('WoBMapDataDecompressed', #WoBMapDataDecompressed)
+path'WoBMapDataDecompressed.bin':write(WoBMapDataDecompressed)
+path'WoBMapDataDecompressed.hex':write(WoBMapDataDecompressed:hexdump())
+
 print'end of rom output'
 
 --print('0x047aa0: ', game.padding_047aa0)

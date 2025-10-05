@@ -1852,14 +1852,14 @@ local game_t = struct{
 		-- World of Ruin Tile Properties
 		{WoRTiles = 'uint8_t['..(0x200)..']'},	-- 0x2e9d14 - 0x2e9f14
 
-		-- 0x2ed434 - 0x2f114e     World of Balance Map Data (compressed)
-		-- 0x2f114f - 0x2f324f     World of Balance Tile Graphics (compressed)
+		{WoBMapData = 'uint8_t['..(0x2f114e - 0x2ed434)..']'},	-- 0x2ed434 - 0x2f114e     World of Balance Map Data (compressed)
+		{WoRMapData = 'uint8_t['..(0x2f324f - 0x2f114f)..']'},	-- 0x2f114f - 0x2f324f     World of Balance Tile Graphics (compressed)
 
-		-- 0x2f4a46 - 0x2f6a55     World of Ruin Tile Graphics (compressed)
-		-- 0x2f6a56 - 0x2f9d16     World of Ruin Map Data (compressed)
+		{WoBTileGfx = 'uint8_t['..(0x2f6a55 - 0x2f4a46)..']'},	-- 0x2f4a46 - 0x2f6a55     World of Ruin Tile Graphics (compressed)
+		{WoRTileGfx = 'uint8_t['..(0x2f9d16 - 0x2f6a56)..']'},	-- 0x2f6a56 - 0x2f9d16     World of Ruin Map Data (compressed)
 
-		-- 0x2fe49b - 0x2fe8b2     World of Balance Miniature Map (compressed)
-		-- 0x2fe8b3 - 0x2fed25     World of Ruin Miniature Map (compressed)
+		{WoBMiniMap = 'uint8_t['..(0x2fe8b2 - 0x2fe49b)..']'},	-- 0x2fe49b - 0x2fe8b2     World of Balance Miniature Map (compressed)
+		{WoRMiniMap = 'uint8_t['..(0x2fed25 - 0x2fe8b3)..']'}, 	-- 0x2fe8b3 - 0x2fed25     World of Ruin Miniature Map (compressed)
 	},
 }
 assert.eq(ffi.offsetof('game_t', 'characterFrameTileOffsets'), 0x00ce3a)

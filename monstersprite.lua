@@ -114,7 +114,7 @@ local function writeMonsterSprite(game, index)
 		end
 	end
 	im.palette = makePalette(pal, 16)
-	im:save('monsters/monster'..index..' '..game.monsterNames[index]..'.png')
+	im:save('monsters/monster'..('%03d'):format(index)..' '..game.monsterNames[index]..'.png')
 
 	return im.width * im.height
 end
