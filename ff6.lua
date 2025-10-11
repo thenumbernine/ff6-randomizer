@@ -1959,6 +1959,7 @@ obj.numMenuNames = numMenuNames
 obj.numCharacters = numCharacters
 obj.numCharacterSpriteFrames = numCharacterSpriteFrames
 obj.numCharacterSprites = numCharacterSprites
+obj.numCharacterPalettes = numCharacterPalettes
 obj.numMogDances = numMogDances
 obj.numSwordTechs = numSwordTechs
 obj.numBlitzes = numBlitzes

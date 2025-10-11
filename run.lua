@@ -83,6 +83,12 @@ for i=0,game.numRareItems-1 do
 	print()
 end
 
+for i=0,game.numCharacterPalettes-1 do
+	print('character palette #'..i)
+	print(game.characterPalettes[i])
+	print()
+end
+
 for i=0,game.numMonsterPalettes-1 do
 	print('monster palette #'..i)
 	print(game.monsterPalettes[i])
@@ -105,9 +111,31 @@ local totalPixels = 0
 -- [[
 local writeMonsterSprite = require 'monstersprite'
 for i=0,game.numMonsterSprites-1 do
+	print('monster sprite #'..i)
+	print(game.monsterSprites[i])
 	totalPixels = totalPixels + writeMonsterSprite(game, i)
 end
 print('wrote monster pixels', totalPixels)
+--]]
+
+-- [[ see how many unique monsters there are ...
+local monsterSpriteOffsets = {}
+for i=0,game.numMonsterSprites-1 do
+	local monsterSprite = game.monsterSprites + i
+	if not monsterSpriteOffsets[monsterSprite.offset] then
+		monsterSpriteOffsets[monsterSprite.offset] = table()
+	end
+	monsterSpriteOffsets[monsterSprite.offset]:insert(i)
+end
+
+--[[
+_3bpp, tile16, tileMaskIndex are constant per-offset
+only palHi and palLo vary per offset
+so here, write us only unique monsters with the first palette
+--]]
+for _,offset in ipairs(table.keys(monsterSpriteOffsets):sort()) do
+	print('offset '..('%04x'):format(offset)..' has sprites: '..table.concat(monsterSpriteOffsets[offset], ', '))
+end
 --]]
 
 for i=0,game.numMetamorphSets-1 do
@@ -367,7 +395,9 @@ print('setzer airship palette = '..game.setzerAirshipPalette)
 print('daryl airship palette = '..game.darylAirshipPalette)
 print('menuWindowPalettes = '..game.menuWindowPalettes)
 --print('characterMenuImages = '..game.characterMenuImages)
---print('menuPortraitPalette = '..game.menuPortraitPalette)
+for i=0,18 do
+	print('menuPortraitPalette = '..game.menuPortraitPalette[i])
+end
 --print('handCursorGraphics = '..game.handCursorGraphics)
 print('battleWhitePalette = '..game.battleWhitePalette)
 print('battleGrayPalette = '..game.battleGrayPalette)

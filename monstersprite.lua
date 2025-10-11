@@ -40,7 +40,7 @@ local function writeMonsterSprite(game, index)
 	end
 
 	-- weir that the tile-is-16-pixels bit is at the end of the 1st and not the 2nd byte ...
-	local paletteIndex = monsterSprite.palLo + monsterSprite.palHi * 0x100
+	local paletteIndex = bit.bor(monsterSprite.palLo, bit.lshift(monsterSprite.palHi, 8))
 	local pal = game.monsterPalettes + paletteIndex
 
 	local tileMaskData8, tileMaskData16
