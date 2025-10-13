@@ -4,6 +4,8 @@ local Image = require 'image'
 local makePalette = require 'graphics'.makePalette
 require 'ext'
 
+local int16_t = ffi.typeof'int16_t'
+
 local infn, outfn = ...
 assert(infn, "missing filename")
 local data = assert(path(infn):read())
@@ -593,7 +595,7 @@ for i=0,game.numBRRSamples-1 do
 
 			-- [[ snesbrr: "wrap to 15 bits, sign-extend to 16 bits"
 			sample = bit.arshift(bit.lshift(sample, 1), 1)
-			sample = ffi.cast('int16_t', sample)
+			sample = ffi.cast(int16_t, sample)
 			--]]
 
 			lastSample[1] = lastSample[0]
@@ -630,10 +632,10 @@ for i=0,game.numBRRSamples-1 do
 	local AudioWAV = require 'audio.io.wav'
 	AudioWAV():save{
 		filename = wavpath(basename..'.wav').path,
-		ctype = 'int16_t',
+		ctype = int16_t,
 		channels = 1,
 		data = wavData,
-		size = numSamples * ffi.sizeof'int16_t',
+		size = numSamples * ffi.sizeof(int16_t),
 		freq = freq,
 	}
 	-- and its associated info
@@ -719,6 +721,8 @@ local function decompress(ptr, len)
 end
 
 -- 141002 bytes ... needs 131072 bytes ... has 9930 extra bytes ...
+path'WoBMapDataCompressed.bin':write( ffi.string(game.WoBMapData+0, ffi.sizeof(game.WoBMapData)))
+path'WoBMapDataCompressed.hex':write( ffi.string(game.WoBMapData+0, ffi.sizeof(game.WoBMapData)):hexdump())
 local WoBMapDataDecompressed = decompress(game.WoBMapData+0, ffi.sizeof(game.WoBMapData))
 print('WoBMapDataDecompressed', #WoBMapDataDecompressed)
 path'WoBMapDataDecompressed.bin':write(WoBMapDataDecompressed)

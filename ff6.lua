@@ -1496,7 +1496,7 @@ local location_t = struct{
 assert.eq(ffi.sizeof'location_t', 0x21)
 
 local numLocationTileFormationOfs = 128
-local locationTileFormationOfsAddr = 0x1fba00 
+local locationTileFormationOfsAddr = 0x1fba00
 
 local numEntranceTriggerOfs = 513
 local entranceTrigger_t = struct{
@@ -1852,14 +1852,48 @@ local game_t = struct{
 		-- World of Ruin Tile Properties
 		{WoRTiles = 'uint8_t['..(0x200)..']'},	-- 0x2e9d14 - 0x2e9f14
 
-		{WoBMapData = 'uint8_t['..(0x2f114e - 0x2ed434)..']'},	-- 0x2ed434 - 0x2f114e     World of Balance Map Data (compressed)
-		{WoRMapData = 'uint8_t['..(0x2f324f - 0x2f114f)..']'},	-- 0x2f114f - 0x2f324f     World of Balance Tile Graphics (compressed)
+		{WoBMapData = 'uint8_t['..(0x2f114f - 0x2ed434)..']'},	-- 0x2ed434 - 0x2f114f     World of Balance Map Data (compressed)
+		{WoBBackground = 'uint8_t['..(0x2f324f - 0x2f114f)..']'},	-- 0x2f114f - 0x2f324f     World of Balance Tile Graphics (compressed)
+--[[ everything8215's FF6 mem map info:
+      "file_path": "src/gfx/world_1_bg.pal",
+      "asset_range": "0xD2EC00-0xD2ECFF"
 
-		{WoBTileGfx = 'uint8_t['..(0x2f6a55 - 0x2f4a46)..']'},	-- 0x2f4a46 - 0x2f6a55     World of Ruin Tile Graphics (compressed)
-		{WoRTileGfx = 'uint8_t['..(0x2f9d16 - 0x2f6a56)..']'},	-- 0x2f6a56 - 0x2f9d16     World of Ruin Map Data (compressed)
+      "file_path": "src/gfx/world_1_bg.4bpp.lz",
+      "asset_range": "0xEF114F-0xEF324F"
 
-		{WoBMiniMap = 'uint8_t['..(0x2fe8b2 - 0x2fe49b)..']'},	-- 0x2fe49b - 0x2fe8b2     World of Balance Miniature Map (compressed)
-		{WoRMiniMap = 'uint8_t['..(0x2fed25 - 0x2fe8b3)..']'}, 	-- 0x2fe8b3 - 0x2fed25     World of Ruin Miniature Map (compressed)
+      "file_path": "src/gfx/world_1_sprite.pal",
+      "asset_range": "0xD2EE00-0xD2EEFF"
+
+      "file_path": "src/world/world_1_mod.dat",
+      "asset_range": "0xCEF600-0xCEF63B"
+
+	  "file_path": "src/world/world_1_tilemap.dat.lz",
+      "asset_range": "0xEED434-0xEF114E"
+
+	  "file_path": "src/gfx/world_2_bg.pal",
+      "asset_range": "0xD2ED00-0xD2EDFF"
+
+	  "file_path": "src/gfx/world_2_bg.4bpp.lz",
+      "asset_range": "0xEF4A46-0xEF6A55"
+
+	  "file_path": "src/gfx/world_2_sprite.pal",
+      "asset_range": "0xD2EF00-0xD2EFFF"
+
+	  "file_path": "src/world/world_2_mod.dat",
+      "asset_range": "0xCEF63C-0xCEF647"
+
+	  "file_path": "src/world/world_2_tilemap.dat.lz",
+      "asset_range": "0xEF6A56-0xEF9D16"
+
+	  "file_path": "src/gfx/world_3.pal.lz",
+      "asset_range": "0xD8E6BA-0xD8E7B0"
+
+	  "file_path": "src/gfx/world_3_bg.4bpp.lz",
+      "asset_range": "0xEFB631-0xEFC623"
+
+	  "file_path": "src/world/world_3_tilemap.dat.lz",
+      "asset_range": "0xEF9D17-0xEFB630"
+--]]
 	},
 }
 assert.eq(ffi.offsetof('game_t', 'characterFrameTileOffsets'), 0x00ce3a)
@@ -1967,8 +2001,8 @@ obj.numLores = numLores
 obj.numShops = numShops
 obj.numLocations = numLocations
 obj.numLocationNames = numLocationNames
-obj.numLocationTileFormationOfs = numLocationTileFormationOfs 
-obj.numEntranceTriggerOfs = numEntranceTriggerOfs 
+obj.numLocationTileFormationOfs = numLocationTileFormationOfs
+obj.numEntranceTriggerOfs = numEntranceTriggerOfs
 obj.numDialogs = numDialogs
 obj.numBattleDialogs = numBattleDialogs
 obj.numBattleDialog2s = numBattleDialog2s
