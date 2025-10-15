@@ -121,22 +121,26 @@ print('wrote monster pixels', totalPixels)
 --]]
 
 -- [[ see how many unique monsters there are ...
-local monsterSpriteOffsets = {}
+local monsterSpriteOffsetSet = {}
+local monsterSpriteOffsets = table() -- from 1-based monster index to offset #
 for i=0,game.numMonsterSprites-1 do
 	local monsterSprite = game.monsterSprites + i
-	if not monsterSpriteOffsets[monsterSprite.offset] then
-		monsterSpriteOffsets[monsterSprite.offset] = table()
+	if not monsterSpriteOffsetSet[monsterSprite.offset] then
+		monsterSpriteOffsetSet[monsterSprite.offset] = table()
 	end
-	monsterSpriteOffsets[monsterSprite.offset]:insert(i)
+	monsterSpriteOffsetSet[monsterSprite.offset]:insert(i)
+	monsterSpriteOffsets[i+1] = monsterSpriteOffsetSet[monsterSprite.offset][1]
 end
+
+--print('monsterSpriteOffsets = '..tolua(monsterSpriteOffsets))
 
 --[[
 _3bpp, tile16, tileMaskIndex are constant per-offset
 only palHi and palLo vary per offset
 so here, write us only unique monsters with the first palette
 --]]
-for _,offset in ipairs(table.keys(monsterSpriteOffsets):sort()) do
-	print('offset '..('%04x'):format(offset)..' has sprites: '..table.concat(monsterSpriteOffsets[offset], ', '))
+for _,offset in ipairs(table.keys(monsterSpriteOffsetSet):sort()) do
+	print('offset '..('%04x'):format(offset)..' has sprites: '..table.concat(monsterSpriteOffsetSet[offset], ', '))
 end
 --]]
 
