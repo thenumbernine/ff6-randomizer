@@ -2,6 +2,10 @@
 local ffi = require 'ffi'
 local Image = require 'image'
 local makePalette = require 'graphics'.makePalette
+local tileWidth = require 'graphics'.tileWidth
+local tileHeight = require 'graphics'.tileHeight
+local readTile = require 'graphics'.readTile
+local makeTiledImageWithMask = require 'graphics'.makeTiledImageWithMask
 require 'ext'
 
 local int16_t = ffi.typeof'int16_t'
@@ -400,9 +404,41 @@ print('WoR palette = '..game.WoRpalettes)
 print('setzer airship palette = '..game.setzerAirshipPalette)
 print('daryl airship palette = '..game.darylAirshipPalette)
 print('menuWindowPalettes = '..game.menuWindowPalettes)
+
 --print('characterMenuImages = '..game.characterMenuImages)
-for i=0,18 do
-	print('menuPortraitPalette = '..game.menuPortraitPalette[i])
+do
+	local bpp = 4
+	local tilesWide = 5
+	local tilesHigh = 5
+	local menucharpath = path'menuchars'
+	menucharpath:mkdir()
+	local ptr = game.characterMenuImages
+	for charIndex=0,game.numMenuChars-1 do
+		-- same same anyways?
+		if charIndex < 16 then
+			ptr = rom + 0x2d0000 + game.characterMenuImageOffsets[charIndex]
+		else
+			ptr = game.characterMenuImages + charIndex * (tilesWide * tilesHigh * 8 * bpp)
+		end
+		local baseptr = ptr
+		local im = Image(tileWidth*tilesWide, tileHeight*tilesHigh, 1, 'uint8_t')
+		ffi.fill(im.buffer, im:getBufferSize())
+		local tileIndex = 0
+		for ty=0,tilesHigh-1 do
+			for tx=0,tilesWide-1 do
+				ptr = baseptr + game.characterMenuImageTileLayout[tileIndex] * 8 * bpp
+				readTile(im, tx*tileWidth, ty*tileHeight, ptr, bpp)
+				tileIndex = tileIndex + 1
+			end
+		end
+		im.palette = makePalette(game.menuPortraitPalette + charIndex, 16)
+		im:save(
+			menucharpath('menu'..charIndex..'.png').path
+		)
+	end
+	--for charIndex=0,game.numMenuChars-1 do
+	--	print('menuPortraitPalette = '..game.menuPortraitPalette[charIndex])
+	--end
 end
 --print('handCursorGraphics = '..game.handCursorGraphics)
 print('battleWhitePalette = '..game.battleWhitePalette)

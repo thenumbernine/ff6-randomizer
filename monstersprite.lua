@@ -1,17 +1,13 @@
 local ffi = require 'ffi'
-local Image = require 'image'
 local graphics = require 'graphics'
-local readpixel = graphics.readpixel
-local readTile = graphics.readTile
-local makePalette = graphics.makePalette
-local tileWidth = graphics.tileWidth
-local tileHeight = graphics.tileHeight
+local makeTiledImageWithMask = graphics.makeTiledImageWithMask
 
-local function readbit(byte, bitindex)
-	return bit.band(bit.rshift(byte, bitindex), 1)
-end
+local function writeMonsterSprite(
+	game,
+	index
+)
+	path'monsters':mkdir()
 
-local function writeMonsterSprite(game, index)
 	local rom = ffi.cast('uint8_t*', game.padding_000000)
 	local monsterSprite = game.monsterSprites[index]
 
@@ -24,20 +20,7 @@ local function writeMonsterSprite(game, index)
 		bitsPerPixel = 4
 	end
 
-	local tileMaskIndex = monsterSprite.tileMaskIndex
-
 	-- now find a monster image with a matching offset...
-
-	local tilesWide, tilesHigh
-	if monsterSprite.tile16 == 0 then
-		tilesWide = 8
-		tilesHigh = 8
-	elseif monsterSprite.tile16 == 1 then
-		tilesWide = 16
-		tilesHigh = 16
-	else
-		error("danger danger")
-	end
 
 	-- weir that the tile-is-16-pixels bit is at the end of the 1st and not the 2nd byte ...
 	local paletteIndex = bit.bor(monsterSprite.palLo, bit.lshift(monsterSprite.palHi, 8))
@@ -63,57 +46,35 @@ local function writeMonsterSprite(game, index)
 		--, numTileMasks16 * 32)
 	end
 
+	local tile16 = monsterSprite.tile16 == 1
+
 	-- bitflags of which 8x8 tiles are used
 	local tileMaskData
-	if monsterSprite.tile16 == 0 then
+	if not tile16 then
 		tileMaskData = tileMaskData8
-	elseif monsterSprite.tile16 == 1 then
+	else
 		tileMaskData = tileMaskData16
 	end
-	-- how many bits in size
-	local tileMaskStep = bit.rshift(tilesWide * tilesHigh, 3)
 
-	local imgwidth = 0
-	local imgheight = 0
-	do
-		for y=0,tilesHigh-1 do
-			for x=0,tilesWide-1 do
-				local tileMaskBit = bit.lshift(tileMaskIndex * tileMaskStep, 3) + x + tilesWide * y
-				if readbit(
-					tileMaskData[bit.rshift(tileMaskBit, 3)],
-					7 - bit.band(tileMaskBit, 7)
-				) ~= 0 then
-					imgwidth = math.max(imgwidth, x)
-					imgheight = math.max(imgheight, y)
-				end
-			end
-		end
-		imgwidth = (imgwidth + 1) * tileWidth
-		imgheight = (imgheight + 1) * tileHeight
+	local tilesWide, tilesHigh
+	if not tile16 then
+		tilesWide = 8
+		tilesHigh = 8
+	else
+		tilesWide = 16
+		tilesHigh = 16
 	end
 
-	path'monsters':mkdir()
+	local im = makeTiledImageWithMask(
+		tilesWide,		-- tiles wide
+		tilesHigh,		-- tiles high
+		bitsPerPixel,	-- 3 or 4
+		tileMaskData,	-- mask bitvector
+		monsterSprite.tileMaskIndex,	-- start of mask bitvector
+		game.monsterSpriteData + offset * 8,
+		pal
+	)
 
-	local im = Image(imgwidth, imgheight, 1, 'uint8_t')
-	ffi.fill(im.buffer, im:getBufferSize())
-
-	-- monsters have a set of tiles, in-order (cuz there aren't many duplicates),
-	-- flagged on/off (cuz there are often 8x8 transparent holes in the sprites)
-	local tilesize = bit.rshift(tileWidth * tileHeight * bitsPerPixel, 3)
-	local tileaddr = game.monsterSpriteData + offset * 8
-	for y=0,tilesHigh-1 do
-		for x=0,tilesWide-1 do
-			local tileMaskBit = bit.lshift(tileMaskIndex * tileMaskStep, 3) + x + tilesWide * y
-			if readbit(
-				tileMaskData[bit.rshift(tileMaskBit, 3)],
-				7 - bit.band(tileMaskBit, 7)
-			) ~= 0 then
-				readTile(im, x*tileWidth, y*tileHeight, tileaddr, bitsPerPixel)
-				tileaddr = tileaddr + tilesize
-			end
-		end
-	end
-	im.palette = makePalette(pal, 16)
 	im:save('monsters/monster'..('%03d'):format(index)..' '..game.monsterNames[index]..'.png')
 
 	return im.width * im.height

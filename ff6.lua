@@ -446,7 +446,7 @@ local color_t = struct{
 		{a = 'uint16_t:1'},
 	},
 }
-assert(ffi.sizeof'color_t' == 2)
+assert.eq(ffi.sizeof'color_t', 2)
 
 local palette4_t = createVec{
 	dim = 4,
@@ -475,6 +475,8 @@ local palette16_8_t = createVec{
 	vectype = 'palette16_8_t',
 }
 assert(ffi.sizeof'palette16_8_t' == 2*16*8)
+
+local numMenuChars = 19
 
 ---------------- AUDIO ----------------
 
@@ -856,7 +858,10 @@ local monsterPalettesAddr = 0x127820
 local numMonsterPalettes = 0x300
 -- ... of type palette8_t
 
--- the first 'numMonsters' overlaps, but then there's a few more?
+-- the first 'numMonsters' overlaps
+-- then there's 32 more
+-- the first 27 of those are espers
+-- the last 5 are unknown/unused
 local numMonsterSprites = 0x1a0
 
 -- TODO there are 0x19f of these, not 0x180 ...
@@ -1533,12 +1538,17 @@ local game_t = struct{
 	name = 'game_t',
 	notostring = true,	-- too big to serialize
 	fields = {
+		{padding_000000 = 'uint8_t['..(0x0051ba - 0x000000)..']'},							-- 0x000000 - 0x0051ba
+
+		{characterMenuImageOffsets = 'uint16_t[16]'},										-- 0x0051ba - 0x0051da
+		{characterMenuImageTileLayout = 'uint8_t[25]'},										-- 0x0051da - 0x0051f3
+
 		-- 0x00c27f - 0x00c28f = something to do with battle background? -rpglegion
-		{padding_000000 = 'uint8_t['..(0x00ce3a - 0x000000)..']'},							-- 0x000000 - 0x00ce3a
+		{padding_0051f3 = 'uint8_t['..(0x00ce3a - 0x0051f3)..']'}, 							-- 0x0051f3 - 0x00ce3a
 
 		-- offset of map character sprite parts
 		-- interleaved row-major, 2x3
-		{characterFrameTileOffsets = 'uint16_t['..(numCharacterSpriteFrames * 6)..']'},		-- 0x00ce3a - 0x00d026
+		{characterFrameTileOffsets = 'uint16_t['..(numCharacterSpriteFrames * 6)..']'},		-- 0x0051f3 - 0x00d026
 
 		{padding_00d026 = 'uint8_t['..(0x00d0f2  - 0x00d026)..']'},							-- 0x00d026 - 0x00d0f2
 
@@ -1811,9 +1821,11 @@ local game_t = struct{
 
 		{padding_2d0e00 = 'uint8_t['..(0x2d1c00 - 0x2d0e00)..']'},			-- 0x2d0e00 - 0x2d1c00
 
-		{menuWindowPalettes = 'palette16_8_t'},							-- 0x2d1c00 - 0x2d1d00 = menu window palettes, x8, 16 colors each, 2 bytes per color
-		{characterMenuImages = 'uint8_t['..(0x2d5860 - 0x2d1d00)..']'},		-- 0x2d1d00 - 0x2d5860 = character menu images = 0x320 per character
-		{menuPortraitPalette = 'palette16_t[19]'},							-- 0x2d5860 - 0x2d5ac0 = menu portrait palettes (16 colors each)
+		{menuWindowPalettes = 'palette16_8_t'},								-- 0x2d1c00 - 0x2d1d00 = menu window palettes, x8, 16 colors each, 2 bytes per color
+		-- TODO struct multi dim arrays ...
+		--{characterMenuImages = 'uint8_t['..numMenuChars..'][5][5][8][4]'},	-- 0x2d1d00 - 0x2d5860 = character menu images [char][tx][ty][col][row] @ 4bpp
+		{characterMenuImages = 'uint8_t['..(numMenuChars * 5 * 5 * 8 * 4)..']'},	-- 0x2d1d00 - 0x2d5860 = character menu images [char][tx][ty][col][row] @ 4bpp
+		{menuPortraitPalette = 'palette16_t['..numMenuChars..']'},			-- 0x2d5860 - 0x2d5ac0 = menu portrait palettes (16 colors each)
 		{handCursorGraphics = 'uint8_t['..(0x2d62c0 - 0x2d5ac0)..']'},		-- 0x2d5ac0 - 0x2d62c0 ? = hand cursor graphics
 		{battleWhitePalette = 'palette4_t'},								-- 0x2d62c0 - 0x2d62c8 = battle standard (white) text palette, 4 colors
 		{battleGrayPalette = 'palette4_t'},									-- 0x2d62c8 - 0x2d62d0 = battle disabled (grey) text palette, 4 colors
@@ -2013,6 +2025,7 @@ obj.numFormationSizeOffsets = numFormationSizeOffsets
 obj.numFormationSizes = numFormationSizes
 obj.numPositionedText = numPositionedText
 obj.numBRRSamples = numBRRSamples
+obj.numMenuChars = numMenuChars 
 
 obj.findnext = findnext
 obj.gamezstr = gamezstr
