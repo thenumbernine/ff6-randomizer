@@ -589,7 +589,7 @@ local spell_t = struct{
 		end
 	end,
 }
-assert(ffi.sizeof'spell_t' == 0x0e)
+assert.eq(ffi.sizeof'spell_t', 0x0e)
 
 local spellsAddr = 0x046ac0
 local spellDescOffsetsAddr = 0x18cf80
