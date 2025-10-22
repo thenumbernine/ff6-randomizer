@@ -44,7 +44,7 @@ end
 -- returns a Lua table of the palette
 local function makePalette(pal, n)
 	return range(0,255):mapi(function(i)
-		local b = bit.band(i , 15)
+		local b = bit.band(i, 15)
 		local a = bit.rshift(i, 4)
 		return
 		b == 0 and {0,0,0,0} or 	-- 0 always transparent

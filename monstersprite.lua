@@ -28,9 +28,9 @@ local function writeMonsterSprite(
 
 	local tileMaskData8, tileMaskData16
 	do
-		local addr1 = game.monsterSpriteTileMask8Ofs + 0x120000
+		local addr1 = game.monsterSpriteTileMask8Ofs + 0x120000	-- 0x120000 = monsterSpriteTileMaskData3bpp
 		local addr2 = game.monsterSpriteTileMask16Ofs + 0x120000
-		local addr3 = 0x12b300
+		local addr3 = 0x12b300		-- item names?
 
 		local numTileMasks8 = bit.rshift((addr2 - addr1), 3)
 		local numTileMasks16 = bit.rshift((addr3 - addr2), 5)

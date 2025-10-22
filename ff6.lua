@@ -171,7 +171,7 @@ typedef struct ]]..name..[[ {
 	uint8_t ptr[]]..size..[[];
 } ]]..name..[[;
 ]])
-	assert(ffi.sizeof(name)  == size)
+	assert.eq(ffi.sizeof(name), size)
 	local metatype = ffi.metatype(name, {
 		__tostring = function(self)
 			return gamestr(self.ptr, size):trim()
@@ -189,7 +189,7 @@ typedef struct ]]..name..[[ {
 	uint8_t ptr[]]..size..[[];
 } ]]..name..[[;
 ]])
-	assert(ffi.sizeof(name)  == size)
+	assert.eq(ffi.sizeof(name), size)
 	local metatype = ffi.metatype(name, {
 		__tostring = function(self)
 			local s = table()
@@ -349,13 +349,12 @@ function StringList:init(args)
 	self.name = assert(args.name)
 
 	self.data = assert(args.data)
-	assert(type(self.data) == 'cdata')
+	assert.type(self.data, 'cdata')
 
 	self.offsets = assert(args.offsets)
-	assert(type(self.offsets) == 'cdata')
+	assert.type(self.offsets, 'cdata')
 
 	self.numOffsets = tostring(ffi.typeof(self.offsets)):match'ctype<unsigned short %(&%)%[(%d+)%]>'
-	assert(self.numOffsets)
 
 	self.addrBase = args.addrBase
 	self.compressed = args.compressed
@@ -406,7 +405,8 @@ function StringList:__tostring()
 			local pend = findnext(ptr, {0})
 			local addrEnd = pend - rom
 			for j=addrBase+offset, addrEnd do
-				assert(j >= addrMin and j < addrMax)
+				assert.le(addrMin, j)
+				assert.lt(j, addrMax)
 				used[j] = true
 			end
 		end
@@ -453,28 +453,28 @@ local palette4_t = createVec{
 	ctype = 'color_t',
 	vectype = 'palette4_t',
 }
-assert(ffi.sizeof'palette4_t' == 2*4)
+assert.eq(ffi.sizeof'palette4_t', 2*4)
 
 local palette8_t = createVec{
 	dim = 8,
 	ctype = 'color_t',
 	vectype = 'palette8_t',
 }
-assert(ffi.sizeof'palette8_t' == 2*8)
+assert.eq(ffi.sizeof'palette8_t', 2*8)
 
 local palette16_t = createVec{
 	dim = 16,
 	ctype = 'color_t',
 	vectype = 'palette16_t',
 }
-assert(ffi.sizeof'palette16_t' == 2*16)
+assert.eq(ffi.sizeof'palette16_t', 2*16)
 
 local palette16_8_t = createVec{
 	dim = 8,
 	ctype = 'palette16_t',
 	vectype = 'palette16_8_t',
 }
-assert(ffi.sizeof'palette16_8_t' == 2*16*8)
+assert.eq(ffi.sizeof'palette16_8_t', 2*16*8)
 
 local numMenuChars = 19
 
@@ -633,7 +633,7 @@ local esper_t = struct{
 		{bonus = 'esperBonus_t'},
 	},
 }
-assert(ffi.sizeof'esper_t' == 11)
+assert.eq(ffi.sizeof'esper_t', 11)
 local numEspers = 27
 local espersAddr = 0x186e00
 
@@ -643,6 +643,45 @@ local esperDescBaseAddr = 0x0f3940
 -- 0x0ffe40 - 0x0ffe76 = esper desc offsets
 local esperDescOffsetsAddr = 0x0ffe40
 
+local spellDisplay_t = struct{
+	name = 'spellDisplay_t',
+	fields = {
+		--[[ TODO get struct to serialize member arrays
+		{effect = 'uint16_t[3]'},	-- 0xffff = none, otherwise values are from 0-0x2ff
+		{palette = 'uint8_t[3]'},
+		--]]
+		-- [[
+		
+		-- lookup into the spellEffect_t table (I think?)
+		{effect1 = 'uint16_t'},	-- 0xffff = none, otherwise values are from 0-0x2ff
+		{effect2 = 'uint16_t'},
+		{effect3 = 'uint16_t'},
+
+		{palette1 = 'uint8_t'},
+		{palette2 = 'uint8_t'},
+		{palette3 = 'uint8_t'},
+		--]]
+		{sound = 'uint8_t'},
+		{unknown10 = 'uint8_t'},
+		{unknown11 = 'uint16_t'},
+		{wait = 'uint8_t'},
+	},
+}
+assert.eq(ffi.sizeof'spellDisplay_t', 0xe)
+local numSpellDisplays = 444
+
+local spellEffect_t = struct{
+	name = 'spellEffect_t',
+	fields = {
+		{numFrames = 'uint8_t'},
+		{graphicSet = 'uint8_t'}, -- (where does this point?) aka "mold"
+		{frameIndex = 'uint16_t'}, -- the index into spellEffectFrameOffsets
+		{width = 'uint8_t'},
+		{height = 'uint8_t'},
+	},
+}
+assert.eq(ffi.sizeof'spellEffect_t', 6)
+local numSpellEffects = 650
 
 ---------------- MONSTERS HEADER ----------------
 
@@ -763,7 +802,7 @@ local formation_t = struct{
 		end
 	end,
 }
-assert(ffi.sizeof'formation_t' == 0xf)
+assert.eq(ffi.sizeof'formation_t', 0xf)
 
 local formationIntroNames = {
 	'none',	-- 0
@@ -852,7 +891,7 @@ local formationSize_t = struct{
 		{height = 'uint8_t'},
 	},
 }
-assert(ffi.sizeof'formationSize_t' == 4)
+assert.eq(ffi.sizeof'formationSize_t', 4)
 
 local monsterPalettesAddr = 0x127820
 local numMonsterPalettes = 0x300
@@ -880,7 +919,7 @@ local monsterSprite_t = struct{
 		{tileMaskIndex = 'uint8_t'},
 	},
 }
-assert(ffi.sizeof'monsterSprite_t' == 5)
+assert.eq(ffi.sizeof'monsterSprite_t', 5)
 
 ---------------- ITEMS ----------------
 
@@ -930,7 +969,7 @@ local equipFlags_t, code = bitflagtype{
 		'meritAward',
 	},
 }
-assert(ffi.sizeof'equipFlags_t' == 2)
+assert.eq(ffi.sizeof'equipFlags_t', 2)
 
 local itemSpecialAbilityNames = {
 	'nothing',	-- 00
@@ -1091,11 +1130,11 @@ local item_t = struct{
 		end
 	end,
 }
-assert(ffi.offsetof('item_t', 'itemType') == 0)
-assert(ffi.offsetof('item_t', 'spellLearn') == 3)
-assert(ffi.offsetof('item_t', 'raiseStealChance') == 0x0b)
-assert(ffi.offsetof('item_t', 'changeFightToXFight') == 0x0c)
-assert(ffi.sizeof'item_t' == 0x1e)
+assert.eq(ffi.offsetof('item_t', 'itemType'), 0)
+assert.eq(ffi.offsetof('item_t', 'spellLearn'), 3)
+assert.eq(ffi.offsetof('item_t', 'raiseStealChance'), 0x0b)
+assert.eq(ffi.offsetof('item_t', 'changeFightToXFight'), 0x0c)
+assert.eq(ffi.sizeof'item_t', 0x1e)
 
 local itemColosseumInfo_t = struct{
 	name = 'itemColosseumInfo_t',
@@ -1106,7 +1145,7 @@ local itemColosseumInfo_t = struct{
 		{hideName = 'uint8_t'},	-- 0 = no, 255 = yes
 	},
 }
-assert(ffi.sizeof'itemColosseumInfo_t' == 4)
+assert.eq(ffi.sizeof'itemColosseumInfo_t', 4)
 
 local itemsAddr = 0x185000
 
@@ -1239,7 +1278,7 @@ local monster_t = struct{
 		end
 	end,
 }
-assert(ffi.sizeof'monster_t' == 0x20)
+assert.eq(ffi.sizeof'monster_t', 0x20)
 local monstersAddr = 0x0f0000
 
 local monsterItem_t = struct{
@@ -1260,7 +1299,7 @@ local spellref2_t = createVec{
 	ctype = 'spellref_t',
 	vectype = 'spellref2_t',
 }
-assert(ffi.sizeof'spellref2_t' == 2)
+assert.eq(ffi.sizeof'spellref2_t', 2)
 local monsterRagesAddr = 0x0f4600
 local numRages = 0x100
 
@@ -1269,7 +1308,7 @@ local spellref4_t = createVec{
 	ctype = 'spellref_t',
 	vectype = 'spellref4_t',
 }
-assert(ffi.sizeof'spellref4_t' == 4)
+assert.eq(ffi.sizeof'spellref4_t', 4)
 local monsterSpellsAddr = 0x0f3d00
 
 local itemref4_t = createVec{
@@ -1277,7 +1316,7 @@ local itemref4_t = createVec{
 	ctype = 'itemref_t',
 	vectype = 'itemref4_t',
 }
-assert(ffi.sizeof'itemref4_t' == 4)
+assert.eq(ffi.sizeof'itemref4_t', 4)
 
 local metamorphSetsAddr = 0x047f40
 local numMetamorphSets = 0x1a
@@ -1337,7 +1376,7 @@ local character_t = struct{
 		{level = 'uint8_t'},
 	},
 }
-assert(ffi.sizeof'character_t' == 22)
+assert.eq(ffi.sizeof'character_t', 22)
 
 local numCharacters = 0x40	-- allegedly...
 local charactersAddr = 0x2d7ca0
@@ -1382,7 +1421,7 @@ local charHiAndSize_t = struct{
 		{size = 'uint8_t'},	-- in bytes
 	},
 }
-assert(ffi.sizeof'charHiAndSize_t' == 2)
+assert.eq(ffi.sizeof'charHiAndSize_t', 2)
 
 ---------------- MAP ----------------
 
@@ -1440,7 +1479,7 @@ local shop_t = struct{
 		{items = 'itemref8_t'},
 	}
 }
-assert(ffi.sizeof'shop_t' == 9)
+assert.eq(ffi.sizeof'shop_t', 9)
 
 local shopsAddr = 0x047ac0
 
@@ -1460,7 +1499,7 @@ local xy8b_t = struct{
 		{y = 'uint8_t'},
 	},
 }
-assert(ffi.sizeof'xy8b_t' == 2)
+assert.eq(ffi.sizeof'xy8b_t', 2)
 
 local locNameRef_t = reftype{
 	name = 'locNameRef_t',
@@ -1725,18 +1764,28 @@ local game_t = struct{
 		{blitzDescOffsets = 'uint16_t['..numBlitzes..']'},						-- 0x0fff9e - 0x0fffae
 		{swordTechDescOffsets = 'uint16_t['..numSwordTechs..']'},				-- 0x0fffae - 0x0fffbe
 
-		{padding_0fffbe = 'uint8_t['..(0x10d000 - 0x0fffbe)..']'},				-- 0x0fffbe - 0x10d000
+		{padding_0fffbe = 'uint8_t['..(0x107fb2 - 0x0fffbe)..']'},				-- 0x0fffbe - 0x107fb2
+
+		{spellDisplays = 'spellDisplay_t['..numSpellDisplays..']'},				-- 0x107fb2 - 0x1097fa
+
+		{padding_1097fa = 'uint8_t['..(0x10d000 - 0x1097fa)..']'},				-- 0x1097fa - 0x10d000
 
 		{battleDialog2Offsets = 'uint16_t['..numBattleDialog2s..']'},			-- 0x10d000 - 0x10d200
 		{battleDialog2Base = 'uint8_t['..(0x10fd00 - 0x10d200)..']'},			-- 0x10d200 - 0x10fd00
 
-		{padding_10fd00 = 'uint8_t['..(0x11f000 - 0x10fd00)..']'},				-- 0x10fd00 - 0x11f000
+		{padding_10fd00 = 'uint8_t['..(0x110141 - 0x10fd00)..']'},				-- 0x10fd00 - 0x110141
+
+		{spellEffectFrameData = 'uint8_t['..(0x11ead8 - 0x110141)..']'},			-- 0x110141 - 0x11ead8 ... 2 bytes each ... pointers from spellEffectFrameOffsets offset by 0x110000 but point into here
+
+		{padding_11ead8 = 'uint8_t['..(0x11f000 - 0x11ead8)..']'},				-- 0x11ead8 - 0x11f000
 
 		{battleMessageBase = 'uint8_t['..(0x11f7a0 - 0x11f000)..']'},			-- 0x11f000 - 0x11f7a0
 		{battleMessageOffsets = 'uint16_t['..numBattleMessages..']'},			-- 0x11f7a0 - 0x11f9a0
 
-		{padding_11f9a0 = 'uint8_t['..(0x126f00 - 0x11f9a0)..']'},				-- 0x11f9a0 - 0x126f00
+		{padding_11f9a0 = 'uint8_t['..(0x120000 - 0x11f9a0)..']'},				-- 0x11f9a0 - 0x120000
 
+		{monsterSpriteTileMaskData3bpp = 'uint8_t['..(0x40 * 0x180)..']'},		-- 0x120000 - 0x126000
+		{battleAnimPalettes = 'palette8_t['..(0xf0)..']'},						-- 0x126000 - 0x126f00
 		{itemTypeNames = 'str7_t['..numItemTypes..']'},							-- 0x126f00 - 0x126fe0
 
 		{padding_126fe0 = 'uint8_t['..(0x127000 - 0x126fe0)..']'},				-- 0x126fe0 - 0x127000
@@ -1747,9 +1796,12 @@ local game_t = struct{
 		{monsterSpriteTileMask16Ofs = 'uint16_t'},								-- 0x12a822 - 0x12a824
 		{monsterSpriteTileMaskData = 'uint8_t['..(0x12b300 - 0x12a824 )..']'},	-- 0x12a824 - 0x12b300
 		{itemNames = 'str13_t['..numItems..']'},								-- 0x12b300 - 0x12c000
-
-		{padding_12c000 = 'uint8_t['..(0x12ec00 - 0x12c000)..']'},				-- 0x12c000 - 0x12ec00
-
+	
+		-- with all these battleAnim* around
+		-- how do we get the tiles?
+		-- and what is the 2bpp format?
+		{battleAnimTileFormation2bpp= 'uint8_t['..(0x12ec00 - 0x12c000)..']'},				-- 0x12c000 - 0x12ec00	--should be 2bpp battle animation tiles..
+		
 		{WoBpalettes = 'palette16_8_t'},										-- 0x12ec00 - 0x12ed00
 		{WoRpalettes = 'palette16_8_t'},										-- 0x12ed00 - 0x12ee00
 		{setzerAirshipPalette = 'palette16_t'},									-- 0x12ee00 - 0x12ee20
@@ -1758,8 +1810,17 @@ local game_t = struct{
 
 		{darylAirshipPalette = 'palette16_t'},									-- 0x12ef00 - 0x12ef20
 
+		{padding_12ef20 = 'uint8_t['..(0x130000 - 0x12ef20)..']'},				-- 0x12ef20 - 0x130000
+
+		{battleAnimGraphics = 'uint8_t['..(0x14c998 - 0x130000)..']'},			-- 0x130000 - 0x14c998 ... 3bpp, so 4881 (= 3 x 1627 ?) tiles
+
+		{padding_14c998 = 'uint8_t['..(0x14d000 - 0x14c998)..']'},				-- 0x14c998 - 0x14d000
+
+		{spellEffects = 'spellEffect_t['..numSpellEffects..']'},					-- 0x14d000 - 0x14df3c	-- [650][6]
+		{spellEffectFrameOffsets = 'uint16_t['..(4194)..']'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid
+		
 		-- 0x150000 - ? = character images, 0x16a0 bytes each
-		{padding_12ef20 = 'uint8_t['..(0x185000 - 0x12ef20)..']'},				-- 0x12ef20 - 0x185000
+		{fieldSpriteGraphics = 'uint8_t['..(0x185000 - 0x150000)..']'},			-- 0x150000 - 0x185000
 
 		{items = 'item_t['..numItems..']'},										-- 0x185000 - 0x186e00
 		{espers = 'esper_t['..numEspers..']'},									-- 0x186e00 - 0x186f29
@@ -1989,6 +2050,8 @@ obj = setmetatable({}, {
 })
 
 obj.numSpells = numSpells
+obj.numSpellDisplays = numSpellDisplays
+obj.numSpellEffects = numSpellEffects
 obj.numEsperBonuses = numEsperBonuses
 obj.numEspers = numEspers
 obj.numMonsters = numMonsters

@@ -452,8 +452,63 @@ print('battleRedPalette = '..game.battleRedPalette)
 print('battleMenuPalettes = '..game.battleMenuPalettes)
 print()
 
+for i=0,game.numSpellDisplays-1 do
+	print('spellDisplay', i, game.spellDisplays[i])
+end
+print()
+
 do
-	local Image = require 'image'
+	local p = path'spelleffects'
+	p:mkdir()
+	for i=0,649 do
+		local effect = game.spellEffects + i
+		print('spellEffect', i, string.hex(ffi.string(effect, 6)))
+		--local graphicSet = animptr[1]
+		local frameIndex = effect.frameIndex
+		local width = effect.width
+		local height = effect.height
+		for frame=0,effect.numFrames-1 do
+			local im = Image(
+				tileWidth * width,
+				tileHeight * height,
+				1,
+				'uint8_t'
+			)
+			local entry = ffi.cast('uint16_t*',
+				rom 
+				+ 0x110000 
+				+ game.spellEffectFrameOffsets[frameIndex + frame]
+			)[0]
+			io.write('\t'..('%04x'):format(entry))
+			local vflip = 0 ~= bit.band(0x8000, entry)
+			local hflip = 0 ~= bit.band(0x4000, entry)
+			local rest = bit.band(0x3fff, entry)
+			for y=0,height-1 do
+				for x=0,width-1 do
+					-- tileptr points to 2 bytes ...
+					-- should hold x, y, w, h, vflip, hflip
+				end
+			end
+--			im:save(p('img'..('%03x-%02x'):format(i, frame)..'.png').path)
+		end
+		print()
+	end
+end
+
+path'spellEffectFrameData.hex':write(
+	ffi.string(game.spellEffectFrameData, ffi.sizeof(game.spellEffectFrameData))
+	:hexdump(8)
+)
+path'spellEffects.hex':write(
+	ffi.string(game.spellEffects, ffi.sizeof(game.spellEffects))
+	:hexdump(6)
+)
+path'spellEffectFrameOffsets.hex':write(
+	ffi.string(game.spellEffectFrameOffsets, ffi.sizeof(game.spellEffectFrameOffsets))
+	:hexdump(2)
+)
+
+do
 	local img = Image(8*16, 8*16, 1, 'uint8_t')
 	for j=0,15 do
 		for i=0,15 do
