@@ -554,8 +554,8 @@ for spellDisplayIndex=0,game.numSpellDisplays-1 do
 											(2 * bit.band(tileIndexOffset, 7) + xofs)
 											+ (2 * bit.rshift(tileIndexOffset, 3) + yofs) * 16
 										]
-										local hflip = 0 ~= bit.band(0x8000, tileOffset)
-										local vflip = 0 ~= bit.band(0x4000, tileOffset)
+										local vflip = 0 ~= bit.band(0x8000, tileOffset)
+										local hflip = 0 ~= bit.band(0x4000, tileOffset)
 --print('xofs', xofs:hex(), 'yofs', yofs:hex(), 'tileOffset', tileOffset:hex())
 										local tileAddr = tileAddrBase + tileLen * bit.band(0x3fff, tileOffset)
 										local xformxofs = xofs
@@ -587,9 +587,9 @@ for spellDisplayIndex=0,game.numSpellDisplays-1 do
 						local paltable = makePalette(game.battleAnimPalettes + palette, bit.lshift(1, bpp))
 						im.palette = paltable 
 						im:save(spellDisplayPath(
-							('%03x'):format(spellDisplayIndex)
+							('%03d'):format(spellDisplayIndex)
 							..('-%d'):format(j)	-- effect1,2,3
-							..('-%02x'):format(frameIndex)
+							..('-%02d'):format(frameIndex)
 							..'.png').path)
 						
 						-- [[
@@ -604,8 +604,8 @@ for spellDisplayIndex=0,game.numSpellDisplays-1 do
 								for x=0,15 do
 									local tileIndex = x + 0x10 * y
 									local tileOffset = pointerbase[tileIndex]
-									local hflip = 0 ~= bit.band(0x8000, tileOffset)
-									local vflip = 0 ~= bit.band(0x4000, tileOffset)
+									local vflip = 0 ~= bit.band(0x8000, tileOffset)
+									local hflip = 0 ~= bit.band(0x4000, tileOffset)
 									local tileAddr = tileAddrBase + tileLen * bit.band(0x3fff, tileOffset)
 									readTile(
 										im,
@@ -619,7 +619,7 @@ for spellDisplayIndex=0,game.numSpellDisplays-1 do
 								end
 							end
 							im:save(spellDisplayPath(
-								('%03x'):format(spellDisplayIndex)
+								('%03d'):format(spellDisplayIndex)
 								..('-%d'):format(j)
 								..'-alltiles.png').path)
 						end
