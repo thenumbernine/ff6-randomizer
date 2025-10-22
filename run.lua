@@ -531,13 +531,14 @@ for spellDisplayIndex=0,game.numSpellDisplays-1 do
 						
 						-- whats the bpp? differing for effect12 and 3?
 						local bpp = 3
+						local pointerbase = ffi.cast('uint16_t*', rom + effectAddr)
 
-		local maxTileIndexOffset = -1
+local maxTileIndexOffset = -1
 						for k=0,len-1 do
 							local x = bit.rshift(rom[addr + 2 * k], 4)
 							local y = bit.band(0xf, rom[addr + 2 * k])
 							local tileIndexOffset = rom[addr + 2 * k + 1]
-		maxTileIndexOffset = math.max(maxTileIndexOffset, tileIndexOffset)
+maxTileIndexOffset = math.max(maxTileIndexOffset, tileIndexOffset)
 							print('\t\t\t\t\tx='..x..', y='..y..', tileIndexOffset='..tileIndexOffset)
 							if x < effect.width
 							and y < effect.height
@@ -545,14 +546,15 @@ for spellDisplayIndex=0,game.numSpellDisplays-1 do
 								-- paste into image
 								for yofs=0,1 do
 									for xofs=0,1 do
-										local pointerbase = ffi.cast('uint16_t*', rom + effectAddr)
 										-- idk where anyone explains "pointerbase"
 										local tileOffset = pointerbase[
 											-- and why 4x?
-											4 * tileIndexOffset
-											-- why? nobody explains xofs/yofs, or 16x16 tiles ...
-											+ xofs
-											+ 16 * yofs
+											-- fire tileIndexOffset=8 maps to pointerbase[32,33,48,49]
+											-- but tileIndexOffset=9 maps to pointerbase[35,36,51,52] ... which is 3 more, not 2 more ...
+											--4 * tileIndexOffset
+											
+											(2 * bit.band(tileIndexOffset, 7) + xofs)
+											+ (2 * bit.rshift(tileIndexOffset, 3) + yofs) * 16
 										]
 										local tileAddr = tileAddrBase + tileLen * tileOffset
 										readTile(
@@ -578,25 +580,32 @@ for spellDisplayIndex=0,game.numSpellDisplays-1 do
 							..'.png').path)
 						
 						maxTileIndexOffset = maxTileIndexOffset + 1
-						--[[
-						if maxTileIndexOffset > 0 then				
+						-- [[
+						do -- if maxTileIndexOffset > 0 then				
 							local im = Image(
-								2*tileWidth * maxTileIndexOffset,
-								2*tileHeight,
+								0x10*tileWidth,
+								8*tileHeight,
 								1, 'uint8_t'
 							)
 							im.palette = paltable
-							for tileIndexOffset=0,maxTileIndexOffset-1 do
-								for yofs=0,1 do
-									for xofs=0,1 do
-										readTile(
-											im,
-											(xofs + 2 * tileIndexOffset) * tileWidth,
-											yofs * tileHeight,
-											rom + tileAddr + tileLen * (2 * tileIndexOffset + 14 * yofs + xofs),
-											bpp
-										)
-									end
+							for y=0,7 do
+								for x=0,15 do
+									local tileIndex = x + 0x10 * y
+									
+									-- which is it?
+									--local tileOffset = pointerbase[0] + tileLen * tileIndex
+									--local tileOffset = pointerbase[0] + effectLen * tileIndex
+									-- this looks the best but still has a gap right between 16x16 tile index 8 and 9
+									local tileOffset = pointerbase[tileIndex]
+									
+									local tileAddr = tileAddrBase + tileLen * tileOffset
+									readTile(
+										im,
+										x * tileWidth,
+										y * tileHeight,
+										rom + tileAddr,
+										bpp
+									)
 								end
 							end
 							im:save(spellDisplayPath(
