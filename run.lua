@@ -591,7 +591,9 @@ for spellDisplayIndex=0,game.numSpellDisplays-1 do
 							..('-%d'):format(j)	-- effect1,2,3
 							..('-%02d'):format(frameIndex)
 							..'.png').path)
-						
+					
+						-- honestly this comes from a unique combo of graphicSet & effect 123 index (3 has a dif base)
+						-- so I don't need to make so many copies ...
 						-- [[
 						do
 							local im = Image(
