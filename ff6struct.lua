@@ -8,6 +8,7 @@ return function(args)
 		tostringOmitNil = true,
 		tostringOmitEmpty = true,
 		name = args.name,
+		anonymous = args.anonymous,
 		union = true,
 		fields = {
 			{name='s', type='uint8_t[1]', no_iter=true},

@@ -643,19 +643,45 @@ local esperDescBaseAddr = 0x0f3940
 -- 0x0ffe40 - 0x0ffe76 = esper desc offsets
 local esperDescOffsetsAddr = 0x0ffe40
 
+--[[ can't do this until i convert all ff6struct to struct, then i can use anonymous fields.
+local spellDisplayEffectIndex_t = struct{
+	name = 'spellDisplayEffectIndex_t',
+	union = true,
+	fields = {
+		{name='u16', type='uint16_t', no_iter=true},
+		{type=struct{
+			anonymous = true,
+			fields = {
+				{index = 'uint16_t:15'},
+				{unknown_15 = 'uint16_t:1'},
+			},
+		}},
+	},
+}
+assert.eq(ffi.sizeof(spellDisplayEffectIndex_t), 2)
+--]]
+
 local spellDisplay_t = struct{
 	name = 'spellDisplay_t',
 	fields = {
 		--[[ TODO get struct to serialize member arrays
-		{effect = 'uint16_t[3]'},	-- 0xffff = none, otherwise values are from 0-0x2ff
+		{effect = 'uint16_t[3]'},	-- 0xffff = none, otherwise values are from 0-0x3fff, bit15 means something, idk.
 		{palette = 'uint8_t[3]'},
 		--]]
 		-- [[
 		
-		-- byte offset into the spellEffect_t table.  0xffff = none
+		-- [[ index into spellEffect_t table
+		-- 0xffff = none
+		-- bit 15 means something else
 		{effect1 = 'uint16_t'},
 		{effect2 = 'uint16_t'},
 		{effect3 = 'uint16_t'},
+		--]]
+		--[[
+		{effect1 = 'spellDisplayEffectIndex_t'},
+		{effect2 = 'spellDisplayEffectIndex_t'},
+		{effect3 = 'spellDisplayEffectIndex_t'},
+		--]]
 
 		{palette1 = 'uint8_t'},
 		{palette2 = 'uint8_t'},
@@ -670,6 +696,7 @@ local spellDisplay_t = struct{
 assert.eq(ffi.sizeof'spellDisplay_t', 0xe)
 local numSpellDisplays = 444
 
+-- TODO better name
 local spellEffect_t = struct{
 	name = 'spellEffect_t',
 	fields = {
@@ -688,6 +715,7 @@ local spellEffect_t = struct{
 	},
 }
 assert.eq(ffi.sizeof'spellEffect_t', 6)
+local numSpellEffects = 650
 
 ---------------- MONSTERS HEADER ----------------
 
@@ -1821,7 +1849,7 @@ local game_t = struct{
 
 		{padding_14c998 = 'uint8_t['..(0x14d000 - 0x14c998)..']'},				-- 0x14c998 - 0x14d000
 
-		{spellEffects = 'uint8_t['..(650*6)..']'},								-- 0x14d000 - 0x14df3c	... but its not aligned, and offsets into it are per byte, so ...
+		{spellEffects = 'spellEffect_t['..numSpellEffects..']'},				-- 0x14d000 - 0x14df3c
 		{spellEffectFrameOffsets = 'uint16_t['..(4194)..']'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid
 		
 		-- 0x150000 - ? = character images, 0x16a0 bytes each
@@ -2057,6 +2085,7 @@ obj = setmetatable({}, {
 
 obj.numSpells = numSpells
 obj.numSpellDisplays = numSpellDisplays
+obj.numSpellEffects = numSpellEffects
 obj.numEsperBonuses = numEsperBonuses
 obj.numEspers = numEspers
 obj.numMonsters = numMonsters

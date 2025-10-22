@@ -464,15 +464,13 @@ for spellDisplayIndex=0,game.numSpellDisplays-1 do
 		local palette = spelldisp['palette'..(j+1)]
 	
 		if effectIndex ~= 0xffff then
-			--[[ is it a byte offset? (regal cutlass?)
-			local effect = ffi.cast('spellEffect_t*', game.spellEffects + effectIndex)
-			--]]
-			-- [[ is it a struct offset? (works for fire)
-			local effect = ffi.cast('spellEffect_t*', game.spellEffects + 6 * effectIndex)
-			--]]
-			if ffi.cast('uint8_t*', effect) >= ffi.cast('uint8_t*', game.spellEffectFrameOffsets) then
-				print('!!! effect is oob !!! '..('%x'):format(ffi.cast('uint8_t*', effect) - rom))
+			local unknown_15 = 0 ~= bit.band(0x8000, effectIndex)
+			effectIndex = bit.band(0x7fff, effectIndex)
+			-- idk what unknown_15 means.
+			if effectIndex >= game.numSpellEffects then
+				print('!!! effect is oob !!! '..('%x'):format(effectIndex))
 			else
+				local effect = game.spellEffects + effectIndex
 				print('\t\teffect='..effect)
 
 				-- is this a list of offsets to get the tileaddr's?
@@ -533,26 +531,26 @@ for spellDisplayIndex=0,game.numSpellDisplays-1 do
 						local bpp = 3
 						local pointerbase = ffi.cast('uint16_t*', rom + effectAddr)
 
-local maxTileIndexOffset = -1
 						for k=0,len-1 do
 							local x = bit.rshift(rom[addr + 2 * k], 4)
 							local y = bit.band(0xf, rom[addr + 2 * k])
 							local tileIndexOffset = rom[addr + 2 * k + 1]
-maxTileIndexOffset = math.max(maxTileIndexOffset, tileIndexOffset)
-							print('\t\t\t\t\tx='..x..', y='..y..', tileIndexOffset='..tileIndexOffset)
+							local hflip16 = 0 ~= bit.band(0x40, tileIndexOffset)
+							local vflip16 = 0 ~= bit.band(0x80, tileIndexOffset)
+							-- is this *another* h-flip?
+							tileIndexOffset = bit.band(0x3f, tileIndexOffset)
+							print('\t\t\t\t\tx='..x..', y='..y..', tileIndexOffset='..tileIndexOffset..', hflip16='..tostring(hflip16)..', vflip16='..tostring(vflip16))
 							if x < effect.width
 							and y < effect.height
 							then
 								-- paste into image
 								for yofs=0,1 do
 									for xofs=0,1 do
-										-- idk where anyone explains "pointerbase"
+										-- this makes a lot more sense if you look it up in the 'alltiles' image below
+										-- TLDR: Make a 16x8 tile display out of the 8x8 tiles pointed to by pointerbase[]
+										-- You'll see they make up 16x16-pixel regions
+										-- Those are what we are indexing here, hence why you have to pick apart tileIndexOffset into its lower 3 bits and its upper 5
 										local tileOffset = pointerbase[
-											-- and why 4x?
-											-- fire tileIndexOffset=8 maps to pointerbase[32,33,48,49]
-											-- but tileIndexOffset=9 maps to pointerbase[35,36,51,52] ... which is 3 more, not 2 more ...
-											--4 * tileIndexOffset
-											
 											(2 * bit.band(tileIndexOffset, 7) + xofs)
 											+ (2 * bit.rshift(tileIndexOffset, 3) + yofs) * 16
 										]
@@ -560,10 +558,20 @@ maxTileIndexOffset = math.max(maxTileIndexOffset, tileIndexOffset)
 										local vflip = 0 ~= bit.band(0x4000, tileOffset)
 --print('xofs', xofs:hex(), 'yofs', yofs:hex(), 'tileOffset', tileOffset:hex())
 										local tileAddr = tileAddrBase + tileLen * bit.band(0x3fff, tileOffset)
+										local xformxofs = xofs
+										if hflip16 then
+											xformxofs = 1 - xformxofs
+											hflip = not hflip
+										end
+										local xformyofs = yofs
+										if vflip16 then
+											xformyofs = 1  - xformyofs
+											vflip = not vflip
+										end
 										readTile(
 											im,
-											(2*x + xofs)*tileWidth,
-											(2*y + yofs)*tileHeight,
+											(2*x + xformxofs)*tileWidth,
+											(2*y + xformyofs)*tileHeight,
 											rom + tileAddr,
 											bpp,
 											hflip,
@@ -581,35 +589,32 @@ maxTileIndexOffset = math.max(maxTileIndexOffset, tileIndexOffset)
 						im:save(spellDisplayPath(
 							('%03x'):format(spellDisplayIndex)
 							..('-%d'):format(j)	-- effect1,2,3
-							..('-%x'):format(frameIndex)
+							..('-%02x'):format(frameIndex)
 							..'.png').path)
 						
-						maxTileIndexOffset = maxTileIndexOffset + 1
 						-- [[
-						do -- if maxTileIndexOffset > 0 then				
+						do
 							local im = Image(
 								0x10*tileWidth,
-								8*tileHeight,
+								4*tileHeight,
 								1, 'uint8_t'
 							)
 							im.palette = paltable
-							for y=0,7 do
+							for y=0,3 do
 								for x=0,15 do
 									local tileIndex = x + 0x10 * y
-									
-									-- which is it?
-									--local tileOffset = pointerbase[0] + tileLen * tileIndex
-									--local tileOffset = pointerbase[0] + effectLen * tileIndex
-									-- this looks the best but still has a gap right between 16x16 tile index 8 and 9
 									local tileOffset = pointerbase[tileIndex]
-									
-									local tileAddr = tileAddrBase + tileLen * tileOffset
+									local hflip = 0 ~= bit.band(0x8000, tileOffset)
+									local vflip = 0 ~= bit.band(0x4000, tileOffset)
+									local tileAddr = tileAddrBase + tileLen * bit.band(0x3fff, tileOffset)
 									readTile(
 										im,
 										x * tileWidth,
 										y * tileHeight,
 										rom + tileAddr,
-										bpp
+										bpp,
+										hflip,
+										vflip
 									)
 								end
 							end
