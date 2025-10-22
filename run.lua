@@ -556,13 +556,18 @@ maxTileIndexOffset = math.max(maxTileIndexOffset, tileIndexOffset)
 											(2 * bit.band(tileIndexOffset, 7) + xofs)
 											+ (2 * bit.rshift(tileIndexOffset, 3) + yofs) * 16
 										]
-										local tileAddr = tileAddrBase + tileLen * tileOffset
+										local hflip = 0 ~= bit.band(0x8000, tileOffset)
+										local vflip = 0 ~= bit.band(0x4000, tileOffset)
+--print('xofs', xofs:hex(), 'yofs', yofs:hex(), 'tileOffset', tileOffset:hex())
+										local tileAddr = tileAddrBase + tileLen * bit.band(0x3fff, tileOffset)
 										readTile(
 											im,
 											(2*x + xofs)*tileWidth,
 											(2*y + yofs)*tileHeight,
 											rom + tileAddr,
-											bpp
+											bpp,
+											hflip,
+											vflip
 										)
 									end
 								end

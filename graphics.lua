@@ -32,11 +32,13 @@ local tileHeight = 8
 
 -- reads as 8bpp-indexed
 -- you have to bake palette yourself
-local function readTile(im, xofs, yofs, tile, bitsPerPixel)
+local function readTile(im, xofs, yofs, tile, bitsPerPixel, hflip, vflip)
 	for y=0,tileHeight-1 do
 		local dstp = im.buffer + (xofs + im.width*(yofs+y))
+		local cy = vflip and tileHeight-1-y or y
 		for x=0,tileWidth-1 do
-			dstp[0] = readpixel(tile, x, y, bitsPerPixel)
+			local cx = hflip and tileWidth-1-x or x
+			dstp[0] = readpixel(tile, cx, cy, bitsPerPixel)
 			dstp = dstp + 1
 		end
 	end
