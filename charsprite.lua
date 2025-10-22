@@ -134,7 +134,7 @@ local function readCharSprite(game, charIndex, processFrame)
 				bit.lshift(game.characterSpriteOffsetHiAndSize[charIndex].hi, 16)
 			))
 		local im = Image(width, height, 1, 'uint8_t')
-		ffi.fill(im.buffer, im:getBufferSize())
+			:clear()
 		readFrame(im,
 			rom + charBaseOffset,
 			game.characterFrameTileOffsets + frameIndex * tilesWide * tilesHigh,

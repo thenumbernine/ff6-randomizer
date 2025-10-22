@@ -225,7 +225,7 @@ local charSheet = Image(256, 256, 1, 'uint8_t')
 local function flushCharSheet()
 	charSheet.palette = makePalette(game.characterPalettes, 256)
 	charSheet:save('characters/sheet'..sheetIndex..'.png')
-	ffi.fill(charSheet.buffer, charSheet:getBufferSize())
+	charSheet:clear()
 	sheetIndex = sheetIndex + 1
 	chx, chy = 0, 0
 end
@@ -257,7 +257,7 @@ for charIndex=0,game.numCharacterSprites-1 do
 	local spriteName = 'char'..('%03d'):format(charIndex)
 	--[=[ save to char sheet
 	local charSheet = Image(256, 256, 1, 'uint8_t')
-	ffi.fill(charSheet.buffer, charSheet:getBufferSize())
+		:clear()
 	local chx, chy = 0, 0
 	--]=]
 	readCharSprite(game, charIndex, function(charIndex, frameIndex, im, palIndex)
@@ -422,7 +422,7 @@ do
 		end
 		local baseptr = ptr
 		local im = Image(tileWidth*tilesWide, tileHeight*tilesHigh, 1, 'uint8_t')
-		ffi.fill(im.buffer, im:getBufferSize())
+			:clear()
 		local tileIndex = 0
 		for ty=0,tilesHigh-1 do
 			for tx=0,tilesWide-1 do
@@ -452,61 +452,167 @@ print('battleRedPalette = '..game.battleRedPalette)
 print('battleMenuPalettes = '..game.battleMenuPalettes)
 print()
 
-for i=0,game.numSpellDisplays-1 do
-	print('spellDisplay', i, game.spellDisplays[i])
-end
-print()
+local spellDisplayPath = path'spelldisplay'
+spellDisplayPath:mkdir()
+for spellDisplayIndex=0,game.numSpellDisplays-1 do
+	local spelldisp = game.spellDisplays + spellDisplayIndex
+	print('spellDisplay['..spellDisplayIndex..'] = '..spelldisp)
 
-do
-	local p = path'spelleffects'
-	p:mkdir()
-	for i=0,649 do
-		local effect = game.spellEffects + i
-		print('spellEffect', i, string.hex(ffi.string(effect, 6)))
-		--local graphicSet = animptr[1]
-		local frameIndex = effect.frameIndex
-		local width = effect.width
-		local height = effect.height
-		for frame=0,effect.numFrames-1 do
-			local im = Image(
-				tileWidth * width,
-				tileHeight * height,
-				1,
-				'uint8_t'
-			)
-			local entry = ffi.cast('uint16_t*',
-				rom 
-				+ 0x110000 
-				+ game.spellEffectFrameOffsets[frameIndex + frame]
-			)[0]
-			io.write('\t'..('%04x'):format(entry))
-			local vflip = 0 ~= bit.band(0x8000, entry)
-			local hflip = 0 ~= bit.band(0x4000, entry)
-			local rest = bit.band(0x3fff, entry)
-			for y=0,height-1 do
-				for x=0,width-1 do
-					-- tileptr points to 2 bytes ...
-					-- should hold x, y, w, h, vflip, hflip
+	for j=0,2 do
+		-- TODO array plz, but then TODO serialzie arrays in 'struct' please
+		local effectIndex = spelldisp['effect'..(j+1)]
+		local palette = spelldisp['palette'..(j+1)]
+	
+		if effectIndex ~= 0xffff then
+			--[[ is it a byte offset? (regal cutlass?)
+			local effect = ffi.cast('spellEffect_t*', game.spellEffects + effectIndex)
+			--]]
+			-- [[ is it a struct offset? (works for fire)
+			local effect = ffi.cast('spellEffect_t*', game.spellEffects + 6 * effectIndex)
+			--]]
+			if ffi.cast('uint8_t*', effect) >= ffi.cast('uint8_t*', game.spellEffectFrameOffsets) then
+				print('!!! effect is oob !!! '..('%x'):format(ffi.cast('uint8_t*', effect) - rom))
+			else
+				print('\t\teffect='..effect)
+
+				-- is this a list of offsets to get the tileaddr's?
+				local effectAddr, effectLen, tileAddrBase, tileIndex, tileAddr, tileLen
+				if j < 2 then	-- effects 1&2
+					-- first uint16 entry, times tileLen, plus tileAddrBase, points to some kind of tile data ... what about the rest? how to access it?
+					effectAddr = effect.graphicSet * 0x40 + 0x120000	-- monsterSpriteTileMaskData3bpp 
+					-- https://web.archive.org/web/20190907020126/https://www.ff6hacking.com/forums/thread-925.html
+					-- "the length of the pointer data"
+					-- that means the length of where the *(uint16_t*)(rom + effectAddr) data points to?
+					-- because the length at effectAddr itself seems to be 0x40 (cuz thats what you multiply graphicSet by)
+					effectLen = 0xA0
+				
+					tileLen = 0x18 -- len is 24 bytes = 192 bits = 8 x 8 x 3 bits (so 3bpp)
+					tileAddrBase = 0x130000	-- battleAnimGraphics 
+				else
+					effectAddr = effect.graphicSet * 0x40 + 0x12C000	-- battleAnimTileFormation2bpp
+					effectLen = 0x80
+					
+					tileAddrBase = 0x187000	-- battleAnimGraphics2bpp 
+					tileLen = 0x10 -- len is 16 bytes = 8 x 8 x 2bpp
 				end
+				--tileIndex = ffi.cast('uint16_t*', rom + effectAddr)[0]
+				--tileAddr = tileIndex * tileLen + tileAddrBase 
+				-- now the tileAddr points to 8 uint16's , and then 8 uint8s that each get padded into uint16's
+				print('\t\teffectAddr='..effectAddr:hex()
+					..', effectLen='..effectLen:hex()
+					..', tileAddrBase='..tileAddrBase:hex()
+					..', tileLen='..tileLen:hex())
+
+				for frameIndex=0,effect.numFrames-1 do
+					print('\t\t\tframeIndex='..frameIndex:hex()..':')
+					local effectOffsetEntry = game.spellEffectFrameOffsets[effect.frameIndex + frameIndex]
+					local addr = 0x110000 + effectOffsetEntry  -- somewhere inside spellEffectFrameData
+					local addrend = 0x110000 + game.spellEffectFrameOffsets[effect.frameIndex + frameIndex + 1]	-- is this how you find the end?
+					if addrend < addr then
+						print("!!! addrend underflow !!!")
+					else
+						local len = addrend - addr
+						assert.eq(bit.band(len, 1), 0, "length is not uint16 aligned!")
+						len = bit.rshift(len, 1)
+						print('\t\t\t\teffectOffsetEntry='..effectOffsetEntry:hex()..', addr='..addr:hex()..', len='..len:hex())
+
+						-- now read from addr for how long? until when?
+						-- addr points to:
+						-- 00: loc: 4 bits y, 4 bits x
+						-- 01: frame # ... into where?
+						
+						local im = Image(
+							2*tileWidth * effect.width,
+							2*tileHeight * effect.height,
+							1,
+							'uint8_t'
+						)
+							:clear()
+						
+						-- whats the bpp? differing for effect12 and 3?
+						local bpp = 3
+
+		local maxTileIndexOffset = -1
+						for k=0,len-1 do
+							local x = bit.rshift(rom[addr + 2 * k], 4)
+							local y = bit.band(0xf, rom[addr + 2 * k])
+							local tileIndexOffset = rom[addr + 2 * k + 1]
+		maxTileIndexOffset = math.max(maxTileIndexOffset, tileIndexOffset)
+							print('\t\t\t\t\tx='..x..', y='..y..', tileIndexOffset='..tileIndexOffset)
+							if x < effect.width
+							and y < effect.height
+							then
+								-- paste into image
+								for yofs=0,1 do
+									for xofs=0,1 do
+										local pointerbase = ffi.cast('uint16_t*', rom + effectAddr)
+										-- idk where anyone explains "pointerbase"
+										local tileOffset = pointerbase[
+											-- and why 4x?
+											4 * tileIndexOffset
+											-- why? nobody explains xofs/yofs, or 16x16 tiles ...
+											+ xofs
+											+ 16 * yofs
+										]
+										local tileAddr = tileAddrBase + tileLen * tileOffset
+										readTile(
+											im,
+											(2*x + xofs)*tileWidth,
+											(2*y + yofs)*tileHeight,
+											rom + tileAddr,
+											bpp
+										)
+									end
+								end
+							else
+								print('!!! spell effect anim frame tile loc out of bounds!', x, y, tileIndexOffset)
+							end
+						end
+
+						local paltable = makePalette(game.battleAnimPalettes + palette, bit.lshift(1, bpp))
+						im.palette = paltable 
+						im:save(spellDisplayPath(
+							('%03x'):format(spellDisplayIndex)
+							..('-%d'):format(j)	-- effect1,2,3
+							..('-%x'):format(frameIndex)
+							..'.png').path)
+						
+						maxTileIndexOffset = maxTileIndexOffset + 1
+						--[[
+						if maxTileIndexOffset > 0 then				
+							local im = Image(
+								2*tileWidth * maxTileIndexOffset,
+								2*tileHeight,
+								1, 'uint8_t'
+							)
+							im.palette = paltable
+							for tileIndexOffset=0,maxTileIndexOffset-1 do
+								for yofs=0,1 do
+									for xofs=0,1 do
+										readTile(
+											im,
+											(xofs + 2 * tileIndexOffset) * tileWidth,
+											yofs * tileHeight,
+											rom + tileAddr + tileLen * (2 * tileIndexOffset + 14 * yofs + xofs),
+											bpp
+										)
+									end
+								end
+							end
+							im:save(spellDisplayPath(
+								('%03x'):format(spellDisplayIndex)
+								..('-%d'):format(j)
+								..'-alltiles.png').path)
+						end
+						--]]
+					end
+				end
+				print()
 			end
---			im:save(p('img'..('%03x-%02x'):format(i, frame)..'.png').path)
 		end
-		print()
 	end
 end
-
-path'spellEffectFrameData.hex':write(
-	ffi.string(game.spellEffectFrameData, ffi.sizeof(game.spellEffectFrameData))
-	:hexdump(8)
-)
-path'spellEffects.hex':write(
-	ffi.string(game.spellEffects, ffi.sizeof(game.spellEffects))
-	:hexdump(6)
-)
-path'spellEffectFrameOffsets.hex':write(
-	ffi.string(game.spellEffectFrameOffsets, ffi.sizeof(game.spellEffectFrameOffsets))
-	:hexdump(2)
-)
+print()
 
 do
 	local img = Image(8*16, 8*16, 1, 'uint8_t')

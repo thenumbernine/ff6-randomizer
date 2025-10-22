@@ -2,6 +2,7 @@ local ffi = require 'ffi'
 local range = require 'ext.range'
 local Image = require 'image'
 
+-- reads a 8x8 tile
 -- bitsPerPixel is 3 or 4
 local function readpixel(tile, x, y, bitsPerPixel)
 	local yhistep = 1
@@ -61,6 +62,7 @@ local function readbit(byte, bitindex)
 	return bit.band(bit.rshift(byte, bitindex), 1)
 end
 
+-- used by monsters
 local function makeTiledImageWithMask(
 	tilesWide,
 	tilesHigh,
@@ -96,7 +98,7 @@ local function makeTiledImageWithMask(
 	imgheight = (imgheight + 1) * tileHeight
 
 	local im = Image(imgwidth, imgheight, 1, 'uint8_t')
-	ffi.fill(im.buffer, im:getBufferSize())
+		:clear()
 
 	-- monsters have a set of tiles, in-order (cuz there aren't many duplicates),
 	-- flagged on/off (cuz there are often 8x8 transparent holes in the sprites)

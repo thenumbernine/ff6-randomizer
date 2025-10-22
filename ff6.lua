@@ -652,8 +652,8 @@ local spellDisplay_t = struct{
 		--]]
 		-- [[
 		
-		-- lookup into the spellEffect_t table (I think?)
-		{effect1 = 'uint16_t'},	-- 0xffff = none, otherwise values are from 0-0x2ff
+		-- byte offset into the spellEffect_t table.  0xffff = none
+		{effect1 = 'uint16_t'},
 		{effect2 = 'uint16_t'},
 		{effect3 = 'uint16_t'},
 
@@ -673,15 +673,21 @@ local numSpellDisplays = 444
 local spellEffect_t = struct{
 	name = 'spellEffect_t',
 	fields = {
-		{numFrames = 'uint8_t'},
-		{graphicSet = 'uint8_t'}, -- (where does this point?) aka "mold"
+		{numFrames = 'uint8_t:6'},
+		{unknown_0_6 = 'uint8_t:1'},	-- hflip?
+		{unknown_0_7 = 'uint8_t:1'},	-- vflip?
+		
+		-- for effect1&2, 0x120000 + graphicSet * 0x40, len = 0xA0
+		-- for effect3, 0x12C000 + graphicSet * 0x40, len = 0x80 
+		-- ... same as monster sprites?
+		{graphicSet = 'uint8_t'}, -- aka "chipset" aka "mold" (where does this point?)
+		
 		{frameIndex = 'uint16_t'}, -- the index into spellEffectFrameOffsets
 		{width = 'uint8_t'},
 		{height = 'uint8_t'},
 	},
 }
 assert.eq(ffi.sizeof'spellEffect_t', 6)
-local numSpellEffects = 650
 
 ---------------- MONSTERS HEADER ----------------
 
@@ -1784,6 +1790,7 @@ local game_t = struct{
 
 		{padding_11f9a0 = 'uint8_t['..(0x120000 - 0x11f9a0)..']'},				-- 0x11f9a0 - 0x120000
 
+		-- this is used by monsters and by spell effect1&2
 		{monsterSpriteTileMaskData3bpp = 'uint8_t['..(0x40 * 0x180)..']'},		-- 0x120000 - 0x126000
 		{battleAnimPalettes = 'palette8_t['..(0xf0)..']'},						-- 0x126000 - 0x126f00
 		{itemTypeNames = 'str7_t['..numItemTypes..']'},							-- 0x126f00 - 0x126fe0
@@ -1796,10 +1803,8 @@ local game_t = struct{
 		{monsterSpriteTileMask16Ofs = 'uint16_t'},								-- 0x12a822 - 0x12a824
 		{monsterSpriteTileMaskData = 'uint8_t['..(0x12b300 - 0x12a824 )..']'},	-- 0x12a824 - 0x12b300
 		{itemNames = 'str13_t['..numItems..']'},								-- 0x12b300 - 0x12c000
-	
-		-- with all these battleAnim* around
-		-- how do we get the tiles?
-		-- and what is the 2bpp format?
+
+		-- this is used by spell effect3
 		{battleAnimTileFormation2bpp= 'uint8_t['..(0x12ec00 - 0x12c000)..']'},				-- 0x12c000 - 0x12ec00	--should be 2bpp battle animation tiles..
 		
 		{WoBpalettes = 'palette16_8_t'},										-- 0x12ec00 - 0x12ed00
@@ -1816,7 +1821,7 @@ local game_t = struct{
 
 		{padding_14c998 = 'uint8_t['..(0x14d000 - 0x14c998)..']'},				-- 0x14c998 - 0x14d000
 
-		{spellEffects = 'spellEffect_t['..numSpellEffects..']'},					-- 0x14d000 - 0x14df3c	-- [650][6]
+		{spellEffects = 'uint8_t['..(650*6)..']'},								-- 0x14d000 - 0x14df3c	... but its not aligned, and offsets into it are per byte, so ...
 		{spellEffectFrameOffsets = 'uint16_t['..(4194)..']'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid
 		
 		-- 0x150000 - ? = character images, 0x16a0 bytes each
@@ -1825,8 +1830,9 @@ local game_t = struct{
 		{items = 'item_t['..numItems..']'},										-- 0x185000 - 0x186e00
 		{espers = 'esper_t['..numEspers..']'},									-- 0x186e00 - 0x186f29
 
-		{padding_186f29 = 'uint8_t['..(0x18c9a0 - 0x186f29)..']'},				-- 0x186f29 - 0x18c9a0
+		{padding_186f29 = 'uint8_t['..(0x187000 - 0x186f29)..']'},				-- 0x186f29 - 0x187000
 
+		{battleAnimGraphics2bpp = 'uint8_t['..(0x18c9a0 - 0x187000)..']'},		-- 0x187000 - 0x18c9a0
 		{spellDescBase = 'uint8_t['..(0x18cea0 - 0x18c9a0)..']'},				-- 0x18c9a0 - 0x18cea0
 		{menuNames = 'menuName_t['..numMenuNames..']'},							-- 0x18cea0 - 0x18cf80
 		{spellDescOffsets = 'uint16_t[54]'},									-- 0x18cf80 - 0x18cfec
@@ -2051,7 +2057,6 @@ obj = setmetatable({}, {
 
 obj.numSpells = numSpells
 obj.numSpellDisplays = numSpellDisplays
-obj.numSpellEffects = numSpellEffects
 obj.numEsperBonuses = numEsperBonuses
 obj.numEspers = numEspers
 obj.numMonsters = numMonsters
