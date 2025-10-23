@@ -644,8 +644,8 @@ local esperDescBaseAddr = 0x0f3940
 local esperDescOffsetsAddr = 0x0ffe40
 
 --[[ can't do this until i convert all ff6struct to struct, then i can use anonymous fields.
-local spellDisplayEffectIndex_t = struct{
-	name = 'spellDisplayEffectIndex_t',
+local battleAnimEffectIndex_t = struct{
+	name = 'battleAnimEffectIndex_t',
 	union = true,
 	fields = {
 		{name='u16', type='uint16_t', no_iter=true},
@@ -658,11 +658,12 @@ local spellDisplayEffectIndex_t = struct{
 		}},
 	},
 }
-assert.eq(ffi.sizeof(spellDisplayEffectIndex_t), 2)
+assert.eq(ffi.sizeof(battleAnimEffectIndex_t), 2)
 --]]
 
-local spellDisplay_t = struct{
-	name = 'spellDisplay_t',
+-- collections of up to 3 animation-effects to play
+local battleAnimSet_t = struct{
+	name = 'battleAnimSet_t',
 	fields = {
 		--[[ TODO get struct to serialize member arrays
 		{effect = 'uint16_t[3]'},	-- 0xffff = none, otherwise values are from 0-0x3fff, bit15 means something, idk.
@@ -670,7 +671,7 @@ local spellDisplay_t = struct{
 		--]]
 		-- [[
 		
-		-- [[ index into 'spellEffects' table
+		-- [[ index into 'battleAnimEffects' table
 		-- 0xffff = none
 		-- bit 15 means something else I think
 		{effect1 = 'uint16_t'},
@@ -678,9 +679,9 @@ local spellDisplay_t = struct{
 		{effect3 = 'uint16_t'},
 		--]]
 		--[[
-		{effect1 = 'spellDisplayEffectIndex_t'},
-		{effect2 = 'spellDisplayEffectIndex_t'},
-		{effect3 = 'spellDisplayEffectIndex_t'},
+		{effect1 = 'battleAnimEffectIndex_t'},
+		{effect2 = 'battleAnimEffectIndex_t'},
+		{effect3 = 'battleAnimEffectIndex_t'},
 		--]]
 
 		-- index into 'battleAnimPalettes' table
@@ -694,12 +695,12 @@ local spellDisplay_t = struct{
 		{wait = 'uint8_t'},
 	},
 }
-assert.eq(ffi.sizeof'spellDisplay_t', 0xe)
-local numSpellDisplays = 444
+assert.eq(ffi.sizeof'battleAnimSet_t', 0xe)
+local numBattleAnimSets = 444
 
--- TODO better name
-local spellEffect_t = struct{
-	name = 'spellEffect_t',
+-- animations made up of frames
+local battleAnimEffect_t = struct{
+	name = 'battleAnimEffect_t',
 	fields = {
 		{numFrames = 'uint8_t:6'},
 		{unknown_0_6 = 'uint8_t:1'},
@@ -707,16 +708,15 @@ local spellEffect_t = struct{
 		
 		-- for effect1&2, 0x120000 + graphicSet * 0x40, len = 0xA0
 		-- for effect3, 0x12C000 + graphicSet * 0x40, len = 0x80 
-		-- ... same as monster sprites?
 		{graphicSet = 'uint8_t'}, -- aka "chipset" aka "mold" (where does this point?)
 		
-		{frameIndex = 'uint16_t'}, -- the index into spellEffectFrameOffsets
+		{frameIndex = 'uint16_t'}, -- the index into battleAnimFrameOffsets
 		{width = 'uint8_t'},
 		{height = 'uint8_t'},
 	},
 }
-assert.eq(ffi.sizeof'spellEffect_t', 6)
-local numSpellEffects = 650
+assert.eq(ffi.sizeof'battleAnimEffect_t', 6)
+local numBattleAnimEffects = 650
 
 ---------------- MONSTERS HEADER ----------------
 
@@ -1801,7 +1801,7 @@ local game_t = struct{
 
 		{padding_0fffbe = 'uint8_t['..(0x107fb2 - 0x0fffbe)..']'},				-- 0x0fffbe - 0x107fb2
 
-		{spellDisplays = 'spellDisplay_t['..numSpellDisplays..']'},				-- 0x107fb2 - 0x1097fa
+		{battleAnimSets = 'battleAnimSet_t['..numBattleAnimSets..']'},				-- 0x107fb2 - 0x1097fa
 
 		{padding_1097fa = 'uint8_t['..(0x10d000 - 0x1097fa)..']'},				-- 0x1097fa - 0x10d000
 
@@ -1810,7 +1810,7 @@ local game_t = struct{
 
 		{padding_10fd00 = 'uint8_t['..(0x110141 - 0x10fd00)..']'},				-- 0x10fd00 - 0x110141
 
-		{spellEffectFrameData = 'uint8_t['..(0x11ead8 - 0x110141)..']'},			-- 0x110141 - 0x11ead8 ... 2 bytes each ... pointers from spellEffectFrameOffsets offset by 0x110000 but point into here
+		{battleAnimFrameData = 'uint8_t['..(0x11ead8 - 0x110141)..']'},			-- 0x110141 - 0x11ead8 ... 2 bytes each ... pointers from battleAnimFrameOffsets offset by 0x110000 but point into here
 
 		{padding_11ead8 = 'uint8_t['..(0x11f000 - 0x11ead8)..']'},				-- 0x11ead8 - 0x11f000
 
@@ -1819,7 +1819,7 @@ local game_t = struct{
 
 		{padding_11f9a0 = 'uint8_t['..(0x120000 - 0x11f9a0)..']'},				-- 0x11f9a0 - 0x120000
 
-		{battleAnimGraphicsSets3bpp = 'uint8_t['..(0x40 * 0x180)..']'},			-- 0x120000 - 0x126000 - holds the 'graphicSet' from spellEffect_t * 0x40 bytes
+		{battleAnimGraphicsSets3bpp = 'uint8_t['..(0x40 * 0x180)..']'},			-- 0x120000 - 0x126000 - holds the 'graphicSet' uint16 offsets from battleAnimEffect_t * 0x40 bytes
 		{battleAnimPalettes = 'palette8_t['..(0xf0)..']'},						-- 0x126000 - 0x126f00
 		{itemTypeNames = 'str7_t['..numItemTypes..']'},							-- 0x126f00 - 0x126fe0
 
@@ -1849,8 +1849,8 @@ local game_t = struct{
 
 		{padding_14c998 = 'uint8_t['..(0x14d000 - 0x14c998)..']'},				-- 0x14c998 - 0x14d000
 
-		{spellEffects = 'spellEffect_t['..numSpellEffects..']'},				-- 0x14d000 - 0x14df3c
-		{spellEffectFrameOffsets = 'uint16_t['..(4194)..']'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid
+		{battleAnimEffects = 'battleAnimEffect_t['..numBattleAnimEffects..']'},				-- 0x14d000 - 0x14df3c
+		{battleAnimFrameOffsets = 'uint16_t['..(4194)..']'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid
 		
 		-- 0x150000 - ? = character images, 0x16a0 bytes each
 		{fieldSpriteGraphics = 'uint8_t['..(0x185000 - 0x150000)..']'},			-- 0x150000 - 0x185000
@@ -2084,8 +2084,8 @@ obj = setmetatable({}, {
 })
 
 obj.numSpells = numSpells
-obj.numSpellDisplays = numSpellDisplays
-obj.numSpellEffects = numSpellEffects
+obj.numBattleAnimSets = numBattleAnimSets
+obj.numBattleAnimEffects = numBattleAnimEffects
 obj.numEsperBonuses = numEsperBonuses
 obj.numEspers = numEspers
 obj.numMonsters = numMonsters
