@@ -32,6 +32,7 @@ return function(rom, game)
 				effectIndex = bit.band(0x7fff, effectIndex)
 				-- idk what unknown_15 means.
 				if effectIndex >= game.numBattleAnimEffects then
+					-- NO MORE OF THESE ERRORS BEING HIT, NICE
 					print('!!! effect is oob !!! '..('%x'):format(effectIndex))
 				else
 					local effect = game.battleAnimEffects + effectIndex
@@ -87,108 +88,106 @@ return function(rom, game)
 					-- https://web.archive.org/web/20190907020126/https://www.ff6hacking.com/forums/thread-925.html
 					-- ... says dont use the last 2 bits
 					numFrames = bit.band(0x3f, numFrames)
-					local baseFrameIndex = effect.frameIndex
 					for frameIndex=0,numFrames-1 do
 						print('\t\t\tframeIndex=0x'..frameIndex:hex()..':')
-						local effectOffsetEntry = game.battleAnimFrameOffsets[baseFrameIndex + frameIndex]
+						local effectOffsetEntry = game.battleAnimFrameOffsets[effect.frameIndexBase + frameIndex]
 						local addr = 0x110000 + effectOffsetEntry  -- somewhere inside battleAnimFrameData
-						local addrend = 0x110000 + game.battleAnimFrameOffsets[baseFrameIndex + frameIndex + 1]	-- is this how you find the end?
-						if addrend < addr then
-							print("!!! addrend underflow !!!")
-						else
-							local len = addrend - addr
-							assert.eq(bit.band(len, 1), 0, "length is not uint16 aligned!")
-							len = bit.rshift(len, 1)
-							print('\t\t\t\teffectOffsetEntry=0x'..effectOffsetEntry:hex()
-								..', addr=0x'..addr:hex()
-								..', len=0x'..len:hex())
 
-							-- now read from addr for how long? until when?
-							-- addr points to:
-							-- 00: loc: 4 bits y, 4 bits x
-							-- 01: frame # ... into where?
+						print('\t\t\t\teffectOffsetEntry=0x'..effectOffsetEntry:hex()
+							..', addr=0x'..addr:hex())
 
-							local im = Image(
-								2*tileWidth * effect.width,
-								2*tileHeight * effect.height,
-								1,
-								'uint8_t'
-							)
-								:clear()
+						-- now read from addr for how long? until when?
+						-- addr points to:
+						-- 00: loc: 4 bits y, 4 bits x
+						-- 01: frame # ... into where?
 
-							local pointerbase = ffi.cast('uint16_t*', rom + effectPtrTableAddr)
+						local im = Image(
+							2*tileWidth * effect.width,
+							2*tileHeight * effect.height,
+							1,
+							'uint8_t'
+						)
+							:clear()
 
-							for k=0,len-1 do
-								local x = bit.rshift(rom[addr + 2 * k], 4)
-								local y = bit.band(0xf, rom[addr + 2 * k])
-								local tileIndexOffset = rom[addr + 2 * k + 1]
-								-- [[ is this *another* h-flip? needed for ice to work
-								local hflip16 = 0 ~= bit.band(0x40, tileIndexOffset)
-								local vflip16 = 0 ~= bit.band(0x80, tileIndexOffset)
-								tileIndexOffset = bit.band(0x3f, tileIndexOffset)
-								--]]
-								--[[ or not?
-								local hflip16, vflip16 = false, false
-								--]]
-								print('\t\t\t\t\tx='..x..', y='..y
-									..', tileIndexOffset=0x'..tileIndexOffset:hex()
-									..', hflip16='..tostring(hflip16)
-									..', vflip16='..tostring(vflip16))
-								if x < effect.width
-								and y < effect.height
-								then
-									-- paste into image
-									for yofs=0,1 do
-										for xofs=0,1 do
-											-- this makes a lot more sense if you look it up in the 'alltiles' image below
-											-- TLDR: Make a 16x8 tile display out of the 8x8 tiles pointed to by pointerbase[]
-											-- You'll see they make up 16x16-pixel regions
-											-- Those are what we are indexing here, hence why you have to pick apart tileIndexOffset into its lower 3 bits and its upper 5
-											local tileOffset = pointerbase[
-												(2 * bit.band(tileIndexOffset, 7) + xofs)
-												+ (2 * bit.rshift(tileIndexOffset, 3) + yofs) * 16
-											]
-											local vflip = 0 ~= bit.band(0x8000, tileOffset)
-											local hflip = 0 ~= bit.band(0x4000, tileOffset)
-	--print('xofs', xofs:hex(), 'yofs', yofs:hex(), 'tileOffset', tileOffset:hex())
-											-- 16384 indexable, but points to 0x130000 - 0x14c998, which only holds 4881
-											local tileIndex = bit.band(0x3fff, tileOffset)
-											paletteForTileIndex[tileIndex] = paletteIndex
-											local tileAddr = tileAddrBase + tileLen * tileIndex
-											local xformxofs = xofs
-											if hflip16 then
-												xformxofs = 1 - xformxofs
-												hflip = not hflip
-											end
-											local xformyofs = yofs
-											if vflip16 then
-												xformyofs = 1  - xformyofs
-												vflip = not vflip
-											end
-											readTile(
-												im,
-												(2*x + xformxofs)*tileWidth,
-												(2*y + xformyofs)*tileHeight,
-												rom + tileAddr,
-												bpp,
-												hflip,
-												vflip
-											)
+						local pointerbase = ffi.cast('uint16_t*', rom + effectPtrTableAddr)
+
+						local lastTileOrder
+						for k=0,math.huge-1 do
+							local x = bit.rshift(rom[addr + 2 * k], 4)
+							local y = bit.band(0xf, rom[addr + 2 * k])
+							if x >= effect.width then break end
+							if y >= effect.height then break end
+							local tileOrder = x + effect.width * y
+							if lastTileOrder and lastTileOrder >= tileOrder then break end
+							lastTileOrder = tileOrder
+							
+							local tileIndexOffset = rom[addr + 2 * k + 1]
+							-- [[ is this *another* h-flip? needed for ice to work
+							local hflip16 = 0 ~= bit.band(0x40, tileIndexOffset)
+							local vflip16 = 0 ~= bit.band(0x80, tileIndexOffset)
+							tileIndexOffset = bit.band(0x3f, tileIndexOffset)
+							--]]
+							--[[ or not?
+							local hflip16, vflip16 = false, false
+							--]]
+							print('\t\t\t\t\tx='..x..', y='..y
+								..', tileIndexOffset=0x'..tileIndexOffset:hex()
+								..', hflip16='..tostring(hflip16)
+								..', vflip16='..tostring(vflip16))
+							if x < effect.width
+							and y < effect.height
+							then
+								-- paste into image
+								for yofs=0,1 do
+									for xofs=0,1 do
+										-- this makes a lot more sense if you look it up in the 'alltiles' image below
+										-- TLDR: Make a 16x8 tile display out of the 8x8 tiles pointed to by pointerbase[]
+										-- You'll see they make up 16x16-pixel regions
+										-- Those are what we are indexing here, hence why you have to pick apart tileIndexOffset into its lower 3 bits and its upper 5
+										local tileOffset = pointerbase[
+											(2 * bit.band(tileIndexOffset, 7) + xofs)
+											+ (2 * bit.rshift(tileIndexOffset, 3) + yofs) * 16
+										]
+										local vflip = 0 ~= bit.band(0x8000, tileOffset)
+										local hflip = 0 ~= bit.band(0x4000, tileOffset)
+--print('xofs', xofs:hex(), 'yofs', yofs:hex(), 'tileOffset', tileOffset:hex())
+										-- 16384 indexable, but points to 0x130000 - 0x14c998, which only holds 4881
+										local tileIndex = bit.band(0x3fff, tileOffset)
+										paletteForTileIndex[tileIndex] = paletteIndex
+										local tileAddr = tileAddrBase + tileLen * tileIndex
+										local xformxofs = xofs
+										if hflip16 then
+											xformxofs = 1 - xformxofs
+											hflip = not hflip
 										end
+										local xformyofs = yofs
+										if vflip16 then
+											xformyofs = 1  - xformyofs
+											vflip = not vflip
+										end
+										readTile(
+											im,
+											(2*x + xformxofs)*tileWidth,
+											(2*y + xformyofs)*tileHeight,
+											rom + tileAddr,
+											bpp,
+											hflip,
+											vflip
+										)
 									end
-								else
-									print('!!! spell effect anim frame tile loc out of bounds!', x, y, tileIndexOffset)
 								end
+							else
+								print('!!! spell effect anim frame tile loc out of bounds!', x, y, tileIndexOffset)
 							end
-
-							local paltable = makePalette(game.battleAnimPalettes + paletteIndex, bit.lshift(1, bpp))
-							im.palette = paltable
-							im:save(battleAnimSetPath(
-								('%03d'):format(battleAnimSetIndex)
-								..('-%d'):format(j)	-- effect1,2,3
-								..('-%02d'):format(frameIndex)
-								..'.png').path)
 						end
+
+						local paltable = makePalette(game.battleAnimPalettes + paletteIndex, bit.lshift(1, bpp))
+						im.palette = paltable
+						im:save(battleAnimSetPath(
+							('%03d'):format(battleAnimSetIndex)
+							..('-%d'):format(j)	-- effect1,2,3
+							..('-%02d'):format(frameIndex)
+							..'.png').path)
 					end
 					print()
 				end

@@ -710,7 +710,7 @@ local battleAnimEffect_t = struct{
 		-- for effect3, 0x12C000 + graphicSet * 0x40, len = 0x80
 		{graphicSet = 'uint8_t'}, -- aka "chipset" aka "mold" (where does this point?)
 
-		{frameIndex = 'uint16_t'}, -- the index into battleAnimFrameOffsets
+		{frameIndexBase = 'uint16_t'}, -- the index into battleAnimFrameOffsets
 		{width = 'uint8_t'},
 		{height = 'uint8_t'},
 	},
