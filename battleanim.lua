@@ -224,7 +224,7 @@ return function(rom, game)
 		local maxGraphicSet = assert.index({
 			[2] = 384,	-- ??? wait, if its 2bpp then inc by 0x40 means skipping a full graphicsSet instead of just half...
 			[3] = 384,
-		})[bpp]
+		}, bpp)
 
 		-- 1 graphic set is (8x8) x (16x4)
 		local setWidth = 16 * tileWidth
