@@ -1811,9 +1811,7 @@ local game_t = struct{
 		{padding_10fd00 = 'uint8_t['..(0x110141 - 0x10fd00)..']'},				-- 0x10fd00 - 0x110141
 
 		{battleAnimFrameData = 'uint8_t['..(0x11ead8 - 0x110141)..']'},			-- 0x110141 - 0x11ead8 ... 2 bytes each ... pointers from battleAnimFrameOffsets offset by 0x110000 but point into here
-
-		{padding_11ead8 = 'uint8_t['..(0x11f000 - 0x11ead8)..']'},				-- 0x11ead8 - 0x11f000
-
+		{battleAnimScriptOffsets = 'uint16_t['..(660)..']'},					-- 0x11ead8 - 0x11f000 ... uint16 offsets +0x100000
 		{battleMessageBase = 'uint8_t['..(0x11f7a0 - 0x11f000)..']'},			-- 0x11f000 - 0x11f7a0
 		{battleMessageOffsets = 'uint16_t['..numBattleMessages..']'},			-- 0x11f7a0 - 0x11f9a0
 

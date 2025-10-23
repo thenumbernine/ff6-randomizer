@@ -20,7 +20,7 @@ return function(rom, game)
 	battleAnimSetPath:mkdir()
 	for battleAnimSetIndex=0,game.numBattleAnimSets-1 do
 		local battleAnim = game.battleAnimSets + battleAnimSetIndex
-		print('battleAnim['..battleAnimSetIndex..'] = '..battleAnim)
+		print('battleAnimSet['..battleAnimSetIndex..'] = '..battleAnim)
 
 		for j=0,2 do
 			-- TODO array plz, but then TODO serialzie arrays in 'struct' please
@@ -396,4 +396,10 @@ return function(rom, game)
 		end
 		allTiles:save(spellGraphicSetsPath'alltiles-2bpp.png'.path)
 	end
+
+	print()
+	for i=0,660-1 do
+		print('battle anim script #'..i, '0x'..game.battleAnimScriptOffsets[i]:hex())
+	end
+	print()
 end
