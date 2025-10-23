@@ -13,7 +13,12 @@ local function readpixel(tile, x, y, bitsPerPixel)
 	-- bits 0,1,2
 
 	-- bit 3
-	if bitsPerPixel == 3 then
+	if bitsPerPixel == 2 then
+		return bit.bor(
+			bit.band(1, bit.rshift(tile[2*y], 7-x)),
+			bit.lshift(bit.band(1, bit.rshift(tile[2*y+1], 7-x)), 1)
+		)
+	elseif bitsPerPixel == 3 then
 		return bit.bor(
 			bit.band(1, bit.rshift(tile[2*y], 7-x)),
 			bit.lshift(bit.band(1, bit.rshift(tile[2*y+1], 7-x)), 1),
@@ -117,7 +122,7 @@ local function makeTiledImageWithMask(
 			end
 		end
 	end
-	
+
 	im.palette = makePalette(assert(pal), bit.lshift(1, bitsPerPixel))
 
 	return im

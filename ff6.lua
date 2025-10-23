@@ -670,7 +670,7 @@ local battleAnimSet_t = struct{
 		{palette = 'uint8_t[3]'},
 		--]]
 		-- [[
-		
+
 		-- [[ index into 'battleAnimEffects' table
 		-- 0xffff = none
 		-- bit 15 means something else I think
@@ -704,12 +704,12 @@ local battleAnimEffect_t = struct{
 	fields = {
 		{numFrames = 'uint8_t:6'},
 		{unknown_0_6 = 'uint8_t:1'},
-		{unknown_0_7 = 'uint8_t:1'},	-- high bit of graphicSet?
-		
+		{_2bpp = 'uint8_t:1'},	-- use 3bpp(false) vs 2bpp(true)?
+
 		-- for effect1&2, 0x120000 + graphicSet * 0x40, len = 0xA0
-		-- for effect3, 0x12C000 + graphicSet * 0x40, len = 0x80 
+		-- for effect3, 0x12C000 + graphicSet * 0x40, len = 0x80
 		{graphicSet = 'uint8_t'}, -- aka "chipset" aka "mold" (where does this point?)
-		
+
 		{frameIndex = 'uint16_t'}, -- the index into battleAnimFrameOffsets
 		{width = 'uint8_t'},
 		{height = 'uint8_t'},
@@ -1801,7 +1801,7 @@ local game_t = struct{
 
 		{padding_0fffbe = 'uint8_t['..(0x107fb2 - 0x0fffbe)..']'},				-- 0x0fffbe - 0x107fb2
 
-		{battleAnimSets = 'battleAnimSet_t['..numBattleAnimSets..']'},				-- 0x107fb2 - 0x1097fa
+		{battleAnimSets = 'battleAnimSet_t['..numBattleAnimSets..']'},			-- 0x107fb2 - 0x1097fa
 
 		{padding_1097fa = 'uint8_t['..(0x10d000 - 0x1097fa)..']'},				-- 0x1097fa - 0x10d000
 
@@ -1834,7 +1834,7 @@ local game_t = struct{
 
 		-- this is used by spell effect3
 		{battleAnimTileFormation2bpp= 'uint8_t['..(0x12ec00 - 0x12c000)..']'},				-- 0x12c000 - 0x12ec00	--should be 2bpp battle animation tiles..
-		
+
 		{WoBpalettes = 'palette16_8_t'},										-- 0x12ec00 - 0x12ed00
 		{WoRpalettes = 'palette16_8_t'},										-- 0x12ed00 - 0x12ee00
 		{setzerAirshipPalette = 'palette16_t'},									-- 0x12ee00 - 0x12ee20
@@ -1851,7 +1851,7 @@ local game_t = struct{
 
 		{battleAnimEffects = 'battleAnimEffect_t['..numBattleAnimEffects..']'},				-- 0x14d000 - 0x14df3c
 		{battleAnimFrameOffsets = 'uint16_t['..(4194)..']'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid
-		
+
 		-- 0x150000 - ? = character images, 0x16a0 bytes each
 		{fieldSpriteGraphics = 'uint8_t['..(0x185000 - 0x150000)..']'},			-- 0x150000 - 0x185000
 
@@ -1860,7 +1860,7 @@ local game_t = struct{
 
 		{padding_186f29 = 'uint8_t['..(0x187000 - 0x186f29)..']'},				-- 0x186f29 - 0x187000
 
-		{battleAnimGraphics2bpp = 'uint8_t['..(0x18c9a0 - 0x187000)..']'},		-- 0x187000 - 0x18c9a0
+		{battleAnimGraphics2bpp = 'uint8_t['..(0x18c9a0 - 0x187000)..']'},		-- 0x187000 - 0x18c9a0	-- 2bpp, so 1434 tiles
 		{spellDescBase = 'uint8_t['..(0x18cea0 - 0x18c9a0)..']'},				-- 0x18c9a0 - 0x18cea0
 		{menuNames = 'menuName_t['..numMenuNames..']'},							-- 0x18cea0 - 0x18cf80
 		{spellDescOffsets = 'uint16_t[54]'},									-- 0x18cf80 - 0x18cfec
@@ -2122,7 +2122,7 @@ obj.numFormationSizeOffsets = numFormationSizeOffsets
 obj.numFormationSizes = numFormationSizes
 obj.numPositionedText = numPositionedText
 obj.numBRRSamples = numBRRSamples
-obj.numMenuChars = numMenuChars 
+obj.numMenuChars = numMenuChars
 
 obj.findnext = findnext
 obj.gamezstr = gamezstr

@@ -6,9 +6,8 @@ local tileHeight = require 'graphics'.tileHeight
 local readTile = require 'graphics'.readTile
 
 return function(rom, game)
-	local bpp = 3
 	local graphicSetsUsed = {}
-	local paletteForTileIndex = {}	
+	local paletteForTileIndex = {}
 
 	local battleAnimSetPath = path'spelldisplay'
 	battleAnimSetPath:mkdir()
@@ -20,7 +19,7 @@ return function(rom, game)
 			-- TODO array plz, but then TODO serialzie arrays in 'struct' please
 			local effectIndex = battleAnim['effect'..(j+1)]
 			local paletteIndex = battleAnim['palette'..(j+1)]
-		
+
 			if effectIndex ~= 0xffff then
 				local unknown_15 = 0 ~= bit.band(0x8000, effectIndex)
 				effectIndex = bit.band(0x7fff, effectIndex)
@@ -32,17 +31,8 @@ return function(rom, game)
 					print('\t\teffect'..(j+1)..'='..effect)
 
 					local graphicSet = effect.graphicSet
-					-- hmm for bolt, it picks from a different part of RAM than i'm looking at, but where, and how to tell when?
-					--if unknown_15 then
-					--if effect.unknown_0_6 ~= 0 then -- spell 2 = bolt has this set ...
-					--if effect.unknown_0_7 ~= 0 then -- spell 2 = bolt has this set ...
-						--graphicSet = bit.bor(graphicSet, 0x200)
-						--graphicSet = bit.bor(graphicSet, 0x100)
-						--graphicSet = bit.bor(graphicSet, 0x80)
-						--graphicSet = bit.bor(graphicSet, 0x40)
-					--end
 
-					graphicSetsUsed[graphicSet] = graphicSetsUsed[graphicSet] 
+					graphicSetsUsed[graphicSet] = graphicSetsUsed[graphicSet]
 						or {
 							effectDisplayIndex = {},
 							palettes = {},
@@ -52,26 +42,31 @@ return function(rom, game)
 
 					-- is this a list of offsets to get the tileaddr's?
 					local effectPtrTableAddr, effectLen, tileAddrBase, tileIndex, tileAddr, tileLen
-					if j < 2 then	-- effects 1&2
+
+					local bpp = effect._2bpp == 1 and 2 or 3
+
+					if bpp == 3 then	-- effects 1&2
 						-- first uint16 entry, times tileLen, plus tileAddrBase, points to some kind of tile data ... what about the rest? how to access it?
-						effectPtrTableAddr = graphicSet * 0x40 + 0x120000	-- relative to battleAnimGraphicsSets3bpp 
+						effectPtrTableAddr = graphicSet * 0x40 + 0x120000	-- relative to battleAnimGraphicsSets3bpp
 						-- https://web.archive.org/web/20190907020126/https://www.ff6hacking.com/forums/thread-925.html
 						-- "the length of the pointer data"
 						-- that means the length of where the *(uint16_t*)(rom + effectPtrTableAddr) data points to?
 						-- because the length at effectPtrTableAddr itself seems to be 0x40 (cuz thats what you multiply graphicSet by)
 						effectLen = 0xA0
-					
+
 						tileLen = 0x18 -- len is 24 bytes = 192 bits = 8 x 8 x 3 bits (so 3bpp)
-						tileAddrBase = 0x130000	-- battleAnimGraphics 
-					else
+						tileAddrBase = 0x130000	-- battleAnimGraphics
+					elseif bpp == 2 then
 						effectPtrTableAddr = graphicSet * 0x40 + 0x12C000	-- battleAnimTileFormation2bpp
 						effectLen = 0x80
-						
-						tileAddrBase = 0x187000	-- battleAnimGraphics2bpp 
+
+						tileAddrBase = 0x187000	-- battleAnimGraphics2bpp
 						tileLen = 0x10 -- len is 16 bytes = 8 x 8 x 2bpp
+					else
+						error'here'
 					end
 					--tileIndex = ffi.cast('uint16_t*', rom + effectPtrTableAddr)[0]
-					--tileAddr = tileIndex * tileLen + tileAddrBase 
+					--tileAddr = tileIndex * tileLen + tileAddrBase
 					-- now the tileAddr points to 8 uint16's , and then 8 uint8s that each get padded into uint16's
 					print('\t\teffectAddr=0x'..effectPtrTableAddr:hex()
 						..', effectLen=0x'..effectLen:hex()
@@ -110,8 +105,7 @@ return function(rom, game)
 								'uint8_t'
 							)
 								:clear()
-							
-							-- whats the bpp? differing for effect12 and 3?
+
 							local pointerbase = ffi.cast('uint16_t*', rom + effectPtrTableAddr)
 
 							for k=0,len-1 do
@@ -178,7 +172,7 @@ return function(rom, game)
 							end
 
 							local paltable = makePalette(game.battleAnimPalettes + paletteIndex, bit.lshift(1, bpp))
-							im.palette = paltable 
+							im.palette = paltable
 							im:save(battleAnimSetPath(
 								('%03d'):format(battleAnimSetIndex)
 								..('-%d'):format(j)	-- effect1,2,3
@@ -194,15 +188,15 @@ return function(rom, game)
 	print()
 
 
-	-- so this is basically a plot of the entire pointer table at 0x120000	
-	--	
+	-- so this is basically a plot of the entire pointer table at 0x120000
+	--
 	--[[ graphic sets for effect #3 is supposed to have a different base address, hmmm...
 	print('graphicSetsUsed', tolua(graphicSetsUsed))
 	print()
 	--]]
 	-- honestly this comes from a unique combo of graphicSet & effect 123 index (3 has a dif base)
 	-- so I don't need to make so many copies ...
-	--	
+	--
 	-- also each 'graphicSet' number is just 8 tiles worth of 16x16 tiles
 	-- each 'graphicSet' is only addressible by 64 8x8 tiles = 16 16x16 tiles
 	-- (because it's a byte, and its high two bits are used for hflip & vflip, so 64 values)
@@ -216,7 +210,7 @@ return function(rom, game)
 	-- yup there are.  so how do you address them, with just 1 byte?
 	local spellGraphicSetsPath = path'spellgraphicsets'
 	spellGraphicSetsPath:mkdir()
-	do
+	for bpp=2,3 do
 		-- graphicSet * 0x40 + 0x120000 points to the table of u16 offsets
 		-- the region 0x120000-0x126000 is for 'monster sprite tile mask data' ... nah, that's really just for this data.
 		--		it's named 'monster' cuz monsters use 120000 as the base addr for their tile mask data,
@@ -227,7 +221,10 @@ return function(rom, game)
 		-- monsters use 12a824-12ac24 for 8x8 tile masks
 		-- and 12ac24-12b300 for 16x16 tile masks
 		--local maxGraphicSet = 256
-		local maxGraphicSet = 384
+		local maxGraphicSet = assert.index({
+			[2] = 384,	-- ??? wait, if its 2bpp then inc by 0x40 means skipping a full graphicsSet instead of just half...
+			[3] = 384,
+		})[bpp]
 
 		-- 1 graphic set is (8x8) x (16x4)
 		local setWidth = 16 * tileWidth
@@ -241,14 +238,14 @@ return function(rom, game)
 			'uint8_t'
 		):clear()
 
-		
+
 		for graphicSetIndex=0,maxGraphicSet-1,2 do
 			-- only plot the even graphicSetIndex tiles cuz the odd ones have a row in common
 			assert.eq(bit.band(graphicSetIndex, 1), 0, "this wont be aligned in the master image")
-			
+
 			local halfGraphicsSetIndex = bit.rshift(graphicSetIndex, 1)
-			local masterRow = halfGraphicsSetIndex % masterSetsHigh 
-			local masterCol = (halfGraphicsSetIndex - masterRow) / masterSetsHigh 
+			local masterRow = halfGraphicsSetIndex % masterSetsHigh
+			local masterCol = (halfGraphicsSetIndex - masterRow) / masterSetsHigh
 
 			local graphicSetInfo = graphicSetsUsed[graphicSetIndex]
 			print('graphicSet '..graphicSetIndex)
@@ -264,17 +261,19 @@ return function(rom, game)
 			end
 
 			local effectPtrTableAddr, effectLen, tileAddrBase, tileIndex, tileAddr, tileLen
-			--if j < 2 then
-				effectPtrTableAddr = graphicSetIndex * 0x40 + 0x120000	-- battleAnimGraphicsSets3bpp 
+			if bpp == 3 then
+				effectPtrTableAddr = graphicSetIndex * 0x40 + 0x120000	-- battleAnimGraphicsSets3bpp
 				effectLen = 0xA0
 				tileLen = 0x18
-				tileAddrBase = 0x130000
-			--else
-			--	effectPtrTableAddr = graphicSetIndex * 0x40 + 0x12C000	-- battleAnimTileFormation2bpp
-			--	effectLen = 0x80
-			--	tileAddrBase = 0x187000
-			--	tileLen = 0x10
-			--end
+				tileAddrBase = 0x130000	-- game.battleAnimGraphics
+			elseif bpp == 2 then
+				effectPtrTableAddr = graphicSetIndex * 0x40 + 0x12C000	-- battleAnimTileFormation2bpp
+				effectLen = 0x80
+				tileAddrBase = 0x187000	-- game.battleAnimGraphics2bpp
+				tileLen = 0x10
+			else
+				error'here'
+			end
 
 			local pointerbase = ffi.cast('uint16_t*', rom + effectPtrTableAddr)
 
@@ -309,25 +308,26 @@ return function(rom, game)
 			}
 			--im:save(spellGraphicSetsPath(('%03d'):format(graphicSetIndex)..'.png').path)
 		end
-		master:save(spellGraphicSetsPath'battle_anim_graphic_sets.png'.path)
+		master:save(spellGraphicSetsPath('battle_anim_graphic_sets_'..bpp..'bpp.png').path)
 	end
 
 	-- what about plotting the entire tile data?
 	-- this is the data at 0x130000 - 0x14c998
 	-- it's going to be 3bpp 8x8 data , so there will be 4881 of them
 	do
+		local bpp = 3
 		local tileSize = 8 * bpp
-		local totalTiles = (0x14c998 - 0x130000) / tileSize
+		local totalTiles = math.floor((0x14c998 - 0x130000) / tileSize)
 		local tilesWide = 64
 		local tilesHigh = math.ceil(totalTiles / tilesWide)
-		
+
 		local allTiles = Image(
 			tileWidth * tilesWide,
 			tileHeight * tilesHigh,
 			4,	-- rgba
 			'uint8_t'
 		):clear()
-		
+
 		local tileImg = Image(tileWidth, tileHeight, 1, 'uint8_t')
 		for tileIndex=0,totalTiles-1 do
 			local tileX = tileIndex % tilesWide
@@ -348,5 +348,43 @@ return function(rom, game)
 			}
 		end
 		allTiles:save(spellGraphicSetsPath'alltiles.png'.path)
+	end
+
+	do
+		local bpp = 2
+		local tileSize = 8 * bpp
+		local tileAddrBase = 0x187000	-- game.battleAnimGraphics2bpp
+		local tileAddrEnd = 0x18c9a0
+		local totalTiles = math.floor((tileAddrEnd - tileAddrBase) / tileSize)
+		local tilesWide = 64
+		local tilesHigh = math.ceil(totalTiles / tilesWide)
+
+		local allTiles = Image(
+			tileWidth * tilesWide,
+			tileHeight * tilesHigh,
+			4,	-- rgba
+			'uint8_t'
+		):clear()
+
+		local tileImg = Image(tileWidth, tileHeight, 1, 'uint8_t')
+		for tileIndex=0,totalTiles-1 do
+			local tileX = tileIndex % tilesWide
+			local tileY = (tileIndex - tileX) / tilesWide
+			readTile(
+				tileImg,
+				0,
+				0,
+				rom + tileAddrBase + tileSize * tileIndex,
+				bpp
+			)
+			local paletteIndex = paletteForTileIndex[tileIndex] or 0
+			tileImg.palette = makePalette(game.battleAnimPalettes + paletteIndex, bit.lshift(1, bpp))
+			allTiles:pasteInto{
+				image = tileImg:rgba(),
+				x = tileWidth * tileX,
+				y = tileHeight * tileY,
+			}
+		end
+		allTiles:save(spellGraphicSetsPath'alltiles-2bpp.png'.path)
 	end
 end
