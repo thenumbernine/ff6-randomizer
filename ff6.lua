@@ -703,7 +703,7 @@ local battleAnimEffect_t = struct{
 	name = 'battleAnimEffect_t',
 	fields = {
 		{numFrames = 'uint8_t:6'},
-		{unknown_0_6 = 'uint8_t:1'},
+		{graphicSetHighBit = 'uint8_t:1'},	-- is this a separate bit?
 		{_2bpp = 'uint8_t:1'},	-- use 3bpp(false) vs 2bpp(true)?
 
 		-- for effect1&2, 0x120000 + graphicSet * 0x40, len = 0xA0
@@ -1849,7 +1849,7 @@ local game_t = struct{
 
 		{padding_14c998 = 'uint8_t['..(0x14d000 - 0x14c998)..']'},				-- 0x14c998 - 0x14d000
 
-		{battleAnimEffects = 'battleAnimEffect_t['..numBattleAnimEffects..']'},				-- 0x14d000 - 0x14df3c
+		{battleAnimEffects = 'battleAnimEffect_t['..numBattleAnimEffects..']'},	-- 0x14d000 - 0x14df3c
 		{battleAnimFrameOffsets = 'uint16_t['..(4194)..']'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid
 
 		-- 0x150000 - ? = character images, 0x16a0 bytes each

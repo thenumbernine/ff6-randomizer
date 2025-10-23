@@ -5,6 +5,13 @@ local tileWidth = require 'graphics'.tileWidth
 local tileHeight = require 'graphics'.tileHeight
 local readTile = require 'graphics'.readTile
 
+--[[
+alltiles-2bpp is 512x184
+alltiles-3bpp is 512x616
+total is 512x800
+i.e. 256x1600 i.e. 6.25 x 256x256 sheets
+--]]
+
 return function(rom, game)
 	local graphicSetsUsed = {}
 	local paletteForTileIndex = {}
@@ -31,6 +38,9 @@ return function(rom, game)
 					print('\t\teffect'..(j+1)..'='..effect)
 
 					local graphicSet = effect.graphicSet
+					if effect.graphicSetHighBit ~= 0 then
+						graphicSet = bit.bor(graphicSet, 0x100)
+					end
 
 					graphicSetsUsed[graphicSet] = graphicSetsUsed[graphicSet]
 						or {
@@ -347,7 +357,7 @@ return function(rom, game)
 				y = tileHeight * tileY,
 			}
 		end
-		allTiles:save(spellGraphicSetsPath'alltiles.png'.path)
+		allTiles:save(spellGraphicSetsPath'alltiles-3bpp.png'.path)
 	end
 
 	do
