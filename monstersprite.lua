@@ -28,12 +28,16 @@ local function writeMonsterSprite(
 
 	local tileMaskData8, tileMaskData16
 	do
-		local addr1 = game.monsterSpriteTileMask8Ofs + 0x120000	-- 0x120000 = monsterSpriteTileMaskData3bpp
+		local addr1 = game.monsterSpriteTileMask8Ofs + 0x120000	-- 0x120000 = battleAnimGraphicsSets3bpp
 		local addr2 = game.monsterSpriteTileMask16Ofs + 0x120000
-		local addr3 = 0x12b300		-- item names?
+		local addr3 = 0x12b300		-- item names -- the next section, so end of addr2's space
 
 		local numTileMasks8 = bit.rshift((addr2 - addr1), 3)
 		local numTileMasks16 = bit.rshift((addr3 - addr2), 5)
+
+--print('addr1', addr1:hex(), 'numTileMasks8', numTileMasks8:hex())
+--print('addr2', addr2:hex(), 'numTileMasks16', numTileMasks16:hex())
+--print('addr3', addr3:hex())
 
 		-- 8 bytes, each byte is a row, each bit is a column flag
 		tileMaskData8 = rom + addr1

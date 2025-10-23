@@ -670,9 +670,9 @@ local spellDisplay_t = struct{
 		--]]
 		-- [[
 		
-		-- [[ index into spellEffect_t table
+		-- [[ index into 'spellEffects' table
 		-- 0xffff = none
-		-- bit 15 means something else
+		-- bit 15 means something else I think
 		{effect1 = 'uint16_t'},
 		{effect2 = 'uint16_t'},
 		{effect3 = 'uint16_t'},
@@ -683,6 +683,7 @@ local spellDisplay_t = struct{
 		{effect3 = 'spellDisplayEffectIndex_t'},
 		--]]
 
+		-- index into 'battleAnimPalettes' table
 		{palette1 = 'uint8_t'},
 		{palette2 = 'uint8_t'},
 		{palette3 = 'uint8_t'},
@@ -701,8 +702,8 @@ local spellEffect_t = struct{
 	name = 'spellEffect_t',
 	fields = {
 		{numFrames = 'uint8_t:6'},
-		{unknown_0_6 = 'uint8_t:1'},	-- hflip?
-		{unknown_0_7 = 'uint8_t:1'},	-- vflip?
+		{unknown_0_6 = 'uint8_t:1'},
+		{unknown_0_7 = 'uint8_t:1'},	-- high bit of graphicSet?
 		
 		-- for effect1&2, 0x120000 + graphicSet * 0x40, len = 0xA0
 		-- for effect3, 0x12C000 + graphicSet * 0x40, len = 0x80 
@@ -1818,8 +1819,7 @@ local game_t = struct{
 
 		{padding_11f9a0 = 'uint8_t['..(0x120000 - 0x11f9a0)..']'},				-- 0x11f9a0 - 0x120000
 
-		-- this is used by monsters and by spell effect1&2
-		{monsterSpriteTileMaskData3bpp = 'uint8_t['..(0x40 * 0x180)..']'},		-- 0x120000 - 0x126000
+		{battleAnimGraphicsSets3bpp = 'uint8_t['..(0x40 * 0x180)..']'},			-- 0x120000 - 0x126000 - holds the 'graphicSet' from spellEffect_t * 0x40 bytes
 		{battleAnimPalettes = 'palette8_t['..(0xf0)..']'},						-- 0x126000 - 0x126f00
 		{itemTypeNames = 'str7_t['..numItemTypes..']'},							-- 0x126f00 - 0x126fe0
 

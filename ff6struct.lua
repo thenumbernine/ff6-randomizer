@@ -1,5 +1,6 @@
 local table = require 'ext.table'
 local struct = require 'struct'
+
 return function(args)
 	local s = struct{
 		notostring = args.notostring,
@@ -29,17 +30,20 @@ return function(args)
 				end),
 			}},
 		},
-		--[[ TODO default output to hex
 		metatable = function(m, ...)
-			m.typeToString = {
-				uint8_t = struct.hextostr,
-				uint16_t = struct.hextostr,
+			-- default output to hex
+			m.__index.typeToString = {
+				uint8_t = function(value)
+					return ('0x%02x'):format(value)
+				end,
+				uint16_t = function(value)
+					return ('0x%04x'):format(value)
+				end,
 			}
 			if args.metatable then
 				args.metatable(m, ...)
 			end
 		end,
-		--]]
 	}
 	return s
 end
