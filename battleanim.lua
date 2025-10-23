@@ -257,15 +257,15 @@ return function(rom, game)
 			local masterCol = (halfGraphicsSetIndex - masterRow) / masterSetsHigh
 
 			local graphicSetInfo = graphicSetsUsed[graphicSetIndex]
-			print('graphicSet '..graphicSetIndex)
+--print('graphicSet '..graphicSetIndex)
 			local paletteIndex = 0
 			local j = 0
 			if graphicSetInfo then
 				local effectDisplayIndexes = table.keys(graphicSetInfo.effectDisplayIndex):sort()
-				print(' uses effect display indexes: '..effectDisplayIndexes:concat', ')
+--print(' uses effect display indexes: '..effectDisplayIndexes:concat', ')
 				j = effectDisplayIndexes[1] or 0
 				local palettes = table.keys(graphicSetInfo.palettes):sort()
-				print(' uses palettes: '..palettes:concat', ')
+--print(' uses palettes: '..palettes:concat', ')
 				paletteIndex = palettes:last() or 0
 			end
 
@@ -397,9 +397,32 @@ return function(rom, game)
 		allTiles:save(spellGraphicSetsPath'alltiles-2bpp.png'.path)
 	end
 
+	-- space for 660 entries
+	-- but if they are 1:1 with battleAnimEffects
+	--  then just 650 entries
+	local battleScriptAddrs = table()
 	print()
-	for i=0,660-1 do
-		print('battle anim script #'..i, '0x'..game.battleAnimScriptOffsets[i]:hex())
+	--for i=0,660-1 do
+	for i=0,game.numBattleAnimEffects-1 do
+		local offset = game.battleAnimScriptOffsets[i]
+		local addr = offset + 0x100000
+		--print('battleAnimScript['..i..']: offset=0x'..offset:hex()..', addr=0x'..addr:hex())
+		battleScriptAddrs[addr] = battleScriptAddrs[addr] or table()
+		battleScriptAddrs[addr]:insert(i)
+	end
+	print()
+
+	-- of 660, 566 unique entries
+	-- of 650, 565 as well
+	local addrsInOrder = battleScriptAddrs:keys():sort()
+	for i,addr in ipairs(addrsInOrder) do
+		local addrend = addrsInOrder[i+1] or 0x107fb2
+		print('battleAnimScript addr=0x'..addr:hex()..':')
+		print(' used by script #s: '..battleScriptAddrs[addr]:concat', ')
+		for j=addr,addrend-1 do
+			io.write(' '..('%02x'):format(rom[j]))	-- number.tostring arg is max # decimal digits ... i should do args for # lhs padding as well ... 
+		end
+		print()
 	end
 	print()
 end

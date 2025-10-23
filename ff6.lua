@@ -1798,9 +1798,7 @@ local game_t = struct{
 
 		{blitzDescOffsets = 'uint16_t['..numBlitzes..']'},						-- 0x0fff9e - 0x0fffae
 		{swordTechDescOffsets = 'uint16_t['..numSwordTechs..']'},				-- 0x0fffae - 0x0fffbe
-
-		{padding_0fffbe = 'uint8_t['..(0x107fb2 - 0x0fffbe)..']'},				-- 0x0fffbe - 0x107fb2
-
+		{battleAnimScripts = 'uint8_t['..(0x107fb2 - 0x0fffbe)..']'},			-- 0x0fffbe - 0x107fb2 <- indexed into with battleAnimScriptOffsets[i] + 0x100000
 		{battleAnimSets = 'battleAnimSet_t['..numBattleAnimSets..']'},			-- 0x107fb2 - 0x1097fa
 
 		{padding_1097fa = 'uint8_t['..(0x10d000 - 0x1097fa)..']'},				-- 0x1097fa - 0x10d000
@@ -1811,7 +1809,7 @@ local game_t = struct{
 		{padding_10fd00 = 'uint8_t['..(0x110141 - 0x10fd00)..']'},				-- 0x10fd00 - 0x110141
 
 		{battleAnimFrameData = 'uint8_t['..(0x11ead8 - 0x110141)..']'},			-- 0x110141 - 0x11ead8 ... 2 bytes each ... pointers from battleAnimFrameOffsets offset by 0x110000 but point into here
-		{battleAnimScriptOffsets = 'uint16_t['..(660)..']'},					-- 0x11ead8 - 0x11f000 ... uint16 offsets +0x100000
+		{battleAnimScriptOffsets = 'uint16_t['..(660)..']'},					-- 0x11ead8 - 0x11f000 ... uint16 offsets +0x100000 ... maybe there are only 650 of these to match with `numBattleAnimEffects`?
 		{battleMessageBase = 'uint8_t['..(0x11f7a0 - 0x11f000)..']'},			-- 0x11f000 - 0x11f7a0
 		{battleMessageOffsets = 'uint16_t['..numBattleMessages..']'},			-- 0x11f7a0 - 0x11f9a0
 
