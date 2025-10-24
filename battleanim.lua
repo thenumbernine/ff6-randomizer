@@ -6,6 +6,29 @@ local tileHeight = require 'graphics'.tileHeight
 local readTile = require 'graphics'.readTile
 
 --[[
+lets try to make sense of this mess...
+battleAnimScriptOffsets[i] -> points to byte offset within -> battleAnimScripts[]
+battleAnimScripts[i] -> handles frame playback of -> battleAnimSets[]
+battleAnimSets[i]
+	-> .wait is how long to wait
+	-> .sound is what sound to play
+	for j in 0,1,2:
+		-> .palette[j] points into battleAnimPalettes[]
+		-> .effect[j] points into battleAnimEffects[]
+battleAnimEffects[i]
+	-> .numFrames = how many frames in this animation-set's animation-effect's animation
+	-> .width, .height = frame size, in 8x8 tiles
+	-> ._2bpp is true for 2bpp, false for 3bpp
+	-> .graphicSet | (.graphicSetHighBit<<8) = 
+	-> .frameIndexBase -> points into battleAnimFrameOffsets[] to get tileXYIndexOffsetsPerFrame
+	for frameIndex in 0..numFrames-1:
+		battleAnimTileDescs = 
+		tileXYIndexAddr = 
+			0x110000
+			+ tileXYIndexOffsetsPerFrame[frameIndex]
+battleAnimTileDesc:
+
+
 alltiles-2bpp is 512x184
 alltiles-3bpp is 512x616
 total is 512x800
@@ -16,7 +39,7 @@ return function(rom, game)
 	local graphicSetsUsed = {}
 	local paletteForTileIndex = {}
 
-	local battleAnimSetPath = path'spelldisplay'
+	local battleAnimSetPath = path'battleanim'
 	battleAnimSetPath:mkdir()
 	for battleAnimSetIndex=0,game.numBattleAnimSets-1 do
 		local battleAnim = game.battleAnimSets + battleAnimSetIndex
@@ -37,6 +60,8 @@ return function(rom, game)
 				else
 					local effect = game.battleAnimEffects + effectIndex
 					print('\t\teffect'..(j+1)..'='..effect)
+						
+					local tileXYIndexOffsetsPerFrame = game.battleAnimFrameOffsets + effect.frameIndexBase
 
 					local graphicSet = effect.graphicSet
 					if effect.graphicSetHighBit ~= 0 then
@@ -52,24 +77,18 @@ return function(rom, game)
 					graphicSetsUsed[graphicSet].palettes[paletteIndex] = true
 
 					-- is this a list of offsets to get the tileaddr's?
-					local effectPtrTableAddr, effectLen, tileAddrBase, tileIndex, tileAddr, tileLen
+					local effectPtrTableAddr, tileAddrBase, tileIndex, tileAddr, tileLen
 
 					local bpp = effect._2bpp == 1 and 2 or 3
 
 					if bpp == 3 then	-- effects 1&2
 						-- first uint16 entry, times tileLen, plus tileAddrBase, points to some kind of tile data ... what about the rest? how to access it?
 						effectPtrTableAddr = graphicSet * 0x40 + 0x120000	-- relative to battleAnimGraphicsSets3bpp
-						-- https://web.archive.org/web/20190907020126/https://www.ff6hacking.com/forums/thread-925.html
-						-- "the length of the pointer data"
-						-- that means the length of where the *(uint16_t*)(rom + effectPtrTableAddr) data points to?
-						-- because the length at effectPtrTableAddr itself seems to be 0x40 (cuz thats what you multiply graphicSet by)
-						effectLen = 0xA0
 
 						tileLen = 0x18 -- len is 24 bytes = 192 bits = 8 x 8 x 3 bits (so 3bpp)
 						tileAddrBase = 0x130000	-- battleAnimGraphics
 					elseif bpp == 2 then
 						effectPtrTableAddr = graphicSet * 0x40 + 0x12C000	-- battleAnimTileFormation2bpp
-						effectLen = 0x80
 
 						tileAddrBase = 0x187000	-- battleAnimGraphics2bpp
 						tileLen = 0x10 -- len is 16 bytes = 8 x 8 x 2bpp
@@ -80,7 +99,6 @@ return function(rom, game)
 					--tileAddr = tileIndex * tileLen + tileAddrBase
 					-- now the tileAddr points to 8 uint16's , and then 8 uint8s that each get padded into uint16's
 					print('\t\teffectAddr=0x'..effectPtrTableAddr:hex()
-						..', effectLen=0x'..effectLen:hex()
 						..', tileAddrBase=0x'..tileAddrBase:hex()
 						..', tileLen=0x'..tileLen:hex())
 
@@ -90,15 +108,15 @@ return function(rom, game)
 					numFrames = bit.band(0x3f, numFrames)
 					for frameIndex=0,numFrames-1 do
 						print('\t\t\tframeIndex=0x'..frameIndex:hex()..':')
-						local effectOffsetEntry = game.battleAnimFrameOffsets[effect.frameIndexBase + frameIndex]
-						local tileXYIndexAddr = 0x110000 + effectOffsetEntry  -- somewhere inside battleAnimFrameData
+						local tileXYIndexOffset = tileXYIndexOffsetsPerFrame[frameIndex]
+						local tileXYIndexAddr = 0x110000 + tileXYIndexOffset  -- somewhere inside battleAnimFrameData
 						--local nextEffectOffsetEntry = game.battleAnimFrameOffsets[effect.frameIndexBase + frameIndex + 1]
-						print('\t\t\t\teffectOffsetEntry=0x'..effectOffsetEntry:hex()
+						print('\t\t\t\teffectOffsetEntry=0x'..tileXYIndexOffset:hex()
 							..', tileXYIndexAddr=0x'..tileXYIndexAddr:hex()
 							--[[ some were saying that you can look at the distance to the next entry to find the # tiles ...
 							-- I was trying that at first but it doesn't seem to work all the time ...
 							..', nextEffectOffsetEntry=0x'..nextEffectOffsetEntry:hex()
-							..', delta='..(nextEffectOffsetEntry - effectOffsetEntry):hex()
+							..', delta='..(nextEffectOffsetEntry - tileXYIndexOffset):hex()
 							--]]
 						)
 
@@ -117,25 +135,31 @@ return function(rom, game)
 
 						local pointerbase = ffi.cast('uint16_t*', rom + effectPtrTableAddr)
 
+						
+--[[
+ok i've got a theory.
+that the tileXYIndexOffset aka tileXYIndexAddr (list of uint16's)
+ is going to be the unique identifier of an animation frame (except palette swaps).
+lets see if each tileXYIndexAddr maps to always use the same graphicSet
+--]]
+						-- looking for ways to test the tile count per-frame
+						-- I think tracking the tile order is the best way
+						local battleAnimTileDescs = ffi.cast('battleAnimTileDesc_t*', rom + tileXYIndexAddr)
 						local lastTileOrder
 						for k=0,math.huge-1 do
-							local x = bit.rshift(rom[tileXYIndexAddr + 2 * k], 4)
-							local y = bit.band(0xf, rom[tileXYIndexAddr + 2 * k])
+							local battleAnimTileDesc = battleAnimTileDescs + k
+							local x = battleAnimTileDesc.x
+							local y = battleAnimTileDesc.y
+							-- is an oob tile an end as well?
 							if x >= effect.width then break end
 							if y >= effect.height then break end
 							local tileOrder = x + effect.width * y
 							if lastTileOrder and lastTileOrder >= tileOrder then break end
 							lastTileOrder = tileOrder
 							
-							local tileIndexOffset = rom[tileXYIndexAddr + 2 * k + 1]
-							-- [[ is this *another* h-flip? needed for ice to work
-							local hflip16 = 0 ~= bit.band(0x40, tileIndexOffset)
-							local vflip16 = 0 ~= bit.band(0x80, tileIndexOffset)
-							tileIndexOffset = bit.band(0x3f, tileIndexOffset)
-							--]]
-							--[[ or not?
-							local hflip16, vflip16 = false, false
-							--]]
+							local tileIndexOffset = battleAnimTileDesc.tile
+							local hflip16 = 0 ~= battleAnimTileDesc.hflip16
+							local vflip16 = 0 ~= battleAnimTileDesc.vflip16
 							print('\t\t\t\t\tx='..x..', y='..y
 								..', tileIndexOffset=0x'..tileIndexOffset:hex()
 								..', hflip16='..tostring(hflip16)
@@ -223,7 +247,7 @@ return function(rom, game)
 	-- but I could square this circle to be 512 x 1024
 	-- ... but are there more than 256 addressible?
 	-- yup there are.  so how do you address them, with just 1 byte?
-	local spellGraphicSetsPath = path'spellgraphicsets'
+	local spellGraphicSetsPath = path'battleanim_graphicsets'
 	spellGraphicSetsPath:mkdir()
 	for bpp=2,3 do
 		-- graphicSet * 0x40 + 0x120000 points to the table of u16 offsets
@@ -275,15 +299,13 @@ return function(rom, game)
 				paletteIndex = palettes:last() or 0
 			end
 
-			local effectPtrTableAddr, effectLen, tileAddrBase, tileIndex, tileAddr, tileLen
+			local effectPtrTableAddr, tileAddrBase, tileIndex, tileAddr, tileLen
 			if bpp == 3 then
 				effectPtrTableAddr = graphicSetIndex * 0x40 + 0x120000	-- battleAnimGraphicsSets3bpp
-				effectLen = 0xA0
 				tileLen = 0x18
 				tileAddrBase = 0x130000	-- game.battleAnimGraphics
 			elseif bpp == 2 then
 				effectPtrTableAddr = graphicSetIndex * 0x40 + 0x12C000	-- battleAnimTileFormation2bpp
-				effectLen = 0x80
 				tileAddrBase = 0x187000	-- game.battleAnimGraphics2bpp
 				tileLen = 0x10
 			else

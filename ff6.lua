@@ -718,6 +718,21 @@ local battleAnimEffect_t = struct{
 assert.eq(ffi.sizeof'battleAnimEffect_t', 6)
 local numBattleAnimEffects = 650
 
+local battleAnimTileDesc_t = struct{
+	name = 'battleAnimTileDesc_t',
+	fields = {
+		-- x y destination to place the tile in the frame
+		{y = 'uint8_t:4'},
+		{x = 'uint8_t:4'},
+		-- tile = which tile index in the graphicSet
+		{tile = 'uint8_t:6'},
+		-- whether to hflip/vflip the 16x16 tile
+		{hflip16 = 'uint8_t:1'},
+		{vflip16 = 'uint8_t:1'},
+	},
+}
+assert.eq(ffi.sizeof'battleAnimTileDesc_t', 2)
+
 ---------------- MONSTERS HEADER ----------------
 
 local numMonsters = 0x180
