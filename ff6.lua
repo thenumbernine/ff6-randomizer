@@ -1850,8 +1850,8 @@ local game_t = struct{
 
 		{padding_11f9a0 = 'uint8_t['..(0x120000 - 0x11f9a0)..']'},				-- 0x11f9a0 - 0x120000
 
-		{battleAnimGraphicsSets3bpp = 'uint8_t['..(0x40 * 0x180)..']'},			-- 0x120000 - 0x126000 - holds the 'graphicSet' uint16 offsets from battleAnimEffect_t * 0x40 bytes
-		{battleAnimPalettes = 'palette8_t['..numBattleAnimPalettes..']'},						-- 0x126000 - 0x126f00
+		{battleAnimGraphicsSets3bpp = 'graphicSetTile_t['..(0x20 * 0x180)..']'},-- 0x120000 - 0x126000 - holds the 'graphicSet' uint16 offsets from battleAnimEffect_t * (0x20 entries == 0x40 bytes)
+		{battleAnimPalettes = 'palette8_t['..numBattleAnimPalettes..']'},		-- 0x126000 - 0x126f00
 		{itemTypeNames = 'str7_t['..numItemTypes..']'},							-- 0x126f00 - 0x126fe0
 
 		{padding_126fe0 = 'uint8_t['..(0x127000 - 0x126fe0)..']'},				-- 0x126fe0 - 0x127000
@@ -1862,10 +1862,7 @@ local game_t = struct{
 		{monsterSpriteTileMask16Ofs = 'uint16_t'},								-- 0x12a822 - 0x12a824
 		{monsterSpriteTileMaskData = 'uint8_t['..(0x12b300 - 0x12a824 )..']'},	-- 0x12a824 - 0x12b300
 		{itemNames = 'str13_t['..numItems..']'},								-- 0x12b300 - 0x12c000
-
-		-- this is used by spell effect3
-		{battleAnimTileFormation2bpp= 'uint8_t['..(0x12ec00 - 0x12c000)..']'},				-- 0x12c000 - 0x12ec00	--should be 2bpp battle animation tiles..
-
+		{battleAnimGraphicsSets2bpp = 'graphicSetTile_t['..(0x20 * 0xb0)..']'},	-- 0x12c000 - 0x12ec00	-- should be 2bpp battle animation 16x16-tile-info referenced by .graphicSet
 		{WoBpalettes = 'palette16_8_t'},										-- 0x12ec00 - 0x12ed00
 		{WoRpalettes = 'palette16_8_t'},										-- 0x12ed00 - 0x12ee00
 		{setzerAirshipPalette = 'palette16_t'},									-- 0x12ee00 - 0x12ee20
@@ -1876,7 +1873,7 @@ local game_t = struct{
 
 		{padding_12ef20 = 'uint8_t['..(0x130000 - 0x12ef20)..']'},				-- 0x12ef20 - 0x130000
 
-		{battleAnimGraphics = 'uint8_t['..(0x14c998 - 0x130000)..']'},			-- 0x130000 - 0x14c998 ... 3bpp, so 4881 (= 3 x 1627 ?) tiles
+		{battleAnimGraphics3bpp = 'uint8_t['..(0x14c998 - 0x130000)..']'},			-- 0x130000 - 0x14c998 ... 3bpp, so 4881 (= 3 x 1627 ?) tiles
 
 		{padding_14c998 = 'uint8_t['..(0x14d000 - 0x14c998)..']'},				-- 0x14c998 - 0x14d000
 

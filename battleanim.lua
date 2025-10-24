@@ -29,19 +29,19 @@ battleAnimEffects[i] ... this is one animated sequence, i.e. a collection of fra
 		points into graphicSetTile_t list, which are 16x4 x 8x8 tiles
 			2bpp list addr is * 0x40 + 0x12C000
 			3bpp list addr is * 0x40 + 0x120000
-	.frameIndexBase 
+	.frameIndexBase
 		index into battleAnimFrame16x16Tiles[] to get effectFrame16x16TileStart
 	for frameIndex in 0..numFrames-1:
-		frame16x16TilesPtr addr = 
+		frame16x16TilesPtr addr =
 			0x110000
 			+ effectFrame16x16TileStart[frameIndex]
 frame16x16TilesPtr points to a list of battleAnim16x16Tile_t's = list of 16x16 tiles
 	.x, .y = in 16x16 tile units, destination into this frame to draw this 16x16 tile
 	.tile = index into graphicSet's 64x4 location of 8x8 tiles
-		tileBasePerBPPAddr + tileLen * graphicSetTile.tile
+		tile8x8DataBaseAddr + tileLen * graphicSetTile.tile
 	.hflip16, .vflip16 = how to flip the 16x16 tile
 graphicSetTile_t list holds:
-	.tile = address into tileBasePerBPPAddr + tileLen * graphicSetTile.tile
+	.tile = address into tile8x8DataBaseAddr + tileLen * graphicSetTile.tile
 	.hflip = hflip 8x8
 	.vflip = vflip 8x8
 
@@ -52,11 +52,72 @@ total is 512x800
 i.e. 256x1600 i.e. 6.25 x 256x256 sheets
 --]]
 
+local battleAnimGraphicSetsPath = path'battleanim_graphicsets'
+battleAnimGraphicSetsPath:mkdir()
+
 return function(rom, game)
 	local graphicSetsUsed = table()
 	local paletteForTileIndex = {}
 	local palettesUsed = table()
 	local frame16x16TileAddrInfo = table()
+
+
+	-- [==[ interface layer for game.*
+
+	local numBattleAnimSets = game.numBattleAnimSets
+	local numBattleAnimEffects = game.numBattleAnimEffects
+
+	--[[ using the originals?
+	local battleAnimSets = game.battleAnimSets
+	local battleAnimEffects = game.battleAnimEffects
+	local battleAnimFrame16x16Tiles = game.battleAnimFrame16x16Tiles
+	local battleAnimGraphicsSets3bpp = game.battleAnimGraphicsSets3bpp
+	local battleAnimGraphicsSets2bpp = game.battleAnimGraphicsSets2bpp
+	--]]
+	-- [[ lets try to separate the blobs and still reconstruct the same data correctly
+	local battleAnimSets = ffi.new('battleAnimSet_t[?]', game.numBattleAnimSets)
+	ffi.copy(battleAnimSets, game.battleAnimSets, ffi.sizeof(battleAnimSets))
+	battleAnimGraphicSetsPath'animsets.bin':write(ffi.string(battleAnimSets, ffi.sizeof(battleAnimSets)))
+
+	local battleAnimEffects = ffi.new('battleAnimEffect_t[?]', game.numBattleAnimEffects)
+	ffi.copy(battleAnimEffects, game.battleAnimEffects, ffi.sizeof(battleAnimEffects))
+	battleAnimGraphicSetsPath'animeffects.bin':write(ffi.string(battleAnimEffects, ffi.sizeof(battleAnimEffects)))
+
+	local battleAnimFrame16x16Tiles = ffi.new('uint16_t[?]', 4194)
+	ffi.copy(battleAnimFrame16x16Tiles, game.battleAnimFrame16x16Tiles, ffi.sizeof(battleAnimFrame16x16Tiles))
+	battleAnimGraphicSetsPath'animframe16x16tiles.bin':write(ffi.string(battleAnimFrame16x16Tiles, ffi.sizeof(battleAnimFrame16x16Tiles)))
+
+	local battleAnimGraphicsSets3bpp = ffi.new('graphicSetTile_t[?]', 0x20 * 0x180)
+	ffi.copy(battleAnimGraphicsSets3bpp, game.battleAnimGraphicsSets3bpp, ffi.sizeof(battleAnimGraphicsSets3bpp))
+	battleAnimGraphicSetsPath'graphicsets3bpp.bin':write(ffi.string(battleAnimGraphicsSets3bpp, ffi.sizeof(battleAnimGraphicsSets3bpp)))
+
+	local battleAnimGraphicsSets2bpp = ffi.new('graphicSetTile_t[?]', 0x20 * 0xb0)
+	ffi.copy(battleAnimGraphicsSets2bpp, game.battleAnimGraphicsSets2bpp, ffi.sizeof(battleAnimGraphicsSets2bpp))
+	battleAnimGraphicSetsPath'graphicsets2bpp.bin':write(ffi.string(battleAnimGraphicsSets2bpp, ffi.sizeof(battleAnimGraphicsSets2bpp)))
+	
+	-- no need to save 'battleAnimGraphics2bpp/3bpp, because that's tile data, stored in the tile sheets
+	--]]
+	--]==]
+
+	local battleAnimGraphicSets = {
+		[2] = battleAnimGraphicsSets2bpp,
+		[3] = battleAnimGraphicsSets3bpp,
+	}
+
+	local infoPerBpp = {
+		[2] = {
+			-- 16x16 info in 8x8 partitions
+			graphicSetBaseAddr = 0x12C000,	-- battleAnimGraphicsSets2bpp
+			-- 8x8 tile data:
+			tile8x8DataBaseAddr = 0x187000,	-- battleAnimGraphics2bpp
+			tile8x8DataEndAddr = 0x18c9a0,
+		},
+		[3] = {
+			graphicSetBaseAddr = 0x120000, 	-- battleAnimGraphicsSets3bpp
+			tile8x8DataBaseAddr = 0x130000,	-- battleAnimGraphics3bpp
+			tile8x8DataEndAddr = 0x14c998,
+		},
+	}
 
 	-- total # of 8x8 tiles saved
 	-- to give me a rough texture-atlas idea if I want to save the expanded tiles
@@ -64,8 +125,8 @@ return function(rom, game)
 
 	local battleAnimSetPath = path'battleanim'
 	battleAnimSetPath:mkdir()
-	for battleAnimSetIndex=0,game.numBattleAnimSets-1 do
-		local battleAnim = game.battleAnimSets + battleAnimSetIndex
+	for battleAnimSetIndex=0,numBattleAnimSets-1 do
+		local battleAnim = battleAnimSets + battleAnimSetIndex
 		print('battleAnimSet['..battleAnimSetIndex..'] = '..battleAnim)
 
 		for j=0,2 do
@@ -77,14 +138,14 @@ return function(rom, game)
 				local unknown_15 = 0 ~= bit.band(0x8000, effectIndex)
 				effectIndex = bit.band(0x7fff, effectIndex)
 				-- idk what unknown_15 means.
-				if effectIndex >= game.numBattleAnimEffects then
+				if effectIndex >= numBattleAnimEffects then
 					-- NO MORE OF THESE ERRORS BEING HIT, NICE
 					print('!!! effect is oob !!! '..('%x'):format(effectIndex))
 				else
-					local effect = game.battleAnimEffects + effectIndex
+					local effect = battleAnimEffects + effectIndex
 					print('\t\teffect'..(j+1)..'='..effect)
-						
-					local effectFrame16x16TileStart = game.battleAnimFrame16x16Tiles + effect.frameIndexBase
+
+					local effectFrame16x16TileStart = battleAnimFrame16x16Tiles + effect.frameIndexBase
 					local graphicSet = bit.bor(effect.graphicSet, bit.lshift(effect.graphicSetHighBit, 8))
 
 					graphicSetsUsed[graphicSet] = graphicSetsUsed[graphicSet]
@@ -96,23 +157,18 @@ return function(rom, game)
 					graphicSetsUsed[graphicSet].palettes[paletteIndex] = true
 					palettesUsed[paletteIndex] = true
 
-					-- is this a list of offsets to get the tileaddr's?
-					local graphicSetAddr, tileBasePerBPPAddr
-
 					local bpp = effect._2bpp == 1 and 2 or 3
+					local info = infoPerBpp[bpp]
+					local tile8x8DataBaseAddr = info.tile8x8DataBaseAddr
 
-					if bpp == 3 then	-- effects 1&2
-						graphicSetAddr = 0x120000 + graphicSet * 0x40 	-- relative to battleAnimGraphicsSets3bpp
-						tileBasePerBPPAddr = 0x130000	-- battleAnimGraphics
-					elseif bpp == 2 then
-						graphicSetAddr = 0x12C000 + graphicSet * 0x40 	-- battleAnimTileFormation2bpp
-						tileBasePerBPPAddr = 0x187000	-- battleAnimGraphics2bpp
-					else
-						error'here'
-					end
+					local graphicSetAddr = info.graphicSetBaseAddr + graphicSet * 0x40
+					
+					--local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
+					local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
+
 					local tileLen = bit.lshift(bpp, 3)
 					print('\t\teffectAddr=0x'..graphicSetAddr:hex()
-						..', tileBasePerBPPAddr=0x'..tileBasePerBPPAddr:hex()
+						..', tile8x8DataBaseAddr=0x'..tile8x8DataBaseAddr:hex()
 						..', tileLen=0x'..tileLen:hex())
 
 					local numFrames = effect.numFrames
@@ -123,7 +179,7 @@ return function(rom, game)
 						print('\t\t\tframeIndex=0x'..frameIndex:hex()..':')
 						local frame16x16TilesAddr = 0x110000 + effectFrame16x16TileStart[frameIndex]  -- somewhere inside battleAnimFrameData
 						local frame16x16TilesPtr = ffi.cast('battleAnim16x16Tile_t*', rom + frame16x16TilesAddr)
-						--local nextBattleAnimTileDescAddr = 0x110000 + game.battleAnimFrame16x16Tiles[effect.frameIndexBase + frameIndex + 1]
+						--local nextBattleAnimTileDescAddr = 0x110000 + battleAnimFrame16x16Tiles[effect.frameIndexBase + frameIndex + 1]
 						print('\t\t\t\tframe16x16TilesAddr=0x'..frame16x16TilesAddr:hex()
 							--[[ some were saying that you can look at the distance to the next entry to find the # tiles ...
 							-- I was trying that at first but it doesn't seem to work all the time ...
@@ -133,7 +189,7 @@ return function(rom, game)
 						)
 
 						-- now read from frame16x16TilesAddr for how long? until when?
-						-- frame16x16TilesAddr points to a battleAnim16x16Tile_t 
+						-- frame16x16TilesAddr points to a battleAnim16x16Tile_t
 
 						local im = Image(
 							2*tileWidth * effect.width,
@@ -142,8 +198,6 @@ return function(rom, game)
 							'uint8_t'
 						)
 							:clear()
-
-						local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
 
 						--[[
 						ok i've got a theory.
@@ -171,7 +225,7 @@ return function(rom, game)
 							lastTileOrder = tileOrder
 
 							totalTilesSaved = totalTilesSaved + 1
-							
+
 							print('\t\t\t\t\tbattleAnim16x16Tile='..battleAnim16x16Tile)
 							-- paste into image
 							for yofs=0,1 do
@@ -207,7 +261,7 @@ return function(rom, game)
 --print('xofs', xofs:hex(), 'yofs', yofs:hex(), 'graphicSetTile', graphicSetTile)
 									-- 16384 indexable, but points to 0x130000 - 0x14c998, which only holds 4881
 									paletteForTileIndex[graphicSetTile.tile] = paletteIndex
-									local tileDataAddr = tileBasePerBPPAddr + tileLen * graphicSetTile.tile
+									local tile8x8DataAddr = tile8x8DataBaseAddr + tileLen * graphicSetTile.tile
 									local xformxofs = xofs
 									if battleAnim16x16Tile.hflip16 ~= 0 then
 										xformxofs = 1 - xformxofs
@@ -222,7 +276,7 @@ return function(rom, game)
 										im,
 										bit.bor(bit.lshift(x, 1), xformxofs)*tileWidth,
 										bit.bor(bit.lshift(y, 1), xformyofs)*tileHeight,
-										rom + tileDataAddr,
+										rom + tile8x8DataAddr,
 										bpp,
 										hflip,
 										vflip
@@ -251,8 +305,8 @@ return function(rom, game)
 
 	local uniquePalettesUsed = palettesUsed:keys():sort()
 	print('palettes used #:', #uniquePalettesUsed)
-	-- TODO these are palette8's used for 3bpp, but 2bpp just needs 4 colors ... 
-	-- 175 of 240 palettes are used ... 
+	-- TODO these are palette8's used for 3bpp, but 2bpp just needs 4 colors ...
+	-- 175 of 240 palettes are used ...
 	-- ... I'll just copy them all into palette blobs.
 	print()
 
@@ -261,7 +315,7 @@ return function(rom, game)
 	print('graphicSets used', uniqueGraphicSets :mapi(function(i)
 		return '0x'..i:hex()
 	end):concat', ')
-	print('...'..#uniqueGraphicSets..' unique graphic sets') 
+	print('...'..#uniqueGraphicSets..' unique graphic sets')
 	print()
 	--]]
 
@@ -281,8 +335,6 @@ return function(rom, game)
 	-- but I could square this circle to be 512 x 1024
 	-- ... but are there more than 256 addressible?
 	-- yup there are.  so how do you address them, with just 1 byte?
-	local spellGraphicSetsPath = path'battleanim_graphicsets'
-	spellGraphicSetsPath:mkdir()
 	for bpp=2,3 do
 		-- graphicSet * 0x40 + 0x120000 points to the table of u16 offsets
 		-- the region 0x120000-0x126000 is for 'monster sprite tile mask data' ... nah, that's really just for this data.
@@ -295,7 +347,8 @@ return function(rom, game)
 		-- and 12ac24-12b300 for 16x16 tile masks
 		--local maxGraphicSet = 256
 		local maxGraphicSet = assert.index({
-			[2] = 384,	-- ??? wait, if its 2bpp then inc by 0x40 means skipping a full graphicsSet instead of just half...
+			-- ??? wait, if its 2bpp then inc by 0x40 means skipping a full graphicsSet instead of just half...
+			[2] = 0xb0,
 			[3] = 384,
 		}, bpp)
 
@@ -332,18 +385,10 @@ return function(rom, game)
 				paletteIndex = palettes:last() or 0
 			end
 
-			local graphicSetAddr, tileBasePerBPPAddr
-			if bpp == 3 then
-				graphicSetAddr = graphicSetIndex * 0x40 + 0x120000	-- battleAnimGraphicsSets3bpp
-				tileBasePerBPPAddr = 0x130000	-- game.battleAnimGraphics
-			elseif bpp == 2 then
-				graphicSetAddr = graphicSetIndex * 0x40 + 0x12C000	-- battleAnimTileFormation2bpp
-				tileBasePerBPPAddr = 0x187000	-- game.battleAnimGraphics2bpp
-			else
-				error'here'
-			end
 			local tileLen = bit.lshift(bpp, 3)
-
+			local info = infoPerBpp[bpp]
+			local tile8x8DataBaseAddr = info.tile8x8DataBaseAddr
+			local graphicSetAddr = info.graphicSetBaseAddr + graphicSetIndex * 0x40
 			local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
 
 			local im = Image(
@@ -355,12 +400,12 @@ return function(rom, game)
 			for y=0,3 do
 				for x=0,15 do
 					local graphicSetTile = graphicSetTiles + (x + 0x10 * y)
-					local tileDataAddr = tileBasePerBPPAddr + tileLen * graphicSetTile.tile
+					local tile8x8DataAddr = tile8x8DataBaseAddr + tileLen * graphicSetTile.tile
 					readTile(
 						im,
 						x * tileWidth,
 						y * tileHeight,
-						rom + tileDataAddr,
+						rom + tile8x8DataAddr,
 						bpp,
 						0 ~= graphicSetTile.hflip,
 						0 ~= graphicSetTile.vflip
@@ -372,9 +417,9 @@ return function(rom, game)
 				x = masterCol * 128,
 				y = masterRow * 32,
 			}
-			--im:save(spellGraphicSetsPath(('%03d'):format(graphicSetIndex)..'.png').path)
+			--im:save(battleAnimGraphicSetsPath(('%03d'):format(graphicSetIndex)..'.png').path)
 		end
-		master:save(spellGraphicSetsPath('battle_anim_graphic_sets_'..bpp..'bpp.png').path)
+		master:save(battleAnimGraphicSetsPath('battle_anim_graphic_sets_'..bpp..'bpp.png').path)
 	end
 
 	print'frame16x16TileAddrInfo={'
@@ -397,20 +442,17 @@ return function(rom, game)
 
 		local tileImg = Image(tileWidth, tileHeight, 1, 'uint8_t')
 
-		for _,info in ipairs{
-			{bpp=3, addr=0x130000, addrend=0x14c998},	-- game.battleAnimGraphics
-			{bpp=2, addr=0x187000, addrend=0x18c9a0},	-- game.battleAnimGraphics2bpp
-		} do
+		for bpp=2,3 do
+			local info = infoPerBpp[bpp]
 			tileImg:clear()
 
 			local allTileSheets = table()
 
-			local bpp = info.bpp
-			local tileBasePerBPPAddr = info.addr
-			local tileBasePerBPPAddrEnd = info.addrend
-			
+			local tile8x8DataBaseAddr = info.tile8x8DataBaseAddr
+			local tile8x8DataEndAddr = info.tile8x8DataEndAddr
+
 			local tileSizeInBytes = bit.lshift(bpp, 3)
-			local totalTiles = math.floor((tileBasePerBPPAddrEnd - tileBasePerBPPAddr) / tileSizeInBytes)
+			local totalTiles = math.floor((tile8x8DataEndAddr - tile8x8DataBaseAddr) / tileSizeInBytes)
 
 			for tileIndex=0,totalTiles-1 do
 				local tileX = bit.band(tileIndex, tilesPerSheetMask)
@@ -422,7 +464,7 @@ return function(rom, game)
 					tileImg,
 					0,
 					0,
-					rom + tileBasePerBPPAddr + tileSizeInBytes * tileIndex,
+					rom + tile8x8DataBaseAddr + tileSizeInBytes * tileIndex,
 					bpp
 				)
 				local sheet = allTileSheets[sheetIndex+1]
@@ -434,7 +476,7 @@ return function(rom, game)
 				-- use whatever's last as the palette
 				local paletteIndex = paletteForTileIndex[tileIndex] or 0
 				sheet.palette = makePalette(game.battleAnimPalettes + paletteIndex, bit.lshift(1, bpp))
-				
+
 				sheet:pasteInto{
 					image = tileImg,
 					x = bit.lshift(tileX, 3),	-- tx << 3 == tx * 8 == tx * tileWidth
@@ -442,7 +484,7 @@ return function(rom, game)
 				}
 			end
 			for sheetIndexPlus1,sheet in ipairs(allTileSheets) do
-				sheet:save(spellGraphicSetsPath('alltiles-'..bpp..'bpp-sheet'..sheetIndexPlus1..'.png').path)
+				sheet:save(battleAnimGraphicSetsPath('alltiles-'..bpp..'bpp-sheet'..sheetIndexPlus1..'.png').path)
 			end
 		end
 	end
@@ -453,7 +495,7 @@ return function(rom, game)
 	local battleScriptAddrs = table()
 	print()
 	--for i=0,660-1 do
-	for i=0,game.numBattleAnimEffects-1 do
+	for i=0,numBattleAnimEffects-1 do
 		local offset = game.battleAnimScriptOffsets[i]
 		local addr = offset + 0x100000
 		--print('battleAnimScript['..i..']: offset=0x'..offset:hex()..', addr=0x'..addr:hex())
@@ -470,7 +512,7 @@ return function(rom, game)
 		print('battleAnimScript addr=0x'..addr:hex()..':')
 		print(' used by script #s: '..battleScriptAddrs[addr]:concat', ')
 		for j=addr,addrend-1 do
-			io.write(' '..('%02x'):format(rom[j]))	-- number.tostring arg is max # decimal digits ... i should do args for # lhs padding as well ... 
+			io.write(' '..('%02x'):format(rom[j]))	-- number.tostring arg is max # decimal digits ... i should do args for # lhs padding as well ...
 		end
 		print()
 	end
@@ -503,6 +545,6 @@ return function(rom, game)
 				p = p + 4
 			end
 		end
-		palimage:save(spellGraphicSetsPath('palette'..(palSheetIndex+1)..'.png').path)
+		palimage:save(battleAnimGraphicSetsPath('palette'..(palSheetIndex+1)..'.png').path)
 	end
 end
