@@ -30,11 +30,13 @@ battleAnimEffects[i] ... this is one animated sequence, i.e. a collection of fra
 			2bpp list addr is * 0x40 + 0x12C000
 			3bpp list addr is * 0x40 + 0x120000
 	.frameIndexBase
-		index into battleAnimFrame16x16Tiles[] to get effectFrame16x16TileStart
+		index into battleAnimFrame16x16TileOffsets[] to get effectFrame16x16TileOffsetPtr
 	for frameIndex in 0..numFrames-1:
 		frame16x16TilesPtr addr =
 			0x110000
-			+ effectFrame16x16TileStart[frameIndex]
+			+ effectFrame16x16TileOffsetPtr[frameIndex]
+		... notice all these addrs span from 0x110141 to 0x11e96b, 
+			so it is the 'battleAnimFrame16x16Tiles'
 frame16x16TilesPtr points to a list of battleAnim16x16Tile_t's = list of 16x16 tiles
 	.x, .y = in 16x16 tile units, destination into this frame to draw this 16x16 tile
 	.tile = index into graphicSet's 64x4 location of 8x8 tiles
@@ -70,9 +72,10 @@ return function(rom, game)
 	--[[ using the originals?
 	local battleAnimSets = game.battleAnimSets
 	local battleAnimEffects = game.battleAnimEffects
-	local battleAnimFrame16x16Tiles = game.battleAnimFrame16x16Tiles
-	local battleAnimGraphicsSets3bpp = game.battleAnimGraphicsSets3bpp
+	local battleAnimFrame16x16TileOffsets = game.battleAnimFrame16x16TileOffsets
 	local battleAnimGraphicsSets2bpp = game.battleAnimGraphicsSets2bpp
+	local battleAnimGraphicsSets3bpp = game.battleAnimGraphicsSets3bpp
+	local battleAnimFrame16x16Tiles = game.battleAnimFrame16x16Tiles
 	--]]
 	-- [[ lets try to separate the blobs and still reconstruct the same data correctly
 	local battleAnimSets = ffi.new('battleAnimSet_t[?]', game.numBattleAnimSets)
@@ -83,23 +86,27 @@ return function(rom, game)
 	ffi.copy(battleAnimEffects, game.battleAnimEffects, ffi.sizeof(battleAnimEffects))
 	battleAnimGraphicSetsPath'animeffects.bin':write(ffi.string(battleAnimEffects, ffi.sizeof(battleAnimEffects)))
 
-	local battleAnimFrame16x16Tiles = ffi.new('uint16_t[?]', 4194)
-	ffi.copy(battleAnimFrame16x16Tiles, game.battleAnimFrame16x16Tiles, ffi.sizeof(battleAnimFrame16x16Tiles))
-	battleAnimGraphicSetsPath'animframe16x16tiles.bin':write(ffi.string(battleAnimFrame16x16Tiles, ffi.sizeof(battleAnimFrame16x16Tiles)))
+	local battleAnimFrame16x16TileOffsets = ffi.new('uint16_t[?]', 4194)
+	ffi.copy(battleAnimFrame16x16TileOffsets, game.battleAnimFrame16x16TileOffsets, ffi.sizeof(battleAnimFrame16x16TileOffsets))
+	battleAnimGraphicSetsPath'animframe16x16offsets.bin':write(ffi.string(battleAnimFrame16x16TileOffsets, ffi.sizeof(battleAnimFrame16x16TileOffsets)))
+
+	local battleAnimGraphicsSets2bpp = ffi.new('graphicSetTile_t[?]', 0x20 * 0xb0)
+	ffi.copy(battleAnimGraphicsSets2bpp, game.battleAnimGraphicsSets2bpp, ffi.sizeof(battleAnimGraphicsSets2bpp))
+	battleAnimGraphicSetsPath'graphicsets2bpp.bin':write(ffi.string(battleAnimGraphicsSets2bpp, ffi.sizeof(battleAnimGraphicsSets2bpp)))
 
 	local battleAnimGraphicsSets3bpp = ffi.new('graphicSetTile_t[?]', 0x20 * 0x180)
 	ffi.copy(battleAnimGraphicsSets3bpp, game.battleAnimGraphicsSets3bpp, ffi.sizeof(battleAnimGraphicsSets3bpp))
 	battleAnimGraphicSetsPath'graphicsets3bpp.bin':write(ffi.string(battleAnimGraphicsSets3bpp, ffi.sizeof(battleAnimGraphicsSets3bpp)))
 
-	local battleAnimGraphicsSets2bpp = ffi.new('graphicSetTile_t[?]', 0x20 * 0xb0)
-	ffi.copy(battleAnimGraphicsSets2bpp, game.battleAnimGraphicsSets2bpp, ffi.sizeof(battleAnimGraphicsSets2bpp))
-	battleAnimGraphicSetsPath'graphicsets2bpp.bin':write(ffi.string(battleAnimGraphicsSets2bpp, ffi.sizeof(battleAnimGraphicsSets2bpp)))
-	
+	local battleAnimFrame16x16Tiles = ffi.new('battleAnim16x16Tile_t[?]', 0x74cb)
+	ffi.copy(battleAnimFrame16x16Tiles, game.battleAnimFrame16x16Tiles, ffi.sizeof(battleAnimFrame16x16Tiles))
+	battleAnimGraphicSetsPath'animframe16x16tiles.bin':write(ffi.string(battleAnimFrame16x16Tiles, ffi.sizeof(battleAnimFrame16x16Tiles)))
+
 	-- no need to save 'battleAnimGraphics2bpp/3bpp, because that's tile data, stored in the tile sheets
 	--]]
 	--]==]
 
-	local battleAnimGraphicSets = {
+	local battleAnimGraphicSetsPerBpp = {
 		[2] = battleAnimGraphicsSets2bpp,
 		[3] = battleAnimGraphicsSets3bpp,
 	}
@@ -145,26 +152,27 @@ return function(rom, game)
 					local effect = battleAnimEffects + effectIndex
 					print('\t\teffect'..(j+1)..'='..effect)
 
-					local effectFrame16x16TileStart = battleAnimFrame16x16Tiles + effect.frameIndexBase
-					local graphicSet = bit.bor(effect.graphicSet, bit.lshift(effect.graphicSetHighBit, 8))
+					local effectFrame16x16TileOffsetPtr = battleAnimFrame16x16TileOffsets + effect.frameIndexBase
+					local graphicSetIndex = bit.bor(effect.graphicSet, bit.lshift(effect.graphicSetHighBit, 8))
 
-					graphicSetsUsed[graphicSet] = graphicSetsUsed[graphicSet]
+					graphicSetsUsed[graphicSetIndex] = graphicSetsUsed[graphicSetIndex]
 						or {
 							effectDisplayIndex = {},
 							palettes = {},
 						}
-					graphicSetsUsed[graphicSet].effectDisplayIndex[j] = true
-					graphicSetsUsed[graphicSet].palettes[paletteIndex] = true
+					graphicSetsUsed[graphicSetIndex].effectDisplayIndex[j] = true
+					graphicSetsUsed[graphicSetIndex].palettes[paletteIndex] = true
 					palettesUsed[paletteIndex] = true
 
 					local bpp = effect._2bpp == 1 and 2 or 3
 					local info = infoPerBpp[bpp]
 					local tile8x8DataBaseAddr = info.tile8x8DataBaseAddr
 
-					local graphicSetAddr = info.graphicSetBaseAddr + graphicSet * 0x40
-					
+					-- number of graphicSetTile_t entries into the battleAnimGraphicSets[bpp] array (2 bytes each)
+					local graphicSetOffset = graphicSetIndex * 0x20
+					local graphicSetAddr = info.graphicSetBaseAddr + graphicSetOffset * ffi.sizeof'graphicSetTile_t' 
 					--local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
-					local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
+					local graphicSetTiles = battleAnimGraphicSetsPerBpp[bpp] + graphicSetOffset 
 
 					local tileLen = bit.lshift(bpp, 3)
 					print('\t\teffectAddr=0x'..graphicSetAddr:hex()
@@ -177,9 +185,24 @@ return function(rom, game)
 					numFrames = bit.band(0x3f, numFrames)
 					for frameIndex=0,numFrames-1 do
 						print('\t\t\tframeIndex=0x'..frameIndex:hex()..':')
-						local frame16x16TilesAddr = 0x110000 + effectFrame16x16TileStart[frameIndex]  -- somewhere inside battleAnimFrameData
-						local frame16x16TilesPtr = ffi.cast('battleAnim16x16Tile_t*', rom + frame16x16TilesAddr)
-						--local nextBattleAnimTileDescAddr = 0x110000 + battleAnimFrame16x16Tiles[effect.frameIndexBase + frameIndex + 1]
+						local frame16x16TilesAddr = 0x110000 + effectFrame16x16TileOffsetPtr[frameIndex]  -- somewhere inside battleAnimFrame16x16Tiles
+
+						local battleAnimFrame16x16TilesAddr = ffi.cast('uint8_t*', game.battleAnimFrame16x16Tiles) - ffi.cast('uint8_t*', rom)
+						local animFrame16x16TileOffset = frame16x16TilesAddr - battleAnimFrame16x16TilesAddr
+						assert.le(0, animFrame16x16TileOffset)
+						assert.lt(animFrame16x16TileOffset, ffi.sizeof(game.battleAnimFrame16x16Tiles))	-- will this sizeof work?
+						-- make sure its aligned to battleAnim16x16Tile_t
+						assert.eq(0, bit.band(1, animFrame16x16TileOffset))
+						local animFrame16x16TileIndex = bit.rshift(animFrame16x16TileOffset, 1)
+
+						-- use the 0x110000 address offset
+						--local frame16x16TilesPtr = ffi.cast('battleAnim16x16Tile_t*', rom + frame16x16TilesAddr)
+						-- use the battleAnimFrame16x16Tiles struct offset (where the ptr goes anyways)
+						--local frame16x16TilesPtr = game.battleAnimFrame16x16Tiles + animFrame16x16TileIndex 
+						-- use the extracted binary blob:
+						local frame16x16TilesPtr = battleAnimFrame16x16Tiles + animFrame16x16TileIndex
+						
+						--local nextBattleAnimTileDescAddr = 0x110000 + battleAnimFrame16x16TileOffsets[effect.frameIndexBase + frameIndex + 1]
 						print('\t\t\t\tframe16x16TilesAddr=0x'..frame16x16TilesAddr:hex()
 							--[[ some were saying that you can look at the distance to the next entry to find the # tiles ...
 							-- I was trying that at first but it doesn't seem to work all the time ...
@@ -203,11 +226,11 @@ return function(rom, game)
 						ok i've got a theory.
 						that the frame16x16TilesAddr (list of battleAnim16x16Tile_t's)
 						 is going to be the unique identifier of an animation frame (except palette swaps).
-						lets see if each frame16x16TilesAddr maps to always use the same graphicSet
-						i.e. they will have the same .bpp and .graphicSet
+						lets see if each frame16x16TilesAddr maps to always use the same graphicSetIndex
+						i.e. they will have the same .bpp and .graphicSetIndex
 						--]]
 						frame16x16TileAddrInfo[frame16x16TilesAddr] = frame16x16TileAddrInfo[frame16x16TilesAddr] or table()
-						local key = '0x'..graphicSet:hex()..'/'..bpp
+						local key = '0x'..graphicSetIndex:hex()..'/'..bpp
 						frame16x16TileAddrInfo[frame16x16TilesAddr][key] = true
 
 						-- looking for ways to test the tile count per-frame
@@ -388,8 +411,11 @@ return function(rom, game)
 			local tileLen = bit.lshift(bpp, 3)
 			local info = infoPerBpp[bpp]
 			local tile8x8DataBaseAddr = info.tile8x8DataBaseAddr
-			local graphicSetAddr = info.graphicSetBaseAddr + graphicSetIndex * 0x40
-			local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
+			
+			local graphicSetOffset = graphicSetIndex * 0x20
+			local graphicSetAddr = info.graphicSetBaseAddr + graphicSetOffset * ffi.sizeof'graphicSetTile_t' 
+			--local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
+			local graphicSetTiles = battleAnimGraphicSetsPerBpp[bpp] + graphicSetOffset 
 
 			local im = Image(
 				0x10*tileWidth,

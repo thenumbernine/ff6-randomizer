@@ -712,7 +712,7 @@ local battleAnimEffect_t = struct{
 		-- for effect3, 0x12C000 + graphicSet * 0x40, len = 0x80
 		{graphicSet = 'uint8_t'}, -- aka "chipset" aka "mold" (where does this point?)
 
-		{frameIndexBase = 'uint16_t'}, -- the index into battleAnimFrame16x16Tiles
+		{frameIndexBase = 'uint16_t'}, -- the index into battleAnimFrame16x16TileOffsets
 
 		-- size in 16x16 tiles:
 		{width = 'uint8_t'},
@@ -1843,7 +1843,10 @@ local game_t = struct{
 
 		{padding_10fd00 = 'uint8_t['..(0x110141 - 0x10fd00)..']'},				-- 0x10fd00 - 0x110141
 
-		{battleAnimFrameData = 'uint8_t['..(0x11ead8 - 0x110141)..']'},			-- 0x110141 - 0x11ead8 ... 2 bytes each ... pointers from battleAnimFrame16x16Tiles offset by 0x110000 but point into here
+		{battleAnimFrame16x16Tiles = 'battleAnim16x16Tile_t['..(0x74cb)..']'},	-- 0x110141 - 0x11ead7 ... 2 bytes each ... pointers from battleAnimFrame16x16TileOffsets offset by 0x110000 but point into here
+		
+		{padding_11ead7 = 'uint8_t'},											-- 0x11ead7 - 0x11ead8
+
 		{battleAnimScriptOffsets = 'uint16_t['..(660)..']'},					-- 0x11ead8 - 0x11f000 ... uint16 offsets +0x100000 ... maybe there are only 650 of these to match with `numBattleAnimEffects`?
 		{battleMessageBase = 'uint8_t['..(0x11f7a0 - 0x11f000)..']'},			-- 0x11f000 - 0x11f7a0
 		{battleMessageOffsets = 'uint16_t['..numBattleMessages..']'},			-- 0x11f7a0 - 0x11f9a0
@@ -1878,7 +1881,7 @@ local game_t = struct{
 		{padding_14c998 = 'uint8_t['..(0x14d000 - 0x14c998)..']'},				-- 0x14c998 - 0x14d000
 
 		{battleAnimEffects = 'battleAnimEffect_t['..numBattleAnimEffects..']'},	-- 0x14d000 - 0x14df3c
-		{battleAnimFrame16x16Tiles = 'uint16_t['..(4194)..']'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid.  each is a uint16_t, add to 0x110000 to get the start of the variable-length battleAnim16x16Tile_t list
+		{battleAnimFrame16x16TileOffsets = 'uint16_t['..(4194)..']'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid.  each is a uint16_t, add to 0x110000 to get the start of the variable-length battleAnim16x16Tile_t list into battleAnimFrame16x16Tiles
 
 		-- 0x150000 - ? = character images, 0x16a0 bytes each
 		{fieldSpriteGraphics = 'uint8_t['..(0x185000 - 0x150000)..']'},			-- 0x150000 - 0x185000
