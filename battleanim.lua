@@ -166,7 +166,6 @@ return function(rom, game)
 
 					local bpp = effect._2bpp == 1 and 2 or 3
 					local info = infoPerBpp[bpp]
-					local tile8x8DataBaseAddr = info.tile8x8DataBaseAddr
 
 					-- number of graphicSetTile_t entries into the battleAnimGraphicSets[bpp] array (2 bytes each)
 					local graphicSetOffset = graphicSetIndex * 0x20
@@ -176,7 +175,6 @@ return function(rom, game)
 
 					local tileLen = bit.lshift(bpp, 3)
 					print('\t\teffectAddr=0x'..graphicSetAddr:hex()
-						..', tile8x8DataBaseAddr=0x'..tile8x8DataBaseAddr:hex()
 						..', tileLen=0x'..tileLen:hex())
 
 					local numFrames = effect.numFrames
@@ -200,6 +198,7 @@ return function(rom, game)
 						local key = '0x'..graphicSetIndex:hex()..'/'..bpp
 						frame16x16TileAddrInfo[frame16x16TilesAddr][key] = true
 
+						-- convert the 0x110000-relative address into an battleAnimFrame16x16Tiles[] index since thats where it points after all
 						local battleAnimFrame16x16TilesAddr = ffi.cast('uint8_t*', game.battleAnimFrame16x16Tiles) - ffi.cast('uint8_t*', rom)
 						local animFrame16x16TileOffset = frame16x16TilesAddr - battleAnimFrame16x16TilesAddr
 						assert.le(0, animFrame16x16TileOffset)
@@ -274,7 +273,7 @@ return function(rom, game)
 --print('xofs', xofs:hex(), 'yofs', yofs:hex(), 'graphicSetTile', graphicSetTile)
 									-- 16384 indexable, but points to 0x130000 - 0x14c998, which only holds 4881
 									paletteForTileIndex[graphicSetTile.tile] = paletteIndex
-									local tile8x8DataAddr = tile8x8DataBaseAddr + tileLen * graphicSetTile.tile
+									local tile8x8DataAddr = info.tile8x8DataBaseAddr + tileLen * graphicSetTile.tile
 									local xformxofs = xofs
 									if battleAnim16x16Tile.hflip16 ~= 0 then
 										xformxofs = 1 - xformxofs
@@ -400,12 +399,7 @@ return function(rom, game)
 
 			local tileLen = bit.lshift(bpp, 3)
 			local info = infoPerBpp[bpp]
-			local tile8x8DataBaseAddr = info.tile8x8DataBaseAddr
-
-			local graphicSetOffset = graphicSetIndex * 0x20
-			local graphicSetAddr = info.graphicSetBaseAddr + graphicSetOffset * ffi.sizeof'graphicSetTile_t'
-			--local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
-			local graphicSetTiles = battleAnimGraphicSetsPerBpp[bpp] + graphicSetOffset
+			local graphicSetTiles = battleAnimGraphicSetsPerBpp[bpp] + graphicSetIndex * 0x20
 
 			local im = Image(
 				0x10*tileWidth,
@@ -416,7 +410,7 @@ return function(rom, game)
 			for y=0,3 do
 				for x=0,15 do
 					local graphicSetTile = graphicSetTiles + (x + 0x10 * y)
-					local tile8x8DataAddr = tile8x8DataBaseAddr + tileLen * graphicSetTile.tile
+					local tile8x8DataAddr = info.tile8x8DataBaseAddr + tileLen * graphicSetTile.tile
 					readTile(
 						im,
 						x * tileWidth,
@@ -464,11 +458,8 @@ return function(rom, game)
 
 			local allTileSheets = table()
 
-			local tile8x8DataBaseAddr = info.tile8x8DataBaseAddr
-			local tile8x8DataEndAddr = info.tile8x8DataEndAddr
-
 			local tileSizeInBytes = bit.lshift(bpp, 3)
-			local totalTiles = math.floor((tile8x8DataEndAddr - tile8x8DataBaseAddr) / tileSizeInBytes)
+			local totalTiles = math.floor((info.tile8x8DataEndAddr - info.tile8x8DataBaseAddr) / tileSizeInBytes)
 
 			for tileIndex=0,totalTiles-1 do
 				local tileX = bit.band(tileIndex, tilesPerSheetMask)
@@ -480,7 +471,7 @@ return function(rom, game)
 					tileImg,
 					0,
 					0,
-					rom + tile8x8DataBaseAddr + tileSizeInBytes * tileIndex,
+					rom + info.tile8x8DataBaseAddr + tileSizeInBytes * tileIndex,
 					bpp
 				)
 				local sheet = allTileSheets[sheetIndex+1]
