@@ -35,7 +35,7 @@ battleAnimEffects[i] ... this is one animated sequence, i.e. a collection of fra
 		frame16x16TilesPtr addr =
 			0x110000
 			+ effectFrame16x16TileOffsetPtr[frameIndex]
-		... notice all these addrs span from 0x110141 to 0x11e96b, 
+		... notice all these addrs span from 0x110141 to 0x11e96b,
 			so it is the 'battleAnimFrame16x16Tiles'
 frame16x16TilesPtr points to a list of battleAnim16x16Tile_t's = list of 16x16 tiles
 	.x, .y = in 16x16 tile units, destination into this frame to draw this 16x16 tile
@@ -170,9 +170,9 @@ return function(rom, game)
 
 					-- number of graphicSetTile_t entries into the battleAnimGraphicSets[bpp] array (2 bytes each)
 					local graphicSetOffset = graphicSetIndex * 0x20
-					local graphicSetAddr = info.graphicSetBaseAddr + graphicSetOffset * ffi.sizeof'graphicSetTile_t' 
+					local graphicSetAddr = info.graphicSetBaseAddr + graphicSetOffset * ffi.sizeof'graphicSetTile_t'
 					--local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
-					local graphicSetTiles = battleAnimGraphicSetsPerBpp[bpp] + graphicSetOffset 
+					local graphicSetTiles = battleAnimGraphicSetsPerBpp[bpp] + graphicSetOffset
 
 					local tileLen = bit.lshift(bpp, 3)
 					print('\t\teffectAddr=0x'..graphicSetAddr:hex()
@@ -185,42 +185,9 @@ return function(rom, game)
 					numFrames = bit.band(0x3f, numFrames)
 					for frameIndex=0,numFrames-1 do
 						print('\t\t\tframeIndex=0x'..frameIndex:hex()..':')
+
 						local frame16x16TilesAddr = 0x110000 + effectFrame16x16TileOffsetPtr[frameIndex]  -- somewhere inside battleAnimFrame16x16Tiles
-
-						local battleAnimFrame16x16TilesAddr = ffi.cast('uint8_t*', game.battleAnimFrame16x16Tiles) - ffi.cast('uint8_t*', rom)
-						local animFrame16x16TileOffset = frame16x16TilesAddr - battleAnimFrame16x16TilesAddr
-						assert.le(0, animFrame16x16TileOffset)
-						assert.lt(animFrame16x16TileOffset, ffi.sizeof(game.battleAnimFrame16x16Tiles))	-- will this sizeof work?
-						-- make sure its aligned to battleAnim16x16Tile_t
-						assert.eq(0, bit.band(1, animFrame16x16TileOffset))
-						local animFrame16x16TileIndex = bit.rshift(animFrame16x16TileOffset, 1)
-
-						-- use the 0x110000 address offset
-						--local frame16x16TilesPtr = ffi.cast('battleAnim16x16Tile_t*', rom + frame16x16TilesAddr)
-						-- use the battleAnimFrame16x16Tiles struct offset (where the ptr goes anyways)
-						--local frame16x16TilesPtr = game.battleAnimFrame16x16Tiles + animFrame16x16TileIndex 
-						-- use the extracted binary blob:
-						local frame16x16TilesPtr = battleAnimFrame16x16Tiles + animFrame16x16TileIndex
-						
-						--local nextBattleAnimTileDescAddr = 0x110000 + battleAnimFrame16x16TileOffsets[effect.frameIndexBase + frameIndex + 1]
-						print('\t\t\t\tframe16x16TilesAddr=0x'..frame16x16TilesAddr:hex()
-							--[[ some were saying that you can look at the distance to the next entry to find the # tiles ...
-							-- I was trying that at first but it doesn't seem to work all the time ...
-							..', nextBattleAnimTileDescAddr=0x'..nextBattleAnimTileDescAddr:hex()
-							..', delta='..(nextBattleAnimTileDescAddr - frame16x16TilesAddr):hex()
-							--]]
-						)
-
-						-- now read from frame16x16TilesAddr for how long? until when?
-						-- frame16x16TilesAddr points to a battleAnim16x16Tile_t
-
-						local im = Image(
-							2*tileWidth * effect.width,
-							2*tileHeight * effect.height,
-							1,
-							'uint8_t'
-						)
-							:clear()
+						print('\t\t\t\tframe16x16TilesAddr=0x'..frame16x16TilesAddr:hex())
 
 						--[[
 						ok i've got a theory.
@@ -232,6 +199,29 @@ return function(rom, game)
 						frame16x16TileAddrInfo[frame16x16TilesAddr] = frame16x16TileAddrInfo[frame16x16TilesAddr] or table()
 						local key = '0x'..graphicSetIndex:hex()..'/'..bpp
 						frame16x16TileAddrInfo[frame16x16TilesAddr][key] = true
+
+						local battleAnimFrame16x16TilesAddr = ffi.cast('uint8_t*', game.battleAnimFrame16x16Tiles) - ffi.cast('uint8_t*', rom)
+						local animFrame16x16TileOffset = frame16x16TilesAddr - battleAnimFrame16x16TilesAddr
+						assert.le(0, animFrame16x16TileOffset)
+						assert.lt(animFrame16x16TileOffset, ffi.sizeof(game.battleAnimFrame16x16Tiles))	-- will this sizeof work?
+						-- make sure its aligned to battleAnim16x16Tile_t
+						assert.eq(0, bit.band(1, animFrame16x16TileOffset))
+						local animFrame16x16TileIndex = bit.rshift(animFrame16x16TileOffset, 1)
+
+						-- using the 0x110000 address offset:
+						--local frame16x16TilesPtr = ffi.cast('battleAnim16x16Tile_t*', rom + frame16x16TilesAddr)
+						-- using the battleAnimFrame16x16Tiles struct offset (where the ptr goes anyways):
+						--local frame16x16TilesPtr = game.battleAnimFrame16x16Tiles + animFrame16x16TileIndex
+						-- using the extracted binary blob:
+						local frame16x16TilesPtr = battleAnimFrame16x16Tiles + animFrame16x16TileIndex
+
+						local im = Image(
+							2*tileWidth * effect.width,
+							2*tileHeight * effect.height,
+							1,
+							'uint8_t'
+						)
+							:clear()
 
 						-- looking for ways to test the tile count per-frame
 						-- I think tracking the tile order is the best way
@@ -411,11 +401,11 @@ return function(rom, game)
 			local tileLen = bit.lshift(bpp, 3)
 			local info = infoPerBpp[bpp]
 			local tile8x8DataBaseAddr = info.tile8x8DataBaseAddr
-			
+
 			local graphicSetOffset = graphicSetIndex * 0x20
-			local graphicSetAddr = info.graphicSetBaseAddr + graphicSetOffset * ffi.sizeof'graphicSetTile_t' 
+			local graphicSetAddr = info.graphicSetBaseAddr + graphicSetOffset * ffi.sizeof'graphicSetTile_t'
 			--local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
-			local graphicSetTiles = battleAnimGraphicSetsPerBpp[bpp] + graphicSetOffset 
+			local graphicSetTiles = battleAnimGraphicSetsPerBpp[bpp] + graphicSetOffset
 
 			local im = Image(
 				0x10*tileWidth,

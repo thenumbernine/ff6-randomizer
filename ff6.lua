@@ -1844,7 +1844,7 @@ local game_t = struct{
 		{padding_10fd00 = 'uint8_t['..(0x110141 - 0x10fd00)..']'},				-- 0x10fd00 - 0x110141
 
 		{battleAnimFrame16x16Tiles = 'battleAnim16x16Tile_t['..(0x74cb)..']'},	-- 0x110141 - 0x11ead7 ... 2 bytes each ... pointers from battleAnimFrame16x16TileOffsets offset by 0x110000 but point into here
-		
+
 		{padding_11ead7 = 'uint8_t'},											-- 0x11ead7 - 0x11ead8
 
 		{battleAnimScriptOffsets = 'uint16_t['..(660)..']'},					-- 0x11ead8 - 0x11f000 ... uint16 offsets +0x100000 ... maybe there are only 650 of these to match with `numBattleAnimEffects`?
