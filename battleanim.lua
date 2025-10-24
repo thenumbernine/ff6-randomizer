@@ -7,20 +7,26 @@ local readTile = require 'graphics'.readTile
 
 --[[
 lets try to make sense of this mess...
-battleAnimScriptOffsets[i] -> points to byte offset within -> battleAnimScripts[]
-battleAnimScripts[i] -> handles frame playback of -> battleAnimSets[]
+battleAnimScriptOffsets[i]
+	points to byte offset within battleAnimScripts[]
+battleAnimScripts[i]
+	handles frame playback of battleAnimSets[]
 battleAnimSets[i]
-	-> .wait is how long to wait
-	-> .sound is what sound to play
+	.wait is how long to wait
+	.sound is what sound to play
 	for j in 0,1,2:
-		-> .palette[j] points into battleAnimPalettes[]
-		-> .effect[j] points into battleAnimEffects[]
+		.palette[j] points into battleAnimPalettes[]
+		.effect[j] points into battleAnimEffects[]
 battleAnimEffects[i]
-	-> .numFrames = how many frames in this animation-set's animation-effect's animation
-	-> .width, .height = frame size, in 8x8 tiles
-	-> ._2bpp is true for 2bpp, false for 3bpp
-	-> .graphicSet | (.graphicSetHighBit<<8) = 
-	-> .frameIndexBase -> points into battleAnimFrameOffsets[] to get tileXYIndexOffsetsPerFrame
+	.numFrames = how many frames in this animation-set's animation-effect's animation
+	.width, .height = frame size, in 8x8 tiles
+	._2bpp is true for 2bpp, false for 3bpp
+	.graphicSet | (.graphicSetHighBit<<8)
+		points into graphicSetTile_t list, which are 64 x 8x8 tiles
+			2bpp addr is * 0x40 + 0x12C000
+			3bpp addr is * 0x40 + 0x120000
+	.frameIndexBase 
+		points into battleAnimFrameOffsets[] to get tileXYIndexOffsetsPerFrame
 	for frameIndex in 0..numFrames-1:
 		battleAnimTileDescs = 
 		tileXYIndexAddr = 
@@ -62,11 +68,7 @@ return function(rom, game)
 					print('\t\teffect'..(j+1)..'='..effect)
 						
 					local tileXYIndexOffsetsPerFrame = game.battleAnimFrameOffsets + effect.frameIndexBase
-
-					local graphicSet = effect.graphicSet
-					if effect.graphicSetHighBit ~= 0 then
-						graphicSet = bit.bor(graphicSet, 0x100)
-					end
+					local graphicSet = bit.bor(effect.graphicSet, bit.lshift(effect.graphicSetHighBit, 8))
 
 					graphicSetsUsed[graphicSet] = graphicSetsUsed[graphicSet]
 						or {
@@ -77,28 +79,28 @@ return function(rom, game)
 					graphicSetsUsed[graphicSet].palettes[paletteIndex] = true
 
 					-- is this a list of offsets to get the tileaddr's?
-					local effectPtrTableAddr, tileAddrBase, tileIndex, tileAddr, tileLen
+					local graphicSetAddr, tileAddrBase, tileIndex, tileAddr, tileLen
 
 					local bpp = effect._2bpp == 1 and 2 or 3
 
 					if bpp == 3 then	-- effects 1&2
 						-- first uint16 entry, times tileLen, plus tileAddrBase, points to some kind of tile data ... what about the rest? how to access it?
-						effectPtrTableAddr = graphicSet * 0x40 + 0x120000	-- relative to battleAnimGraphicsSets3bpp
+						graphicSetAddr = graphicSet * 0x40 + 0x120000	-- relative to battleAnimGraphicsSets3bpp
 
 						tileLen = 0x18 -- len is 24 bytes = 192 bits = 8 x 8 x 3 bits (so 3bpp)
 						tileAddrBase = 0x130000	-- battleAnimGraphics
 					elseif bpp == 2 then
-						effectPtrTableAddr = graphicSet * 0x40 + 0x12C000	-- battleAnimTileFormation2bpp
+						graphicSetAddr = graphicSet * 0x40 + 0x12C000	-- battleAnimTileFormation2bpp
 
 						tileAddrBase = 0x187000	-- battleAnimGraphics2bpp
 						tileLen = 0x10 -- len is 16 bytes = 8 x 8 x 2bpp
 					else
 						error'here'
 					end
-					--tileIndex = ffi.cast('uint16_t*', rom + effectPtrTableAddr)[0]
+					--tileIndex = ffi.cast('uint16_t*', rom + graphicSetAddr)[0]
 					--tileAddr = tileIndex * tileLen + tileAddrBase
 					-- now the tileAddr points to 8 uint16's , and then 8 uint8s that each get padded into uint16's
-					print('\t\teffectAddr=0x'..effectPtrTableAddr:hex()
+					print('\t\teffectAddr=0x'..graphicSetAddr:hex()
 						..', tileAddrBase=0x'..tileAddrBase:hex()
 						..', tileLen=0x'..tileLen:hex())
 
@@ -133,7 +135,7 @@ return function(rom, game)
 						)
 							:clear()
 
-						local pointerbase = ffi.cast('uint16_t*', rom + effectPtrTableAddr)
+						local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
 
 						
 --[[
@@ -171,18 +173,18 @@ lets see if each tileXYIndexAddr maps to always use the same graphicSet
 								for yofs=0,1 do
 									for xofs=0,1 do
 										-- this makes a lot more sense if you look it up in the 'alltiles' image below
-										-- TLDR: Make a 16x8 tile display out of the 8x8 tiles pointed to by pointerbase[]
+										-- TLDR: Make a 16x8 tile display out of the 8x8 tiles pointed to by graphicSetTiles[]
 										-- You'll see they make up 16x16-pixel regions
 										-- Those are what we are indexing here, hence why you have to pick apart tileIndexOffset into its lower 3 bits and its upper 5
-										local tileOffset = pointerbase[
+										local graphicSetTile = graphicSetTiles + (
 											(2 * bit.band(tileIndexOffset, 7) + xofs)
 											+ (2 * bit.rshift(tileIndexOffset, 3) + yofs) * 16
-										]
-										local vflip = 0 ~= bit.band(0x8000, tileOffset)
-										local hflip = 0 ~= bit.band(0x4000, tileOffset)
---print('xofs', xofs:hex(), 'yofs', yofs:hex(), 'tileOffset', tileOffset:hex())
+										)
+										local vflip = 0 ~= graphicSetTile.vflip
+										local hflip = 0 ~= graphicSetTile.hflip
+--print('xofs', xofs:hex(), 'yofs', yofs:hex(), 'graphicSetTile', graphicSetTile)
 										-- 16384 indexable, but points to 0x130000 - 0x14c998, which only holds 4881
-										local tileIndex = bit.band(0x3fff, tileOffset)
+										local tileIndex = graphicSetTile.tile
 										paletteForTileIndex[tileIndex] = paletteIndex
 										local tileAddr = tileAddrBase + tileLen * tileIndex
 										local xformxofs = xofs
@@ -299,20 +301,20 @@ lets see if each tileXYIndexAddr maps to always use the same graphicSet
 				paletteIndex = palettes:last() or 0
 			end
 
-			local effectPtrTableAddr, tileAddrBase, tileIndex, tileAddr, tileLen
+			local graphicSetAddr, tileAddrBase, tileIndex, tileAddr, tileLen
 			if bpp == 3 then
-				effectPtrTableAddr = graphicSetIndex * 0x40 + 0x120000	-- battleAnimGraphicsSets3bpp
+				graphicSetAddr = graphicSetIndex * 0x40 + 0x120000	-- battleAnimGraphicsSets3bpp
 				tileLen = 0x18
 				tileAddrBase = 0x130000	-- game.battleAnimGraphics
 			elseif bpp == 2 then
-				effectPtrTableAddr = graphicSetIndex * 0x40 + 0x12C000	-- battleAnimTileFormation2bpp
+				graphicSetAddr = graphicSetIndex * 0x40 + 0x12C000	-- battleAnimTileFormation2bpp
 				tileAddrBase = 0x187000	-- game.battleAnimGraphics2bpp
 				tileLen = 0x10
 			else
 				error'here'
 			end
 
-			local pointerbase = ffi.cast('uint16_t*', rom + effectPtrTableAddr)
+			local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
 
 			local im = Image(
 				0x10*tileWidth,
@@ -322,19 +324,15 @@ lets see if each tileXYIndexAddr maps to always use the same graphicSet
 			im.palette = makePalette(game.battleAnimPalettes + paletteIndex, bit.lshift(1, bpp))
 			for y=0,3 do
 				for x=0,15 do
-					local tileIndex = x + 0x10 * y
-					local tileOffset = pointerbase[tileIndex]
-					local vflip = 0 ~= bit.band(0x8000, tileOffset)
-					local hflip = 0 ~= bit.band(0x4000, tileOffset)
-					local tileAddr = tileAddrBase + tileLen * bit.band(0x3fff, tileOffset)
+					local graphicSetTile = graphicSetTiles + (x + 0x10 * y)
 					readTile(
 						im,
 						x * tileWidth,
 						y * tileHeight,
-						rom + tileAddr,
+						rom + (tileAddrBase + tileLen * graphicSetTile.tile),
 						bpp,
-						hflip,
-						vflip
+						0 ~= graphicSetTile.hflip,
+						0 ~= graphicSetTile.vflip
 					)
 				end
 			end

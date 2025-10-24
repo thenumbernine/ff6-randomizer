@@ -733,6 +733,20 @@ local battleAnimTileDesc_t = struct{
 }
 assert.eq(ffi.sizeof'battleAnimTileDesc_t', 2)
 
+-- tile in the 16x4 set of 8x8 tiles pointed to by battleAnimEffect_t.graphicSet
+local graphicSetTile_t = struct{
+	name = 'graphicSetTile_t',
+	fields = {
+		-- * tileLen (8 * bpp) + tileAddrBase (0x187000 for 2bpp, 0x130000 for 3bpp) gives the 8x8 tile data
+		-- for 3bpp, points into 0x130000 - 0x14c998, which only holds 4881
+		{tile = 'uint16_t:14'},
+		-- whether to hflip/vflip the 8x8 tile
+		{hflip = 'uint16_t:1'},
+		{vflip = 'uint16_t:1'},
+	},
+}
+assert.eq(ffi.sizeof'graphicSetTile_t', 2)
+
 ---------------- MONSTERS HEADER ----------------
 
 local numMonsters = 0x180
