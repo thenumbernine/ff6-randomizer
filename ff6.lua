@@ -710,7 +710,9 @@ local battleAnimEffect_t = struct{
 		-- for effect3, 0x12C000 + graphicSet * 0x40, len = 0x80
 		{graphicSet = 'uint8_t'}, -- aka "chipset" aka "mold" (where does this point?)
 
-		{frameIndexBase = 'uint16_t'}, -- the index into battleAnimFrameOffsets
+		{frameIndexBase = 'uint16_t'}, -- the index into battleAnimFrame16x16Tiles
+
+		-- size in 16x16 tiles:
 		{width = 'uint8_t'},
 		{height = 'uint8_t'},
 	},
@@ -718,8 +720,8 @@ local battleAnimEffect_t = struct{
 assert.eq(ffi.sizeof'battleAnimEffect_t', 6)
 local numBattleAnimEffects = 650
 
-local battleAnimTileDesc_t = struct{
-	name = 'battleAnimTileDesc_t',
+local battleAnim16x16Tile_t = struct{
+	name = 'battleAnim16x16Tile_t',
 	fields = {
 		-- x y destination to place the tile in the frame
 		{y = 'uint8_t:4'},
@@ -731,9 +733,11 @@ local battleAnimTileDesc_t = struct{
 		{vflip16 = 'uint8_t:1'},
 	},
 }
-assert.eq(ffi.sizeof'battleAnimTileDesc_t', 2)
+assert.eq(ffi.sizeof'battleAnim16x16Tile_t', 2)
 
--- tile in the 16x4 set of 8x8 tiles pointed to by battleAnimEffect_t.graphicSet
+-- graphicSet is a collection of 0x40 (0x10 x 4) 8x8 tiles
+-- Each 8x8 tile holds info of the tile address, hflip, and vflip
+-- This is pointed to by battleAnimEffect_t.graphicSet
 local graphicSetTile_t = struct{
 	name = 'graphicSetTile_t',
 	fields = {
@@ -1837,7 +1841,7 @@ local game_t = struct{
 
 		{padding_10fd00 = 'uint8_t['..(0x110141 - 0x10fd00)..']'},				-- 0x10fd00 - 0x110141
 
-		{battleAnimFrameData = 'uint8_t['..(0x11ead8 - 0x110141)..']'},			-- 0x110141 - 0x11ead8 ... 2 bytes each ... pointers from battleAnimFrameOffsets offset by 0x110000 but point into here
+		{battleAnimFrameData = 'uint8_t['..(0x11ead8 - 0x110141)..']'},			-- 0x110141 - 0x11ead8 ... 2 bytes each ... pointers from battleAnimFrame16x16Tiles offset by 0x110000 but point into here
 		{battleAnimScriptOffsets = 'uint16_t['..(660)..']'},					-- 0x11ead8 - 0x11f000 ... uint16 offsets +0x100000 ... maybe there are only 650 of these to match with `numBattleAnimEffects`?
 		{battleMessageBase = 'uint8_t['..(0x11f7a0 - 0x11f000)..']'},			-- 0x11f000 - 0x11f7a0
 		{battleMessageOffsets = 'uint16_t['..numBattleMessages..']'},			-- 0x11f7a0 - 0x11f9a0
@@ -1875,7 +1879,7 @@ local game_t = struct{
 		{padding_14c998 = 'uint8_t['..(0x14d000 - 0x14c998)..']'},				-- 0x14c998 - 0x14d000
 
 		{battleAnimEffects = 'battleAnimEffect_t['..numBattleAnimEffects..']'},	-- 0x14d000 - 0x14df3c
-		{battleAnimFrameOffsets = 'uint16_t['..(4194)..']'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid
+		{battleAnimFrame16x16Tiles = 'uint16_t['..(4194)..']'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid.  each is a uint16_t, add to 0x110000 to get the start of the variable-length battleAnim16x16Tile_t list
 
 		-- 0x150000 - ? = character images, 0x16a0 bytes each
 		{fieldSpriteGraphics = 'uint8_t['..(0x185000 - 0x150000)..']'},			-- 0x150000 - 0x185000

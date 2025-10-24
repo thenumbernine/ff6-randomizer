@@ -17,22 +17,25 @@ battleAnimSets[i]
 	for j in 0,1,2:
 		.palette[j] points into battleAnimPalettes[]
 		.effect[j] points into battleAnimEffects[]
-battleAnimEffects[i]
+battleAnimEffects[i] ... this is one animated sequence, i.e. a collection of frames.
 	.numFrames = how many frames in this animation-set's animation-effect's animation
 	.width, .height = frame size, in 8x8 tiles
 	._2bpp is true for 2bpp, false for 3bpp
 	.graphicSet | (.graphicSetHighBit<<8)
-		points into graphicSetTile_t list, which are 64 x 8x8 tiles
-			2bpp addr is * 0x40 + 0x12C000
-			3bpp addr is * 0x40 + 0x120000
+		points into graphicSetTile_t list, which are 16x4 x 8x8 tiles
+			2bpp list addr is * 0x40 + 0x12C000
+			3bpp list addr is * 0x40 + 0x120000
 	.frameIndexBase 
-		points into battleAnimFrameOffsets[] to get tileXYIndexOffsetsPerFrame
+		index into battleAnimFrame16x16Tiles[] to get effectFrame16x16TileStart
 	for frameIndex in 0..numFrames-1:
-		battleAnimTileDescs = 
-		tileXYIndexAddr = 
+		frame16x16TilesPtr addr = 
 			0x110000
-			+ tileXYIndexOffsetsPerFrame[frameIndex]
-battleAnimTileDesc:
+			+ effectFrame16x16TileStart[frameIndex]
+frame16x16TilesPtr points to a list of battleAnim16x16Tile_t's = list of 16x16 tiles
+	.x, .y = in 16x16 tile units, destination into this frame to draw this 16x16 tile
+	.tile = index inot graphicSet's 64x4 location of 8x8 tiles
+		tileBasePerBPPAddr + tileLen * graphicSetTile.tile
+	.hflip16, .vflip16 = how to flip the 16x16 tile
 
 
 alltiles-2bpp is 512x184
@@ -67,7 +70,7 @@ return function(rom, game)
 					local effect = game.battleAnimEffects + effectIndex
 					print('\t\teffect'..(j+1)..'='..effect)
 						
-					local tileXYIndexOffsetsPerFrame = game.battleAnimFrameOffsets + effect.frameIndexBase
+					local effectFrame16x16TileStart = game.battleAnimFrame16x16Tiles + effect.frameIndexBase
 					local graphicSet = bit.bor(effect.graphicSet, bit.lshift(effect.graphicSetHighBit, 8))
 
 					graphicSetsUsed[graphicSet] = graphicSetsUsed[graphicSet]
@@ -79,29 +82,22 @@ return function(rom, game)
 					graphicSetsUsed[graphicSet].palettes[paletteIndex] = true
 
 					-- is this a list of offsets to get the tileaddr's?
-					local graphicSetAddr, tileAddrBase, tileIndex, tileAddr, tileLen
+					local graphicSetAddr, tileBasePerBPPAddr
 
 					local bpp = effect._2bpp == 1 and 2 or 3
 
 					if bpp == 3 then	-- effects 1&2
-						-- first uint16 entry, times tileLen, plus tileAddrBase, points to some kind of tile data ... what about the rest? how to access it?
-						graphicSetAddr = graphicSet * 0x40 + 0x120000	-- relative to battleAnimGraphicsSets3bpp
-
-						tileLen = 0x18 -- len is 24 bytes = 192 bits = 8 x 8 x 3 bits (so 3bpp)
-						tileAddrBase = 0x130000	-- battleAnimGraphics
+						graphicSetAddr = 0x120000 + graphicSet * 0x40 	-- relative to battleAnimGraphicsSets3bpp
+						tileBasePerBPPAddr = 0x130000	-- battleAnimGraphics
 					elseif bpp == 2 then
-						graphicSetAddr = graphicSet * 0x40 + 0x12C000	-- battleAnimTileFormation2bpp
-
-						tileAddrBase = 0x187000	-- battleAnimGraphics2bpp
-						tileLen = 0x10 -- len is 16 bytes = 8 x 8 x 2bpp
+						graphicSetAddr = 0x12C000 + graphicSet * 0x40 	-- battleAnimTileFormation2bpp
+						tileBasePerBPPAddr = 0x187000	-- battleAnimGraphics2bpp
 					else
 						error'here'
 					end
-					--tileIndex = ffi.cast('uint16_t*', rom + graphicSetAddr)[0]
-					--tileAddr = tileIndex * tileLen + tileAddrBase
-					-- now the tileAddr points to 8 uint16's , and then 8 uint8s that each get padded into uint16's
+					local tileLen = bit.lshift(bpp, 3)
 					print('\t\teffectAddr=0x'..graphicSetAddr:hex()
-						..', tileAddrBase=0x'..tileAddrBase:hex()
+						..', tileBasePerBPPAddr=0x'..tileBasePerBPPAddr:hex()
 						..', tileLen=0x'..tileLen:hex())
 
 					local numFrames = effect.numFrames
@@ -110,22 +106,19 @@ return function(rom, game)
 					numFrames = bit.band(0x3f, numFrames)
 					for frameIndex=0,numFrames-1 do
 						print('\t\t\tframeIndex=0x'..frameIndex:hex()..':')
-						local tileXYIndexOffset = tileXYIndexOffsetsPerFrame[frameIndex]
-						local tileXYIndexAddr = 0x110000 + tileXYIndexOffset  -- somewhere inside battleAnimFrameData
-						--local nextEffectOffsetEntry = game.battleAnimFrameOffsets[effect.frameIndexBase + frameIndex + 1]
-						print('\t\t\t\teffectOffsetEntry=0x'..tileXYIndexOffset:hex()
-							..', tileXYIndexAddr=0x'..tileXYIndexAddr:hex()
+						local frame16x16TilesAddr = 0x110000 + effectFrame16x16TileStart[frameIndex]  -- somewhere inside battleAnimFrameData
+						local frame16x16TilesPtr = ffi.cast('battleAnim16x16Tile_t*', rom + frame16x16TilesAddr)
+						--local nextBattleAnimTileDescAddr = 0x110000 + game.battleAnimFrame16x16Tiles[effect.frameIndexBase + frameIndex + 1]
+						print('\t\t\t\tframe16x16TilesAddr=0x'..frame16x16TilesAddr:hex()
 							--[[ some were saying that you can look at the distance to the next entry to find the # tiles ...
 							-- I was trying that at first but it doesn't seem to work all the time ...
-							..', nextEffectOffsetEntry=0x'..nextEffectOffsetEntry:hex()
-							..', delta='..(nextEffectOffsetEntry - tileXYIndexOffset):hex()
+							..', nextBattleAnimTileDescAddr=0x'..nextBattleAnimTileDescAddr:hex()
+							..', delta='..(nextBattleAnimTileDescAddr - frame16x16TilesAddr):hex()
 							--]]
 						)
 
-						-- now read from tileXYIndexAddr for how long? until when?
-						-- tileXYIndexAddr points to:
-						-- 00: loc: 4 bits y, 4 bits x
-						-- 01: frame # ... into where?
+						-- now read from frame16x16TilesAddr for how long? until when?
+						-- frame16x16TilesAddr points to a battleAnim16x16Tile_t 
 
 						local im = Image(
 							2*tileWidth * effect.width,
@@ -140,18 +133,17 @@ return function(rom, game)
 						
 --[[
 ok i've got a theory.
-that the tileXYIndexOffset aka tileXYIndexAddr (list of uint16's)
+that the frame16x16TilesAddr (list of battleAnim16x16Tile_t's)
  is going to be the unique identifier of an animation frame (except palette swaps).
-lets see if each tileXYIndexAddr maps to always use the same graphicSet
+lets see if each frame16x16TilesAddr maps to always use the same graphicSet
 --]]
 						-- looking for ways to test the tile count per-frame
 						-- I think tracking the tile order is the best way
-						local battleAnimTileDescs = ffi.cast('battleAnimTileDesc_t*', rom + tileXYIndexAddr)
 						local lastTileOrder
-						for k=0,math.huge-1 do
-							local battleAnimTileDesc = battleAnimTileDescs + k
-							local x = battleAnimTileDesc.x
-							local y = battleAnimTileDesc.y
+						for frameTile16x16Index=0,math.huge-1 do
+							local battleAnim16x16Tile = frame16x16TilesPtr + frameTile16x16Index
+							local x = battleAnim16x16Tile.x
+							local y = battleAnim16x16Tile.y
 							-- is an oob tile an end as well?
 							if x >= effect.width then break end
 							if y >= effect.height then break end
@@ -159,57 +151,62 @@ lets see if each tileXYIndexAddr maps to always use the same graphicSet
 							if lastTileOrder and lastTileOrder >= tileOrder then break end
 							lastTileOrder = tileOrder
 							
-							local tileIndexOffset = battleAnimTileDesc.tile
-							local hflip16 = 0 ~= battleAnimTileDesc.hflip16
-							local vflip16 = 0 ~= battleAnimTileDesc.vflip16
-							print('\t\t\t\t\tx='..x..', y='..y
-								..', tileIndexOffset=0x'..tileIndexOffset:hex()
-								..', hflip16='..tostring(hflip16)
-								..', vflip16='..tostring(vflip16))
-							if x < effect.width
-							and y < effect.height
-							then
-								-- paste into image
-								for yofs=0,1 do
-									for xofs=0,1 do
-										-- this makes a lot more sense if you look it up in the 'alltiles' image below
-										-- TLDR: Make a 16x8 tile display out of the 8x8 tiles pointed to by graphicSetTiles[]
-										-- You'll see they make up 16x16-pixel regions
-										-- Those are what we are indexing here, hence why you have to pick apart tileIndexOffset into its lower 3 bits and its upper 5
-										local graphicSetTile = graphicSetTiles + (
-											(2 * bit.band(tileIndexOffset, 7) + xofs)
-											+ (2 * bit.rshift(tileIndexOffset, 3) + yofs) * 16
-										)
-										local vflip = 0 ~= graphicSetTile.vflip
-										local hflip = 0 ~= graphicSetTile.hflip
+							print('\t\t\t\t\tbattleAnim16x16Tile='..battleAnim16x16Tile)
+							-- paste into image
+							for yofs=0,1 do
+								for xofs=0,1 do
+									-- this makes a lot more sense if you look it up in the 'alltiles' image below
+									-- TLDR: Make a 16x8 tile display out of the 8x8 tiles pointed to by graphicSetTiles[]
+									-- You'll see they make up 16x16-pixel regions
+									-- Those are what we are indexing here, hence why you have to pick apart battleAnim16x16Tile.tile into its lower 3 bits and its upper 5
+									local graphicSetTile = graphicSetTiles + bit.bor(
+										-- bit 0 is xofs
+										xofs,
+										-- bits 123 is tile bits 012
+										bit.lshift(
+											bit.band(
+												battleAnim16x16Tile.tile,
+												7
+											),
+											1
+										),
+										-- bit 4 is yofs
+										bit.lshift(yofs, 4),
+										-- bits 567 is tile bits 345
+										bit.lshift(
+											-- .tile is 6 bits, so truncate 3 lower bits <-> & 0x38
+											bit.band(
+												battleAnim16x16Tile.tile,
+												0x38
+											),
+										2)
+									)
+									local vflip = 0 ~= graphicSetTile.vflip
+									local hflip = 0 ~= graphicSetTile.hflip
 --print('xofs', xofs:hex(), 'yofs', yofs:hex(), 'graphicSetTile', graphicSetTile)
-										-- 16384 indexable, but points to 0x130000 - 0x14c998, which only holds 4881
-										local tileIndex = graphicSetTile.tile
-										paletteForTileIndex[tileIndex] = paletteIndex
-										local tileAddr = tileAddrBase + tileLen * tileIndex
-										local xformxofs = xofs
-										if hflip16 then
-											xformxofs = 1 - xformxofs
-											hflip = not hflip
-										end
-										local xformyofs = yofs
-										if vflip16 then
-											xformyofs = 1  - xformyofs
-											vflip = not vflip
-										end
-										readTile(
-											im,
-											(2*x + xformxofs)*tileWidth,
-											(2*y + xformyofs)*tileHeight,
-											rom + tileAddr,
-											bpp,
-											hflip,
-											vflip
-										)
+									-- 16384 indexable, but points to 0x130000 - 0x14c998, which only holds 4881
+									paletteForTileIndex[graphicSetTile.tile] = paletteIndex
+									local tileDataAddr = tileBasePerBPPAddr + tileLen * graphicSetTile.tile
+									local xformxofs = xofs
+									if battleAnim16x16Tile.hflip16 ~= 0 then
+										xformxofs = 1 - xformxofs
+										hflip = not hflip
 									end
+									local xformyofs = yofs
+									if battleAnim16x16Tile.vflip16 ~= 0 then
+										xformyofs = 1  - xformyofs
+										vflip = not vflip
+									end
+									readTile(
+										im,
+										bit.bor(bit.lshift(x, 1), xformxofs)*tileWidth,
+										bit.bor(bit.lshift(y, 1), xformyofs)*tileHeight,
+										rom + tileDataAddr,
+										bpp,
+										hflip,
+										vflip
+									)
 								end
-							else
-								print('!!! spell effect anim frame tile loc out of bounds!', x, y, tileIndexOffset)
 							end
 						end
 
@@ -301,18 +298,17 @@ lets see if each tileXYIndexAddr maps to always use the same graphicSet
 				paletteIndex = palettes:last() or 0
 			end
 
-			local graphicSetAddr, tileAddrBase, tileIndex, tileAddr, tileLen
+			local graphicSetAddr, tileBasePerBPPAddr
 			if bpp == 3 then
 				graphicSetAddr = graphicSetIndex * 0x40 + 0x120000	-- battleAnimGraphicsSets3bpp
-				tileLen = 0x18
-				tileAddrBase = 0x130000	-- game.battleAnimGraphics
+				tileBasePerBPPAddr = 0x130000	-- game.battleAnimGraphics
 			elseif bpp == 2 then
 				graphicSetAddr = graphicSetIndex * 0x40 + 0x12C000	-- battleAnimTileFormation2bpp
-				tileAddrBase = 0x187000	-- game.battleAnimGraphics2bpp
-				tileLen = 0x10
+				tileBasePerBPPAddr = 0x187000	-- game.battleAnimGraphics2bpp
 			else
 				error'here'
 			end
+			local tileLen = bit.lshift(bpp, 3)
 
 			local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
 
@@ -325,11 +321,12 @@ lets see if each tileXYIndexAddr maps to always use the same graphicSet
 			for y=0,3 do
 				for x=0,15 do
 					local graphicSetTile = graphicSetTiles + (x + 0x10 * y)
+					local tileDataAddr = tileBasePerBPPAddr + tileLen * graphicSetTile.tile
 					readTile(
 						im,
 						x * tileWidth,
 						y * tileHeight,
-						rom + (tileAddrBase + tileLen * graphicSetTile.tile),
+						rom + tileDataAddr,
 						bpp,
 						0 ~= graphicSetTile.hflip,
 						0 ~= graphicSetTile.vflip
@@ -388,9 +385,9 @@ lets see if each tileXYIndexAddr maps to always use the same graphicSet
 	do
 		local bpp = 2
 		local tileSize = 8 * bpp
-		local tileAddrBase = 0x187000	-- game.battleAnimGraphics2bpp
+		local tileBasePerBPPAddr = 0x187000	-- game.battleAnimGraphics2bpp
 		local tileAddrEnd = 0x18c9a0
-		local totalTiles = math.floor((tileAddrEnd - tileAddrBase) / tileSize)
+		local totalTiles = math.floor((tileAddrEnd - tileBasePerBPPAddr) / tileSize)
 		local tilesWide = 64
 		local tilesHigh = math.ceil(totalTiles / tilesWide)
 
@@ -409,7 +406,7 @@ lets see if each tileXYIndexAddr maps to always use the same graphicSet
 				tileImg,
 				0,
 				0,
-				rom + tileAddrBase + tileSize * tileIndex,
+				rom + tileBasePerBPPAddr + tileSize * tileIndex,
 				bpp
 			)
 			local paletteIndex = paletteForTileIndex[tileIndex] or 0
