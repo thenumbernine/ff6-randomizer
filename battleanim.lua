@@ -1,4 +1,5 @@
 local ffi = require 'ffi'
+local tolua = require 'ext.tolua'
 local Image = require 'image'
 local makePalette = require 'graphics'.makePalette
 local tileWidth = require 'graphics'.tileWidth
@@ -7,10 +8,13 @@ local readTile = require 'graphics'.readTile
 
 --[[
 lets try to make sense of this mess...
+
 battleAnimScriptOffsets[i]
 	points to byte offset within battleAnimScripts[]
+
 battleAnimScripts[i]
 	handles frame playback of battleAnimSets[]
+
 battleAnimSets[i]
 	.wait is how long to wait
 	.sound is what sound to play
@@ -33,9 +37,13 @@ battleAnimEffects[i] ... this is one animated sequence, i.e. a collection of fra
 			+ effectFrame16x16TileStart[frameIndex]
 frame16x16TilesPtr points to a list of battleAnim16x16Tile_t's = list of 16x16 tiles
 	.x, .y = in 16x16 tile units, destination into this frame to draw this 16x16 tile
-	.tile = index inot graphicSet's 64x4 location of 8x8 tiles
+	.tile = index into graphicSet's 64x4 location of 8x8 tiles
 		tileBasePerBPPAddr + tileLen * graphicSetTile.tile
 	.hflip16, .vflip16 = how to flip the 16x16 tile
+graphicSetTile_t list holds:
+	.tile = address into tileBasePerBPPAddr + tileLen * graphicSetTile.tile
+	.hflip = hflip 8x8
+	.vflip = vflip 8x8
 
 
 alltiles-2bpp is 512x184
@@ -45,8 +53,13 @@ i.e. 256x1600 i.e. 6.25 x 256x256 sheets
 --]]
 
 return function(rom, game)
-	local graphicSetsUsed = {}
+	local graphicSetsUsed = table()
 	local paletteForTileIndex = {}
+	local frame16x16TileAddrInfo = table()
+
+	-- total # of 8x8 tiles saved
+	-- to give me a rough texture-atlas idea if I want to save the expanded tiles
+	local totalTilesSaved = 0
 
 	local battleAnimSetPath = path'battleanim'
 	battleAnimSetPath:mkdir()
@@ -130,13 +143,17 @@ return function(rom, game)
 
 						local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
 
-						
---[[
-ok i've got a theory.
-that the frame16x16TilesAddr (list of battleAnim16x16Tile_t's)
- is going to be the unique identifier of an animation frame (except palette swaps).
-lets see if each frame16x16TilesAddr maps to always use the same graphicSet
---]]
+						--[[
+						ok i've got a theory.
+						that the frame16x16TilesAddr (list of battleAnim16x16Tile_t's)
+						 is going to be the unique identifier of an animation frame (except palette swaps).
+						lets see if each frame16x16TilesAddr maps to always use the same graphicSet
+						i.e. they will have the same .bpp and .graphicSet
+						--]]
+						frame16x16TileAddrInfo[frame16x16TilesAddr] = frame16x16TileAddrInfo[frame16x16TilesAddr] or table()
+						local key = '0x'..graphicSet:hex()..'/'..bpp
+						frame16x16TileAddrInfo[frame16x16TilesAddr][key] = true
+
 						-- looking for ways to test the tile count per-frame
 						-- I think tracking the tile order is the best way
 						local lastTileOrder
@@ -150,6 +167,8 @@ lets see if each frame16x16TilesAddr maps to always use the same graphicSet
 							local tileOrder = x + effect.width * y
 							if lastTileOrder and lastTileOrder >= tileOrder then break end
 							lastTileOrder = tileOrder
+
+							totalTilesSaved = totalTilesSaved + 1
 							
 							print('\t\t\t\t\tbattleAnim16x16Tile='..battleAnim16x16Tile)
 							-- paste into image
@@ -225,13 +244,20 @@ lets see if each frame16x16TilesAddr maps to always use the same graphicSet
 	end
 	print()
 
+	print('total 8x8 tiles used for battle animations:', totalTilesSaved)
+	print()
+
+	-- [[ graphic sets for effect #3 is supposed to have a different base address, hmmm...
+	local uniqueGraphicSets = graphicSetsUsed:keys():sort()
+	print('graphicSets used', uniqueGraphicSets :mapi(function(i)
+		return '0x'..i:hex()
+	end):concat', ')
+	print('...'..#uniqueGraphicSets..' unique graphic sets') 
+	print()
+	--]]
 
 	-- so this is basically a plot of the entire pointer table at 0x120000
 	--
-	--[[ graphic sets for effect #3 is supposed to have a different base address, hmmm...
-	print('graphicSetsUsed', tolua(graphicSetsUsed))
-	print()
-	--]]
 	-- honestly this comes from a unique combo of graphicSet & effect 123 index (3 has a dif base)
 	-- so I don't need to make so many copies ...
 	--
@@ -276,9 +302,8 @@ lets see if each frame16x16TilesAddr maps to always use the same graphicSet
 			'uint8_t'
 		):clear()
 
-
+		-- only plot the even graphicSetIndex tiles cuz the odd ones have a row in common
 		for graphicSetIndex=0,maxGraphicSet-1,2 do
-			-- only plot the even graphicSetIndex tiles cuz the odd ones have a row in common
 			assert.eq(bit.band(graphicSetIndex, 1), 0, "this wont be aligned in the master image")
 
 			local halfGraphicsSetIndex = bit.rshift(graphicSetIndex, 1)
@@ -343,81 +368,74 @@ lets see if each frame16x16TilesAddr maps to always use the same graphicSet
 		master:save(spellGraphicSetsPath('battle_anim_graphic_sets_'..bpp..'bpp.png').path)
 	end
 
+	print'frame16x16TileAddrInfo={'
+	for _,addr in ipairs(frame16x16TileAddrInfo:keys():sort()) do
+		print('\t[0x'..addr:hex()..'] = {'
+			..frame16x16TileAddrInfo[addr]:keys():sort():concat', '
+			..'},')
+	end
+	print'}'
+	print()
+
 	-- what about plotting the entire tile data?
 	-- this is the data at 0x130000 - 0x14c998
 	-- it's going to be 3bpp 8x8 data , so there will be 4881 of them
 	do
-		local bpp = 3
-		local tileSize = 8 * bpp
-		local totalTiles = math.floor((0x14c998 - 0x130000) / tileSize)
-		local tilesWide = 64
-		local tilesHigh = math.ceil(totalTiles / tilesWide)
-
-		local allTiles = Image(
-			tileWidth * tilesWide,
-			tileHeight * tilesHigh,
-			4,	-- rgba
-			'uint8_t'
-		):clear()
+		local tilesPerSheetInBits = 5
+		local tilesPerSheetSize = bit.lshift(1, tilesPerSheetInBits)
+		local sheetSize = tilesPerSheetSize * tileWidth	-- == tileHeight
+		local tilesPerSheetMask = tilesPerSheetSize-1
 
 		local tileImg = Image(tileWidth, tileHeight, 1, 'uint8_t')
-		for tileIndex=0,totalTiles-1 do
-			local tileX = tileIndex % tilesWide
-			local tileY = (tileIndex - tileX) / tilesWide
-			readTile(
-				tileImg,
-				0,
-				0,
-				rom + 0x130000 + tileSize * tileIndex,
-				bpp
-			)
-			local paletteIndex = paletteForTileIndex[tileIndex] or 0
-			tileImg.palette = makePalette(game.battleAnimPalettes + paletteIndex, bit.lshift(1, bpp))
-			allTiles:pasteInto{
-				image = tileImg:rgba(),
-				x = tileWidth * tileX,
-				y = tileHeight * tileY,
-			}
+
+		for _,info in ipairs{
+			{bpp=3, addr=0x130000, addrend=0x14c998},	-- game.battleAnimGraphics
+			{bpp=2, addr=0x187000, addrend=0x18c9a0},	-- game.battleAnimGraphics2bpp
+		} do
+			tileImg:clear()
+
+			local allTileSheets = table()
+
+			local bpp = info.bpp
+			local tileBasePerBPPAddr = info.addr
+			local tileBasePerBPPAddrEnd = info.addrend
+			
+			local tileSizeInBytes = bit.lshift(bpp, 3)
+			local totalTiles = math.floor((tileBasePerBPPAddrEnd - tileBasePerBPPAddr) / tileSizeInBytes)
+
+			for tileIndex=0,totalTiles-1 do
+				local tileX = bit.band(tileIndex, tilesPerSheetMask)
+				local tileYAndSheetIndex = bit.rshift(tileIndex, tilesPerSheetInBits)
+				local tileY = bit.band(tileYAndSheetIndex, tilesPerSheetMask)
+				local sheetIndex = bit.rshift(tileYAndSheetIndex, tilesPerSheetInBits)
+
+				readTile(
+					tileImg,
+					0,
+					0,
+					rom + tileBasePerBPPAddr + tileSizeInBytes * tileIndex,
+					bpp
+				)
+				local sheet = allTileSheets[sheetIndex+1]
+				if not sheet then
+					sheet = Image(sheetSize, sheetSize, 1, 'uint8_t'):clear()
+					allTileSheets[sheetIndex+1] = sheet
+				end
+
+				-- use whatever's last as the palette
+				local paletteIndex = paletteForTileIndex[tileIndex] or 0
+				sheet.palette = makePalette(game.battleAnimPalettes + paletteIndex, bit.lshift(1, bpp))
+				
+				sheet:pasteInto{
+					image = tileImg,
+					x = bit.lshift(tileX, 3),	-- tx << 3 == tx * 8 == tx * tileWidth
+					y = bit.lshift(tileY, 3),
+				}
+			end
+			for sheetIndexPlus1,sheet in ipairs(allTileSheets) do
+				sheet:save(spellGraphicSetsPath('alltiles-'..bpp..'bpp-sheet'..sheetIndexPlus1..'.png').path)
+			end
 		end
-		allTiles:save(spellGraphicSetsPath'alltiles-3bpp.png'.path)
-	end
-
-	do
-		local bpp = 2
-		local tileSize = 8 * bpp
-		local tileBasePerBPPAddr = 0x187000	-- game.battleAnimGraphics2bpp
-		local tileAddrEnd = 0x18c9a0
-		local totalTiles = math.floor((tileAddrEnd - tileBasePerBPPAddr) / tileSize)
-		local tilesWide = 64
-		local tilesHigh = math.ceil(totalTiles / tilesWide)
-
-		local allTiles = Image(
-			tileWidth * tilesWide,
-			tileHeight * tilesHigh,
-			4,	-- rgba
-			'uint8_t'
-		):clear()
-
-		local tileImg = Image(tileWidth, tileHeight, 1, 'uint8_t')
-		for tileIndex=0,totalTiles-1 do
-			local tileX = tileIndex % tilesWide
-			local tileY = (tileIndex - tileX) / tilesWide
-			readTile(
-				tileImg,
-				0,
-				0,
-				rom + tileBasePerBPPAddr + tileSize * tileIndex,
-				bpp
-			)
-			local paletteIndex = paletteForTileIndex[tileIndex] or 0
-			tileImg.palette = makePalette(game.battleAnimPalettes + paletteIndex, bit.lshift(1, bpp))
-			allTiles:pasteInto{
-				image = tileImg:rgba(),
-				x = tileWidth * tileX,
-				y = tileHeight * tileY,
-			}
-		end
-		allTiles:save(spellGraphicSetsPath'alltiles-2bpp.png'.path)
 	end
 
 	-- space for 660 entries
