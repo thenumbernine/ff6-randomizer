@@ -55,6 +55,7 @@ i.e. 256x1600 i.e. 6.25 x 256x256 sheets
 return function(rom, game)
 	local graphicSetsUsed = table()
 	local paletteForTileIndex = {}
+	local palettesUsed = table()
 	local frame16x16TileAddrInfo = table()
 
 	-- total # of 8x8 tiles saved
@@ -93,6 +94,7 @@ return function(rom, game)
 						}
 					graphicSetsUsed[graphicSet].effectDisplayIndex[j] = true
 					graphicSetsUsed[graphicSet].palettes[paletteIndex] = true
+					palettesUsed[paletteIndex] = true
 
 					-- is this a list of offsets to get the tileaddr's?
 					local graphicSetAddr, tileBasePerBPPAddr
@@ -245,6 +247,13 @@ return function(rom, game)
 	print()
 
 	print('total 8x8 tiles used for battle animations:', totalTilesSaved)
+	print()
+
+	local uniquePalettesUsed = palettesUsed:keys():sort()
+	print('palettes used #:', #uniquePalettesUsed)
+	-- TODO these are palette8's used for 3bpp, but 2bpp just needs 4 colors ... 
+	-- 175 of 240 palettes are used ... 
+	-- ... I'll just copy them all into palette blobs.
 	print()
 
 	-- [[ graphic sets for effect #3 is supposed to have a different base address, hmmm...
@@ -466,4 +475,34 @@ return function(rom, game)
 		print()
 	end
 	print()
+
+	local colorBase = ffi.cast('color_t*', game.battleAnimPalettes)
+	local numColors = game.numBattleAnimPalettes * 8
+	for palSheetIndex=0,math.ceil(numColors / 256)-1 do
+		local palimage = Image(16, 16, 4, 'uint8_t'):clear()
+		local p = palimage.buffer + 0
+		for i=0,255 do
+			local j = bit.bor(bit.lshift(palSheetIndex, 8), i)
+			if j < numColors then
+				local color = colorBase + j
+				assert.le(colorBase, color)
+				assert.lt(color, ffi.cast('color_t*', game.itemTypeNames))
+				local r = bit.bor(
+					bit.lshift(color.r, 3),
+					bit.rshift(color.r, 2))
+				local g = bit.bor(
+					bit.lshift(color.g, 3),
+					bit.rshift(color.g, 2))
+				local b = bit.bor(
+					bit.lshift(color.b, 3),
+					bit.rshift(color.b, 2))
+				local a = color.a == 0 and 0xff or 0
+				-- every 8 is transparent? every 16?
+				if bit.band(j, 7) == 0 then a = 0 end
+				p[0], p[1], p[2], p[3] = r, g, b, a
+				p = p + 4
+			end
+		end
+		palimage:save(spellGraphicSetsPath('palette'..(palSheetIndex+1)..'.png').path)
+	end
 end

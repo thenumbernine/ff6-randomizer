@@ -50,7 +50,7 @@ local function readTile(im, xofs, yofs, tile, bitsPerPixel, hflip, vflip)
 end
 
 -- returns a Lua table of the palette
-local function makePalette(pal, n)
+local function makePalette(pal) --, n) -- TODO use 'n' for a max index?
 	return range(0,255):mapi(function(i)
 		local b = bit.band(i, 15)
 		local a = bit.rshift(i, 4)

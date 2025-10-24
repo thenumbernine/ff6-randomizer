@@ -698,6 +698,8 @@ local battleAnimSet_t = struct{
 assert.eq(ffi.sizeof'battleAnimSet_t', 0xe)
 local numBattleAnimSets = 444
 
+local numBattleAnimPalettes = 0xf0
+
 -- animations made up of frames
 local battleAnimEffect_t = struct{
 	name = 'battleAnimEffect_t',
@@ -1849,7 +1851,7 @@ local game_t = struct{
 		{padding_11f9a0 = 'uint8_t['..(0x120000 - 0x11f9a0)..']'},				-- 0x11f9a0 - 0x120000
 
 		{battleAnimGraphicsSets3bpp = 'uint8_t['..(0x40 * 0x180)..']'},			-- 0x120000 - 0x126000 - holds the 'graphicSet' uint16 offsets from battleAnimEffect_t * 0x40 bytes
-		{battleAnimPalettes = 'palette8_t['..(0xf0)..']'},						-- 0x126000 - 0x126f00
+		{battleAnimPalettes = 'palette8_t['..numBattleAnimPalettes..']'},						-- 0x126000 - 0x126f00
 		{itemTypeNames = 'str7_t['..numItemTypes..']'},							-- 0x126f00 - 0x126fe0
 
 		{padding_126fe0 = 'uint8_t['..(0x127000 - 0x126fe0)..']'},				-- 0x126fe0 - 0x127000
@@ -2115,6 +2117,7 @@ obj = setmetatable({}, {
 obj.numSpells = numSpells
 obj.numBattleAnimSets = numBattleAnimSets
 obj.numBattleAnimEffects = numBattleAnimEffects
+obj.numBattleAnimPalettes = numBattleAnimPalettes
 obj.numEsperBonuses = numEsperBonuses
 obj.numEspers = numEspers
 obj.numMonsters = numMonsters
