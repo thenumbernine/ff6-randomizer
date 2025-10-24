@@ -26,7 +26,7 @@ battleAnimEffects[i] ... this is one animated sequence, i.e. a collection of fra
 	.width, .height = frame size, in 8x8 tiles
 	._2bpp is true for 2bpp, false for 3bpp
 	.graphicSet | (.graphicSetHighBit<<8)
-		points into graphicSetTile_t list, which are 16x4 x 8x8 tiles
+		points into battleAnim8x8Tile_t list, which are 16x4 x 8x8 tiles
 			2bpp list addr is * 0x40 + 0x12C000
 			3bpp list addr is * 0x40 + 0x120000
 	.frameIndexBase
@@ -42,7 +42,7 @@ frame16x16TilesPtr points to a list of battleAnim16x16Tile_t's = list of 16x16 t
 	.tile = index into graphicSet's 64x4 location of 8x8 tiles
 		tile8x8DataBaseAddr + tileLen * graphicSetTile.tile
 	.hflip16, .vflip16 = how to flip the 16x16 tile
-graphicSetTile_t list holds:
+battleAnim8x8Tile_t list holds:
 	.tile = address into tile8x8DataBaseAddr + tileLen * graphicSetTile.tile
 	.hflip = hflip 8x8
 	.vflip = vflip 8x8
@@ -90,11 +90,11 @@ return function(rom, game)
 	ffi.copy(battleAnimFrame16x16TileOffsets, game.battleAnimFrame16x16TileOffsets, ffi.sizeof(battleAnimFrame16x16TileOffsets))
 	battleAnimGraphicSetsPath'animframe16x16offsets.bin':write(ffi.string(battleAnimFrame16x16TileOffsets, ffi.sizeof(battleAnimFrame16x16TileOffsets)))
 
-	local battleAnimGraphicsSets2bpp = ffi.new('graphicSetTile_t[?]', 0x20 * 0xb0)
+	local battleAnimGraphicsSets2bpp = ffi.new('battleAnim8x8Tile_t[?]', 0x20 * 0xb0)
 	ffi.copy(battleAnimGraphicsSets2bpp, game.battleAnimGraphicsSets2bpp, ffi.sizeof(battleAnimGraphicsSets2bpp))
 	battleAnimGraphicSetsPath'graphicsets2bpp.bin':write(ffi.string(battleAnimGraphicsSets2bpp, ffi.sizeof(battleAnimGraphicsSets2bpp)))
 
-	local battleAnimGraphicsSets3bpp = ffi.new('graphicSetTile_t[?]', 0x20 * 0x180)
+	local battleAnimGraphicsSets3bpp = ffi.new('battleAnim8x8Tile_t[?]', 0x20 * 0x180)
 	ffi.copy(battleAnimGraphicsSets3bpp, game.battleAnimGraphicsSets3bpp, ffi.sizeof(battleAnimGraphicsSets3bpp))
 	battleAnimGraphicSetsPath'graphicsets3bpp.bin':write(ffi.string(battleAnimGraphicsSets3bpp, ffi.sizeof(battleAnimGraphicsSets3bpp)))
 
@@ -167,10 +167,10 @@ return function(rom, game)
 					local bpp = effect._2bpp == 1 and 2 or 3
 					local info = infoPerBpp[bpp]
 
-					-- number of graphicSetTile_t entries into the battleAnimGraphicSets[bpp] array (2 bytes each)
+					-- number of battleAnim8x8Tile_t entries into the battleAnimGraphicSets[bpp] array (2 bytes each)
 					local graphicSetOffset = graphicSetIndex * 0x20
-					local graphicSetAddr = info.graphicSetBaseAddr + graphicSetOffset * ffi.sizeof'graphicSetTile_t'
-					--local graphicSetTiles = ffi.cast('graphicSetTile_t*', rom + graphicSetAddr)
+					local graphicSetAddr = info.graphicSetBaseAddr + graphicSetOffset * ffi.sizeof'battleAnim8x8Tile_t'
+					--local graphicSetTiles = ffi.cast('battleAnim8x8Tile_t*', rom + graphicSetAddr)
 					local graphicSetTiles = battleAnimGraphicSetsPerBpp[bpp] + graphicSetOffset
 
 					local tileLen = bit.lshift(bpp, 3)

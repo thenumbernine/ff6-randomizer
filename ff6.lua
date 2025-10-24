@@ -740,8 +740,8 @@ assert.eq(ffi.sizeof'battleAnim16x16Tile_t', 2)
 -- graphicSet is a collection of 0x40 (0x10 x 4) 8x8 tiles
 -- Each 8x8 tile holds info of the tile address, hflip, and vflip
 -- This is pointed to by battleAnimEffect_t.graphicSet
-local graphicSetTile_t = struct{
-	name = 'graphicSetTile_t',
+local battleAnim8x8Tile_t = struct{
+	name = 'battleAnim8x8Tile_t',
 	fields = {
 		-- * tileLen (8 * bpp) + tileAddrBase (0x187000 for 2bpp, 0x130000 for 3bpp) gives the 8x8 tile data
 		-- for 3bpp, points into 0x130000 - 0x14c998, which only holds 4881
@@ -751,7 +751,7 @@ local graphicSetTile_t = struct{
 		{vflip = 'uint16_t:1'},
 	},
 }
-assert.eq(ffi.sizeof'graphicSetTile_t', 2)
+assert.eq(ffi.sizeof'battleAnim8x8Tile_t', 2)
 
 ---------------- MONSTERS HEADER ----------------
 
@@ -1853,7 +1853,7 @@ local game_t = struct{
 
 		{padding_11f9a0 = 'uint8_t['..(0x120000 - 0x11f9a0)..']'},				-- 0x11f9a0 - 0x120000
 
-		{battleAnimGraphicsSets3bpp = 'graphicSetTile_t['..(0x20 * 0x180)..']'},-- 0x120000 - 0x126000 - holds the 'graphicSet' uint16 offsets from battleAnimEffect_t * (0x20 entries == 0x40 bytes)
+		{battleAnimGraphicsSets3bpp = 'battleAnim8x8Tile_t['..(0x20 * 0x180)..']'},-- 0x120000 - 0x126000 - holds the 'graphicSet' uint16 offsets from battleAnimEffect_t * (0x20 entries == 0x40 bytes)
 		{battleAnimPalettes = 'palette8_t['..numBattleAnimPalettes..']'},		-- 0x126000 - 0x126f00
 		{itemTypeNames = 'str7_t['..numItemTypes..']'},							-- 0x126f00 - 0x126fe0
 
@@ -1865,7 +1865,7 @@ local game_t = struct{
 		{monsterSpriteTileMask16Ofs = 'uint16_t'},								-- 0x12a822 - 0x12a824
 		{monsterSpriteTileMaskData = 'uint8_t['..(0x12b300 - 0x12a824 )..']'},	-- 0x12a824 - 0x12b300
 		{itemNames = 'str13_t['..numItems..']'},								-- 0x12b300 - 0x12c000
-		{battleAnimGraphicsSets2bpp = 'graphicSetTile_t['..(0x20 * 0xb0)..']'},	-- 0x12c000 - 0x12ec00	-- should be 2bpp battle animation 16x16-tile-info referenced by .graphicSet
+		{battleAnimGraphicsSets2bpp = 'battleAnim8x8Tile_t['..(0x20 * 0xb0)..']'},	-- 0x12c000 - 0x12ec00	-- should be 2bpp battle animation 16x16-tile-info referenced by .graphicSet
 		{WoBpalettes = 'palette16_8_t'},										-- 0x12ec00 - 0x12ed00
 		{WoRpalettes = 'palette16_8_t'},										-- 0x12ed00 - 0x12ee00
 		{setzerAirshipPalette = 'palette16_t'},									-- 0x12ee00 - 0x12ee20
