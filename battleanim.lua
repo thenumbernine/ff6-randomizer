@@ -91,13 +91,19 @@ return function(rom, game)
 					for frameIndex=0,numFrames-1 do
 						print('\t\t\tframeIndex=0x'..frameIndex:hex()..':')
 						local effectOffsetEntry = game.battleAnimFrameOffsets[effect.frameIndexBase + frameIndex]
-						local addr = 0x110000 + effectOffsetEntry  -- somewhere inside battleAnimFrameData
-
+						local tileXYIndexAddr = 0x110000 + effectOffsetEntry  -- somewhere inside battleAnimFrameData
+						--local nextEffectOffsetEntry = game.battleAnimFrameOffsets[effect.frameIndexBase + frameIndex + 1]
 						print('\t\t\t\teffectOffsetEntry=0x'..effectOffsetEntry:hex()
-							..', addr=0x'..addr:hex())
+							..', tileXYIndexAddr=0x'..tileXYIndexAddr:hex()
+							--[[ some were saying that you can look at the distance to the next entry to find the # tiles ...
+							-- I was trying that at first but it doesn't seem to work all the time ...
+							..', nextEffectOffsetEntry=0x'..nextEffectOffsetEntry:hex()
+							..', delta='..(nextEffectOffsetEntry - effectOffsetEntry):hex()
+							--]]
+						)
 
-						-- now read from addr for how long? until when?
-						-- addr points to:
+						-- now read from tileXYIndexAddr for how long? until when?
+						-- tileXYIndexAddr points to:
 						-- 00: loc: 4 bits y, 4 bits x
 						-- 01: frame # ... into where?
 
@@ -113,15 +119,15 @@ return function(rom, game)
 
 						local lastTileOrder
 						for k=0,math.huge-1 do
-							local x = bit.rshift(rom[addr + 2 * k], 4)
-							local y = bit.band(0xf, rom[addr + 2 * k])
+							local x = bit.rshift(rom[tileXYIndexAddr + 2 * k], 4)
+							local y = bit.band(0xf, rom[tileXYIndexAddr + 2 * k])
 							if x >= effect.width then break end
 							if y >= effect.height then break end
 							local tileOrder = x + effect.width * y
 							if lastTileOrder and lastTileOrder >= tileOrder then break end
 							lastTileOrder = tileOrder
 							
-							local tileIndexOffset = rom[addr + 2 * k + 1]
+							local tileIndexOffset = rom[tileXYIndexAddr + 2 * k + 1]
 							-- [[ is this *another* h-flip? needed for ice to work
 							local hflip16 = 0 ~= bit.band(0x40, tileIndexOffset)
 							local vflip16 = 0 ~= bit.band(0x80, tileIndexOffset)
