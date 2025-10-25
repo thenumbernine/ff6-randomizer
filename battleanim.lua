@@ -316,7 +316,8 @@ return function(rom, game)
 	print()
 
 	local uniquePalettesUsed = palettesUsed:keys():sort()
-	print('palettes used #:', #uniquePalettesUsed)
+	print('palettes used #:', uniquePalettesUsed:mapi(function(i) return '0x'..i:hex() end):concat', ')
+	print('...'..#uniquePalettesUsed..' unique palettes')
 	-- TODO these are palette8's used for 3bpp, but 2bpp just needs 4 colors ...
 	-- 175 of 240 palettes are used ...
 	-- ... I'll just copy them all into palette blobs.
@@ -324,9 +325,7 @@ return function(rom, game)
 
 	-- [[ graphic sets for effect #3 is supposed to have a different base address, hmmm...
 	local uniqueGraphicSets = graphicSetsUsed:keys():sort()
-	print('graphicSets used', uniqueGraphicSets :mapi(function(i)
-		return '0x'..i:hex()
-	end):concat', ')
+	print('graphicSets used', uniqueGraphicSets:mapi(function(i) return '0x'..i:hex() end):concat', ')
 	print('...'..#uniqueGraphicSets..' unique graphic sets')
 	print()
 	--]]
