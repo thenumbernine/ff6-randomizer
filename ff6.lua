@@ -1876,12 +1876,12 @@ local game_t = struct{
 
 		{padding_12ef20 = 'uint8_t['..(0x130000 - 0x12ef20)..']'},				-- 0x12ef20 - 0x130000
 
-		{battleAnimGraphics3bpp = 'uint8_t['..(0x14c998 - 0x130000)..']'},			-- 0x130000 - 0x14c998 ... 3bpp, so 4881 (= 3 x 1627 ?) tiles
+		{battleAnimGraphics3bpp = 'uint8_t['..(0x14c998 - 0x130000)..']'},		-- 0x130000 - 0x14c998 ... 3bpp, so 4881 (= 3 x 1627 ?) tiles
 
 		{padding_14c998 = 'uint8_t['..(0x14d000 - 0x14c998)..']'},				-- 0x14c998 - 0x14d000
 
 		{battleAnimEffects = 'battleAnimEffect_t['..numBattleAnimEffects..']'},	-- 0x14d000 - 0x14df3c
-		{battleAnimFrame16x16TileOffsets = 'uint16_t['..(4194)..']'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid.  each is a uint16_t, add to 0x110000 to get the start of the variable-length battleAnim16x16Tile_t list into battleAnimFrame16x16Tiles
+		{battleAnimFrame16x16TileOffsets = 'uint16_t['..(4194)..']'},			-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid.  each is a uint16_t, add to 0x110000 to get the start of the variable-length battleAnim16x16Tile_t list into battleAnimFrame16x16Tiles
 
 		-- 0x150000 - ? = character images, 0x16a0 bytes each
 		{fieldSpriteGraphics = 'uint8_t['..(0x185000 - 0x150000)..']'},			-- 0x150000 - 0x185000
