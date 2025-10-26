@@ -520,9 +520,20 @@ return function(rom, game, romsize)
 		local pc = addr
 		local linepc
 		local lhs
+		local ifblockstack = table()
+		local tab = 0
+		local rhsprint
 		local function startline()
 			lhs = ''
 			linepc = pc
+			repeat
+				if #ifblockstack == 0 then break end
+				local last = ifblockstack:last()
+				if bit.band(0xffff, pc) < last then break end
+				ifblockstack:remove()
+				tab = tab - 1
+				rhsprint'end if'
+			until false
 		end
 		local function read()
 --print(debug.traceback())
@@ -566,8 +577,7 @@ assert.type(cmd, 'number')
 assert.type(cmd, 'number')
 			return cmd
 		end
-		local tab = 0
-		local function rhsprint(...)
+		function rhsprint(...)
 			assert.eq(select('#', ...), 1)
 			local s = ...
 --print(debug.traceback())
@@ -922,7 +932,7 @@ assert.type(b, 'number')
 					rhsprint('restore character palettes (purifier/hope song)')
 				elseif subcmd == 0x72 then
 					local arg = read()
-					rhsprint('if attack hit then branch to '..u16(pc + arg)..' (+'..u8(arg)..')')
+					rhsprint('if attack hit then branch to '..addrtostr(pc + arg)..' (+'..u8(arg)..')')
 				elseif subcmd == 0x73 then
 					local arg = read()
 					rhsprint('set graphics for dice roll (die index = '
@@ -948,7 +958,7 @@ assert.type(b, 'number')
 					rhsprint('swap target and attacker')
 				elseif subcmd == 0x7D then
 					local arg = read()
-					rhsprint('if dragon horn effect is active then branch to '..u16(pc + arg)..' (+'..u8(arg)..')')
+					rhsprint('if dragon horn effect is active then branch to '..addrtostr(pc + arg)..' (+'..u8(arg)..')')
 				elseif subcmd == 0x7E then
 					rhsprint('flip target character vertically')
 				elseif subcmd == 0x7F then
@@ -1299,12 +1309,14 @@ assert.type(b, 'number')
 				rhsprint('set screen mosaic to '..u8(arg)..' ($2106)')
 			elseif cmd == 0xBF then
 				local arg = readu16()
-				rhsprint('call $'..u16(arg))
+				rhsprint('call '..addrtostr(arg))
 			elseif cmd == 0xC0 then
-				rhsprint('return\n')
+				rhsprint('return'..(
+					#ifblockstack == 0 and '\n' or ''
+				))
 			elseif cmd == 0xC1 then
 				local xx, yy = read(), read()
-				rhsprint('vector movement speed? = '..u8(xx)..', branch to '..u16(pc - yy)..' (-'..u8(yy)..')')
+				rhsprint('vector movement speed? = '..u8(xx)..', branch to '..addrtostr(pc - yy)..' (-'..u8(yy)..')')
 			elseif cmd == 0xC2 then
 				local abc_____ = read()
 				rhsprint('unpause animation a: unpause BG1 b: unpause BG3 c: unpause sprites')
@@ -1319,7 +1331,7 @@ assert.type(b, 'number')
 			elseif cmd == 0xC5 then
 				local a, b, c, d = readu16(), readu16(), readu16(), readu16()
 				rhsprint('jump based on swdtech hit: {'
-					..table{u16(a), u16(b), u16(c), u16(d)}:concat', '..'}'
+					..table{addrtostr(a), addrtostr(b), addrtostr(c), addrtostr(d)}:concat', '..'}'
 					)
 			elseif cmd == 0xC6 then
 				local xx, yy = read(), read()
@@ -1328,59 +1340,59 @@ assert.type(b, 'number')
 				local subcmd = read()
 				if subcmd == 0x00 then
 					local arg = read()
-					rhsprint('9B set attacking character direction to face '
+					rhsprint('set attacking character direction to face '
 						..(arg == 0 and 'left' or 'right'))
 				elseif subcmd == 0x01 then
-					rhsprint('62 reset position offsets for attacking character')
+					rhsprint('reset position offsets for attacking character')
 				elseif subcmd == 0x02 then
-					rhsprint('1E save attacking character position')
+					rhsprint('save attacking character position')
 				elseif subcmd == 0x03 then
-					rhsprint('39 restore attacking character position and reset offsets')
+					rhsprint('restore attacking character position and reset offsets')
 				elseif subcmd == 0x04 then
-					rhsprint('03 restore attacking character position')
+					rhsprint('restore attacking character position')
 				elseif subcmd == 0x05 then
 					local arg = read()
-					rhsprint('B7 (unused)')
+					rhsprint('(unused)')
 				elseif subcmd == 0x06 then
 					local arg, arg2 = read(), read()
-					rhsprint('6A')
+					rhsprint('')
 				elseif subcmd == 0x07 then
-					rhsprint('47 update character action based on vector direction (walking)')
+					rhsprint('update character action based on vector direction (walking)')
 				elseif subcmd == 0x08 then
 					local x, y = read(), read()
-					rhsprint('D6 set vector target ('..u8(x)..','..u8(y)..') from attacker')
+					rhsprint('set vector target ('..u8(x)..','..u8(y)..') from attacker')
 				elseif subcmd == 0x09 then
-					rhsprint('B3 update character action based on vector direction (arms up)')
+					rhsprint('update character action based on vector direction (arms up)')
 				elseif subcmd == 0x0A then
 					local xx = read()
-					rhsprint('94 (unused)')
+					rhsprint('(unused)')
 				elseif subcmd == 0x0B then
 					local x, y, z = read(), read(), read()
-					rhsprint('71 spc('
+					rhsprint('spc('
 						..table{u8(x), u8(y), u8(z)}:concat', '..')'
 					)
 				elseif subcmd == 0x0C then
 					local arg, arg2 = read(), read()
-					rhsprint('36 set actor '..u8(arg)..' graphic index to '..u8(arg2))
+					rhsprint('set actor '..u8(arg)..' graphic index to '..u8(arg2))
 				elseif subcmd == 0x0D then
 					local arg = read()
-					rhsprint('15')
+					rhsprint('')
 				elseif subcmd == 0x0E then
 					local arg = read()
-					rhsprint('F8 screen shaking ($6285) = '..u8(arg))
+					rhsprint('screen shaking ($6285) = '..u8(arg))
 				elseif subcmd == 0x0F then
-					rhsprint('F2 (unused)')
+					rhsprint('(unused)')
 				elseif subcmd == 0x10 then
 					local xx = read()
-					rhsprint('B9')
+					rhsprint('')
 				elseif subcmd == 0x11 then
-					rhsprint('B0 disable run from battle')
+					rhsprint('disable run from battle')
 				else
 					rhsprint('!!! unknown subcmd')
 				end
 			elseif cmd == 0xC8 then
 				local arg = read()
-				rhsprint('set attacker modified graphic index = '..u8(arg))
+				rhsprint('set attacker graphic = '..u8(arg))
 			elseif cmd == 0xC9 then
 				local arg = read()
 				rhsprint(''..(arg == 0
@@ -1460,7 +1472,7 @@ assert.type(b, 'number')
 				rhsprint('update tornado (w wind/spiraler)')
 			elseif cmd == 0xDB then
 				local arg = read()
-				rhsprint('if character already stepped forward to attack then branch to '..u16(pc - arg)..' (+'..u8(arg)..')')
+				rhsprint('if character already stepped forward to attack then branch to '..addrtostr(pc - arg)..' (+'..u8(arg)..')')
 			elseif cmd == 0xDC then
 				rhsprint('rotate triangle 2D')
 			elseif cmd == 0xDD then
@@ -1484,10 +1496,10 @@ assert.type(b, 'number')
 				rhsprint('')
 			elseif cmd == 0xE5 then
 				local xx, yy, zz = read(), read(), read()
-				rhsprint('branch to '..u16(pc - yy)..' (-'..u8(yy)..')')
+				rhsprint('branch to '..addrtostr(pc - yy)..' (-'..u8(yy)..')')
 			elseif cmd == 0xE6 then
 				local xx, yy, zz = read(), read(), read()
-				rhsprint('branch to '..u16(pc - yy)..' (-'..u8(yy)..')')
+				rhsprint('branch to '..addrtostr(pc - yy)..' (-'..u8(yy)..')')
 			elseif cmd == 0xE7 then
 				rhsprint('calculate vector from attacking character to target')
 			elseif cmd == 0xE8 then
@@ -1503,7 +1515,7 @@ assert.type(b, 'number')
 			elseif cmd == 0xEB then
 				-- TODO count as many as threads ... how to determine # of threads?
 				local xxxx = readu16()
-				rhsprint('jump to '..u16(xxxx)..' based on thread index (number of addresses is number of threads)')
+				rhsprint('jump to '..addrtostr(xxxx)..' based on thread index (number of addresses is number of threads)')
 			elseif cmd == 0xEC then
 				local xx = read()
 				rhsprint('set thread layer (0 = sprite, 1 = BG1, 2 = BG3)')
@@ -1547,16 +1559,29 @@ assert.type(b, 'number')
 				local arg = read()
 				rhsprint('wait until vertical scanline position '..u8(arg))
 			elseif cmd == 0xF8 then
-				local xxxx, yyyy = readu16(), readu16()
+				--[[
+				local arg, arg2 = readu16(), readu16()
 				rhsprint('if magitek mode is enabled then jump to '
-					..addrtostr(xxxx)
-					..' else '..addrtostr(yyyy))
+					..addrtostr(arg)
+					..' else '..addrtostr(arg2))
+				--]]
+				-- [[
+				local arg, arg2 = readu16(), readu16()
+				-- funny thing, arg2 always matches script PC
+				assert.eq(arg2, bit.band(0xffff, pc))
+				ifblockstack:insert(arg)
+				-- this is always a command "if magitek mode is enabled then jump to" (with no else)
+				-- and that means this is really an if-block: "if magitek mode is not enabled"
+				--  that we can pop once we reach that address
+				rhsprint'if magitek mode is disabled then'
+				tab = tab + 1
+				--]]
 			elseif cmd == 0xF9 then
 				local xx,yy,zz = read(), read(), read()
 				rhsprint('')
 			elseif cmd == 0xFA then
-				local xxxx = readu16()
-				rhsprint('jump to '..addrtostr(xxxx))
+				local arg = readu16()
+				rhsprint('jump to '..addrtostr(arg))
 			elseif cmd == 0xFB then
 				local arg = read()
 				rhsprint('set character palettes color subtraction (absolute)'
@@ -1588,7 +1613,9 @@ assert.type(b, 'number')
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
 					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xFF then
-				rhsprint'end animation\n'
+				rhsprint('end animation'..(
+					#ifblockstack == 0 and '\n' or ''
+				))
 			end
 		end
 	end
