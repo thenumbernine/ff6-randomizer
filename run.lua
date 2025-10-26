@@ -451,7 +451,7 @@ print('battleRedPalette = '..game.battleRedPalette)
 print('battleMenuPalettes = '..game.battleMenuPalettes)
 print()
 
-require 'battleanim'(rom, game)
+require 'battleanim'(rom, game, #data - 0x200)
 
 do
 	local img = Image(8*16, 8*16, 1, 'uint8_t')
