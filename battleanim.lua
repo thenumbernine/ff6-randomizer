@@ -528,8 +528,8 @@ return function(rom, game, romsize)
 --print(debug.traceback())			
 			assert.le(0, pc)
 			assert.lt(pc, romsize)
-			--local cmd = ffi.cast('uint8_t*', rom + pc)[0]
-			local cmd = rom[pc] --ffi.cast('uint8_t*', rom + pc)[0]
+			local cmd = ffi.cast('uint8_t*', rom + pc)[0]
+			--local cmd = rom[pc] --ffi.cast('uint8_t*', rom + pc)[0]
 			lhs = lhs .. ' ' .. ('%02x'):format(cmd)	-- number.tostring arg is max # decimal digits ... i should do args for # lhs padding as well ...
 			pc = pc + 1
 assert.type(cmd, 'number')
@@ -539,8 +539,8 @@ assert.type(cmd, 'number')
 --print(debug.traceback())			
 			assert.le(0, pc)
 			assert.lt(pc, romsize)
-			--local cmd = ffi.cast('int8_t*', rom + pc)[0]
-			local cmd = rom[pc] --ffi.cast('int8_t*', rom + pc)[0]
+			local cmd = ffi.cast('int8_t*', rom + pc)[0]
+			--local cmd = rom[pc] --ffi.cast('int8_t*', rom + pc)[0]
 			lhs = lhs .. ' ' .. ('%02x'):format(cmd)	-- number.tostring arg is max # decimal digits ... i should do args for # lhs padding as well ...
 			pc = pc + 1
 assert.type(cmd, 'number')
@@ -569,8 +569,8 @@ assert.type(cmd, 'number')
 		local function rhsprint(...)
 --print(debug.traceback())			
 			print(
-				--('$%04x: '):format(bit.band(0xffff, linepc))
-				('$%06x: '):format(linepc)
+				('$%04x: '):format(bit.band(0xffff, linepc))
+				--('$%06x: '):format(linepc)
 				..lhs
 				..(' '):rep(20 - #lhs), ...)
 			startline()
@@ -590,19 +590,19 @@ assert.type(cmd, 'number')
 
 		local function u8(b)
 assert.type(b, 'number')
-			--b = tonumber(ffi.cast('uint8_t', b))
+			b = tonumber(ffi.cast('uint8_t', b))
 			return ('0x%02x'):format(b)
 		end
 		local function s8(b)
 assert.type(b, 'number')
-			--b = tonumber(ffi.cast('int8_t', b))
-			--if b < 0 then return '-0x'..math.abs(b):hex() end
-			--return '0x'..b:hex()
-			return ('0x%02x'):format(b)
+			b = tonumber(ffi.cast('int8_t', b))
+			if b < 0 then return '-0x'..math.abs(b):hex() end
+			return '0x'..b:hex()
+			--return ('0x%02x'):format(b)
 		end
 		local function u16(b)
 assert.type(b, 'number')
-			--b = tonumber(ffi.cast('uint16_t', b))
+			b = tonumber(ffi.cast('uint16_t', b))
 			return ('0x%04x'):format(b)
 		end
 
@@ -870,7 +870,7 @@ assert.type(b, 'number')
 				elseif subcmd == 0x60 then
 					local flags = readu32()	-- TODO is aabbccdd 8 bits or 4 bytes?
 					rhsprint('$CC3F toggle attacker status'
---						..(' $%08x'):format(flags)
+						..(' $%08x'):format(flags)
 						..' (morph/revert)')
 				elseif subcmd == 0x61 then
 					local xx, yy, zz = read(), read(), read()
@@ -1400,7 +1400,6 @@ assert.type(b, 'number')
 					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
 			elseif cmd == 0xCF then
 				local arg = read()
-print('arg='..u8(arg))
 				rhsprint('$EBF9 subtract color from sprite palette 2 (relative)'
 					..' amount='..u8(bit.band(0xf, arg))
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
