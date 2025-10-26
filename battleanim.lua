@@ -1573,7 +1573,7 @@ assert.type(b, 'number')
 				-- this is always a command "if magitek mode is enabled then jump to" (with no else)
 				-- and that means this is really an if-block: "if magitek mode is not enabled"
 				--  that we can pop once we reach that address
-				rhsprint'if magitek mode is disabled then'
+				rhsprint'if not magitek mode then'
 				tab = tab + 1
 				--]]
 			elseif cmd == 0xF9 then
