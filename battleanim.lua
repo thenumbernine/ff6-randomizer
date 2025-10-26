@@ -525,7 +525,7 @@ return function(rom, game, romsize)
 			linepc = pc
 		end
 		local function read()
---print(debug.traceback())			
+--print(debug.traceback())
 			assert.le(0, pc)
 			assert.lt(pc, romsize)
 			local cmd = ffi.cast('uint8_t*', rom + pc)[0]
@@ -536,7 +536,7 @@ assert.type(cmd, 'number')
 			return cmd
 		end
 		local function reads8()
---print(debug.traceback())			
+--print(debug.traceback())
 			assert.le(0, pc)
 			assert.lt(pc, romsize)
 			local cmd = ffi.cast('int8_t*', rom + pc)[0]
@@ -545,9 +545,9 @@ assert.type(cmd, 'number')
 			pc = pc + 1
 assert.type(cmd, 'number')
 			return cmd
-		end	
+		end
 		local function readu16()
---print(debug.traceback())			
+--print(debug.traceback())
 			assert.le(0, pc)
 			assert.lt(pc, romsize-2)
 			local cmd = ffi.cast('uint16_t*', rom + pc)[0]
@@ -559,24 +559,27 @@ assert.type(cmd, 'number')
 		local function readu32()
 			assert.le(0, pc)
 			assert.lt(pc, romsize-4)
---print(debug.traceback())			
+--print(debug.traceback())
 			local cmd = ffi.cast('uint32_t*', rom + pc)[0]
 			lhs = lhs .. ' ' .. ('%08x'):format(cmd)
 			pc = pc + 4
 assert.type(cmd, 'number')
-			return cmd	
+			return cmd
 		end
+		local tab = 0
 		local function rhsprint(...)
---print(debug.traceback())			
+			assert.eq(select('#', ...), 1)
+			local s = ...
+--print(debug.traceback())
 			print(
 				('$%04x: '):format(bit.band(0xffff, linepc))
 				--('$%06x: '):format(linepc)
 				..lhs
-				..(' '):rep(20 - #lhs), ...)
+				..(' '):rep(20 - #lhs), ('  '):rep(tab)..s)
 			startline()
 		end
 		startline()
-		
+
 		local movedirs = {
 			[0] = 'down/forward',
 			'down',
@@ -604,6 +607,14 @@ assert.type(b, 'number')
 assert.type(b, 'number')
 			b = tonumber(ffi.cast('uint16_t', b))
 			return ('0x%04x'):format(b)
+		end
+		local function u32(b)
+assert.type(b, 'number')
+			b = tonumber(ffi.cast('uint32_t', b))
+			return ('0x%08x'):format(b)
+		end
+		local function addrtostr(x)
+			return ('$%04x'):format(bit.band(x, 0xffff))
 		end
 
 		while pc < addrend do
@@ -723,14 +734,15 @@ assert.type(b, 'number')
 					local arg = read()
 					rhsprint('load animation palette '
 						..u8(arg)
-						..', bg3 (justice, earth aura)')
+						..', BG3 (justice, earth aura)')
 				elseif subcmd == 0x2D then
 					local x = readu16()
 					local y = readu16()
 					local z = readu16()
-					rhsprint('jump to '..('$%04x'):format(x)..' for normal attack, '
-						..('$%04x'):format(y)..' for back attack (or side and attacker is #3 or #4), '
-						..('$%04x'):format(z)..' for pincer attack (or side and attacker is #1 or #2 or monster)')
+					rhsprint('jump to '
+						..addrtostr(x)..' for normal attack, '
+						..addrtostr(y)..' for back attack (or side and attacker is #3 or #4), '
+						..addrtostr(z)..' for pincer attack (or side and attacker is #1 or #2 or monster)')
 				elseif subcmd == 0x2E then
 					local x = read()
 					local y = read()
@@ -753,11 +765,11 @@ assert.type(b, 'number')
 					local x = readu16()
 					local y = readu16()
 					if x == y then
-						rhsprint('jump to '..('$%04x'):format(x))
+						rhsprint('jump to '..addrtostr(x))
 					else
 						rhsprint('jump to '
-							..('$%04x'):format(x)..' if facing left, '
-							..('$%04x'):format(y)..' if facing right')
+							..addrtostr(x)..' if facing left, '
+							..addrtostr(y)..' if facing right')
 					end
 				elseif subcmd == 0x33 then
 					local arg = read()
@@ -771,7 +783,7 @@ assert.type(b, 'number')
 				elseif subcmd == 0x37 then
 					rhsprint('clear fixed color value hdma data ($2132)')
 				elseif subcmd == 0x38 then
-					rhsprint('enable high priority bg3 (justice)')
+					rhsprint('enable high priority BG3 (justice)')
 				elseif subcmd == 0x39 then
 					local arg = read()
 					rhsprint('update blue gradient lines (S. Cross, Carbunkl, Odin/Raiden)')
@@ -846,10 +858,10 @@ assert.type(b, 'number')
 					rhsprint('goner')
 				elseif subcmd == 0x57 then
 					local arg = read()
-					rhsprint('set bg3/bg4 window mask settings ($2124) to '..u8(arg))
+					rhsprint('set BG3/BG4 window mask settings ($2124) to '..u8(arg))
 				elseif subcmd == 0x58 then
 					local arg = read()
-					rhsprint('change circle shape to '..u8(arg))
+					rhsprint('set circle shape to '..u8(arg))
 				elseif subcmd == 0x59 then
 					rhsprint('goner/flare star')
 				elseif subcmd == 0x5A then
@@ -868,7 +880,7 @@ assert.type(b, 'number')
 				elseif subcmd == 0x60 then
 					local flags = readu32()	-- TODO is aabbccdd 4 sets of 2 bits or 4 bytes?
 					rhsprint('toggle attacker status'
-						..(' $%08x'):format(flags)
+						..u32(flags)
 						..' (morph/revert)')
 				elseif subcmd == 0x61 then
 					local xx, yy, zz = read(), read(), read()
@@ -980,23 +992,22 @@ assert.type(b, 'number')
 			elseif cmd == 0x81 then
 				local xx, yy = read(), read()
 				if xx == yy then
-					rhsprint('change attacking character graphic to '..u8(xx))
+					rhsprint('set attacking character graphic to '..u8(xx))
 				else
-					rhsprint('change attacking character graphic to '..u8(xx)..' if facing left, '..u8(yy)..' if facing right')
+					rhsprint('set attacking character graphic to '..u8(xx)..' if facing left, '..u8(yy)..' if facing right')
 				end
 			elseif cmd == 0x82 then
 				local xx, yy = read(), read()
 				if xx == yy then
-					rhsprint('change targetted character graphic to '..u8(xx))
+					rhsprint('set targetted character graphic to '..u8(xx))
 				else
-					rhsprint('change targetted character graphic to '..u8(xx)..' if facing left, '..u8(yy)..' if facing right')
+					rhsprint('set targetted character graphic to '..u8(xx)..' if facing left, '..u8(yy)..' if facing right')
 				end
 			elseif cmd == 0x83 then
 				local arg = read()
 				rhsprint('set dir='
 					..movedirs[bit.rshift(arg, 5)]
-					..' and move '
-					..('$%02x'):format(bit.band(arg, 0x1f)+1))
+					..' and move '..u8(bit.band(arg, 0x1f)+1))
 			elseif cmd == 0x84 then
 				local xx = read()
 				rhsprint('set animation speed to '..u8(xx))
@@ -1006,14 +1017,12 @@ assert.type(b, 'number')
 				local arg = read()
 				rhsprint('for attacker, set dir='
 					..movedirs[bit.rshift(arg, 5)]
-					..' and move '
-					..('$%02x'):format(bit.band(arg, 0x1f)+1))
+					..' and move '..u8(bit.band(arg, 0x1f)+1))
 			elseif cmd == 0x87 then
 				local arg = read()
 				rhsprint('for target, set dir='
 					..movedirs[bit.rshift(arg, 5)]
-					..' and move '
-					..('$%02x'):format(bit.band(arg, 0x1f)+1))
+					..' and move '..u8(bit.band(arg, 0x1f)+1))
 			elseif cmd == 0x88 then
 				local arg = read()
 				rhsprint([[$F71D fight: set frame to ]]
@@ -1021,33 +1030,35 @@ assert.type(b, 'number')
 			elseif cmd == 0x89 then
 				local arg = read()
 				rhsprint('loop from 0 to '..u8(arg-1))
+				tab = tab + 1
 			elseif cmd == 0x8A then
-				rhsprint('loop end')
+				tab = tab - 1
+				rhsprint('end loop')
 			elseif cmd == 0x8B then
 				local arg = read()
 				rhsprint('animated loop frame offset from +0 to +'..u8(arg-1))
+				tab = tab + 1
 			elseif cmd == 0x8C then
-				rhsprint('animated loop end')
+				tab = tab - 1
+				rhsprint('end animated loop')
 			elseif cmd == 0x8D then
 				local arg = read()
 				rhsprint('if animation is hflipped then set dir='
 					..movedirs[bit.rshift(arg, 5)]
-					..' and move '
-					..('$%02x'):format(bit.band(arg, 0x1f)+1))
+					..' and move '..u8(bit.band(arg, 0x1f)+1))
 			elseif cmd == 0x8E then
 				local arg = read()
-				rhsprint('show thread '
-					..(0 ~= bit.band(0x80, arg) and 'below' or 'above')
-					..(0 ~= bit.band(0x40, arg) and 'front' or 'back')
-					..' other sprites (sprite priority) with '
-					..(0 ~= bit.band(1, arg) and '' or ' opposite')..'weapon hand')
+				rhsprint('show thread'
+					..(0 ~= bit.band(0x80, arg) and ' below' or ' above')
+					..(0 ~= bit.band(0x40, arg) and ' front' or ' back')
+					..' other sprites (sprite priority) with'
+					..(0 ~= bit.band(1, arg) and '' or ' opposite')..' weapon hand')
 			elseif cmd == 0x8F then
 				-- TODO either 0x8D or 0x8F should probably be 'vflipped'
 				local arg = read()
 				rhsprint('if animation is hflipped then set dir='
 					..movedirs[bit.rshift(arg, 5)]
-					..' and move '
-					..('$%02x'):format(bit.band(arg, 0x1f)+1))
+					..' and move '..u8(bit.band(arg, 0x1f)+1))
 			elseif cmd == 0x90 then
 				local arg = read()
 				rhsprint('set thread sprite tile priority to '
@@ -1066,7 +1077,7 @@ assert.type(b, 'number')
 			elseif cmd == 0x94 then
 				rhsprint('set vector from attacker to a random location on the target (GP Rain, AutoCrossbow)')
 			elseif cmd == 0x95 then
-				rhsprint('set vector from attacker to target')	
+				rhsprint('set vector from attacker to target')
 			elseif cmd == 0x96 then
 				local xx, yy = read(), read()
 				rhsprint('if ??? then jump backwards '..u8(xx))
@@ -1079,8 +1090,7 @@ assert.type(b, 'number')
 					..' frame(s), '..u8(arg2))
 			elseif cmd == 0x99 then
 				local arg = read()
-				rhsprint('set thread palette to '
-					..('$%02x'):format(bit.band(7, bit.rshift(arg, 1))))
+				rhsprint('set thread palette to '..u8(bit.band(7, bit.rshift(arg, 1))))
 			elseif cmd == 0x9A then
 				rhsprint('set thread facing direction to match attacker')
 			elseif cmd == 0x9B then
@@ -1097,6 +1107,7 @@ assert.type(b, 'number')
 				local arg = read()
 				rhsprint('animated loop start (loop count equal to the number of active threads, '
 					..u8(arg)..' = 0) (autocrossbow)')
+				tab = tab + 1
 			elseif cmd == 0xA0 then
 				local arg, arg2 = read(), read()
 				rhsprint('jump forward along vector (speed '
@@ -1125,7 +1136,7 @@ assert.type(b, 'number')
 					..' maxsize='..u16(yyyy))
 			elseif cmd == 0xA6 then
 				local dx, dy, dr = read(), read(), read()
-				rhsprint('move circle ('..s8(dx)..','..s8(dy)..'), size changes by '..s8(dr))
+				rhsprint('move circle ('..s8(dx)..','..s8(dy)..'), circle size += '..s8(dr))
 			elseif cmd == 0xA7 then
 				rhsprint('update circle?')
 			elseif cmd == 0xA8 then
@@ -1178,7 +1189,7 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xB2 then
 				local arg = read()
 				rhsprint('Set sprite palette 1 color addition (absolute)'
@@ -1186,7 +1197,7 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xB3 then
 				local arg = read()
 				rhsprint('add color to sprite palette 3 (relative)'
@@ -1194,7 +1205,7 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xB4 then
 				local arg = read()
 				rhsprint('subtract color from sprite palette 3 palette (relative)'
@@ -1202,7 +1213,7 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xB5 then
 				local arg = read()
 				rhsprint('add color to background palette (relative)'
@@ -1210,7 +1221,7 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xB6 then
 				local arg = read()
 				rhsprint('subtract color from background palette (relative)'
@@ -1218,7 +1229,7 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xB7 then
 				local arg = read()
 				rhsprint('add color to sprite palette 1 (relative)'
@@ -1226,7 +1237,7 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xB8 then
 				local arg = read()
 				rhsprint('subtract color from sprite palette 1 (relative)'
@@ -1234,7 +1245,7 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xB9 then
 				local arg = read()
 				rhsprint('set monster palettes color subtraction (absolute)'
@@ -1256,7 +1267,7 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xBC then
 				local arg = read()
 				rhsprint('subtract color from monster palettes (relative)'
@@ -1264,32 +1275,47 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xBD then
-				-- TODO this makes me doubt the bit ordering i interpreted the rest of the docs as...
-				-- is lowest bit first, or is lowest bit last?
-				local abcd____ = read()
-				rhsprint('hide/show BG1/BG3 animation thread graphics a: affect bg1 b: affect bg3 c: bg1 (0 = show, 1 = hide) d: bg3 (0 = show, 1 = hide)')
+				local arg = read()
+				rhsprint(
+					(0 ~= bit.band(0x80, arg) and
+						(
+							(0 ~= bit.band(0x20, arg) and 'hide' or 'show')
+							..' BG1'
+						)
+						or ''
+					)
+					..(0 ~= bit.band(0x40, arg) and
+						(
+							(0 ~= bit.band(0x10, arg) and 'hide' or 'show')
+							..' BG3'
+						)
+						or ''
+					)
+					..' animation thread graphics')
 			elseif cmd == 0xBE then
 				local arg = read()
 				rhsprint('set screen mosaic to '..u8(arg)..' ($2106)')
 			elseif cmd == 0xBF then
 				local arg = readu16()
-				rhsprint('jump to subroutine $'..u16(arg))
+				rhsprint('call $'..u16(arg))
 			elseif cmd == 0xC0 then
-				rhsprint('return from subroutine\n')
+				rhsprint('return\n')
 			elseif cmd == 0xC1 then
 				local xx, yy = read(), read()
 				rhsprint('vector movement speed? = '..u8(xx)..', branch to '..u16(pc - yy)..' (-'..u8(yy)..')')
 			elseif cmd == 0xC2 then
 				local abc_____ = read()
-				rhsprint('unpause animation a: unpause bg1 b: unpause bg3 c: unpause sprites')
+				rhsprint('unpause animation a: unpause BG1 b: unpause BG3 c: unpause sprites')
 			elseif cmd == 0xC3 then
 				rhsprint('move circle to target')
 			elseif cmd == 0xC4 then
-				-- is ab high bits or low bits?
-				local ab______ = read()
-				rhsprint('move BG1/BG3 thread to this thread position a: affect bg1 b: affect bg3')
+				local arg = read()
+				rhsprint('move'
+					..(0 ~= bit.band(arg, 0x80) and ' BG1' or '')
+					..(0 ~= bit.band(arg, 0x40) and ' BG3' or '')
+					..' thread to this thread position')
 			elseif cmd == 0xC5 then
 				local a, b, c, d = readu16(), readu16(), readu16(), readu16()
 				rhsprint('jump based on swdtech hit: {'
@@ -1302,7 +1328,7 @@ assert.type(b, 'number')
 				local subcmd = read()
 				if subcmd == 0x00 then
 					local arg = read()
-					rhsprint('9B change attacking character facing direction to '
+					rhsprint('9B set attacking character direction to face '
 						..(arg == 0 and 'left' or 'right'))
 				elseif subcmd == 0x01 then
 					rhsprint('62 reset position offsets for attacking character')
@@ -1335,7 +1361,7 @@ assert.type(b, 'number')
 					)
 				elseif subcmd == 0x0C then
 					local arg, arg2 = read(), read()
-					rhsprint('36 change actor '..u8(arg)..' graphic index to '..u8(arg2))
+					rhsprint('36 set actor '..u8(arg)..' graphic index to '..u8(arg2))
 				elseif subcmd == 0x0D then
 					local arg = read()
 					rhsprint('15')
@@ -1357,7 +1383,7 @@ assert.type(b, 'number')
 				rhsprint('set attacker modified graphic index = '..u8(arg))
 			elseif cmd == 0xC9 then
 				local arg = read()
-				rhsprint(''..(arg == 0 
+				rhsprint(''..(arg == 0
 					and ('play animation default sound effect')
 					or 'play sound effect '..u8(arg)
 				))
@@ -1387,7 +1413,7 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xCF then
 				local arg = read()
 				rhsprint('subtract color from sprite palette 2 (relative)'
@@ -1395,13 +1421,15 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xD0 then
 				local vhftpppm = read()
 				rhsprint('set sprite data for all character/monster sprites')
 			elseif cmd == 0xD1 then
-				local xx = read()
-				rhsprint('validate/invalidate character/monster order priority (0 = validate, 1 = invalidate)')
+				local arg = read()
+				rhsprint(
+					(arg == 0 and 'validate' or 'invalidate')
+					..' character/monster order priority')
 			elseif cmd == 0xD2 then
 				local xx, yy = read(), read()
 				rhsprint('set target position ('..u8(xx)..','..u8(yy)..') without moving')
@@ -1478,7 +1506,7 @@ assert.type(b, 'number')
 				rhsprint('jump to '..u16(xxxx)..' based on thread index (number of addresses is number of threads)')
 			elseif cmd == 0xEC then
 				local xx = read()
-				rhsprint('change thread layer (0 = sprite, 1 = bg1, 2 = bg3)')
+				rhsprint('set thread layer (0 = sprite, 1 = BG1, 2 = BG3)')
 			elseif cmd == 0xED then
 				rhsprint('')
 			elseif cmd == 0xEE then
@@ -1489,20 +1517,30 @@ assert.type(b, 'number')
 				rhsprint('move to polar coordinates r='..u8(rr)..' theta='..u8(tt)..' (similar to $E8)')
 			elseif cmd == 0xF0 then
 				local a,b,c,d,e = readu16(), readu16(), readu16(), readu16(), readu16()
-				rhsprint('jump based on current target index (char1, char2, char3, char4, monster)')
+				rhsprint('jump based on current target'
+					..' char1='..addrtostr(a)
+					..' char2='..addrtostr(b)
+					..' char3='..addrtostr(c)
+					..' char4='..addrtostr(d)
+					..' monster='..addrtostr(e))
 			elseif cmd == 0xF1 then
 				local xx = read()
 				rhsprint('')
 			elseif cmd == 0xF2 then
-				rhsprint('Set a trajectory from target center to attacker')
+				rhsprint('set a trajectory from target center to attacker')
 			elseif cmd == 0xF3 then
 				local a,b,c,d,e = readu16(), readu16(), readu16(), readu16(), readu16()
-				rhsprint('jump based on current attacker index (char1, char2, char3, char4, monster)')
+				rhsprint('jump based on current attacker'
+					..' char1='..addrtostr(a)
+					..' char2='..addrtostr(b)
+					..' char3='..addrtostr(c)
+					..' char4='..addrtostr(d)
+					..' monster='..addrtostr(e))
 			elseif cmd == 0xF4 then
 				local _______t = read()
 				rhsprint('set sprite layer priority')
 			elseif cmd == 0xF5 then
-				rhsprint('loop end (loop until no threads are active)')
+				rhsprint('until no threads are active')
 			elseif cmd == 0xF6 then
 				rhsprint('rotate triangle 3D')
 			elseif cmd == 0xF7 then
@@ -1511,14 +1549,14 @@ assert.type(b, 'number')
 			elseif cmd == 0xF8 then
 				local xxxx, yyyy = readu16(), readu16()
 				rhsprint('if magitek mode is enabled then jump to '
-					..('$%04x'):format(xxxx)
-					..' else '..('$%04x'):format(yyyy))
+					..addrtostr(xxxx)
+					..' else '..addrtostr(yyyy))
 			elseif cmd == 0xF9 then
 				local xx,yy,zz = read(), read(), read()
 				rhsprint('')
 			elseif cmd == 0xFA then
 				local xxxx = readu16()
-				rhsprint('jump to $'..('%04x'):format(xxxx))
+				rhsprint('jump to '..addrtostr(xxxx))
 			elseif cmd == 0xFB then
 				local arg = read()
 				rhsprint('set character palettes color subtraction (absolute)'
@@ -1540,7 +1578,7 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xFE then
 				local arg = read()
 				rhsprint('subtract color from character palettes (relative)'
@@ -1548,9 +1586,9 @@ assert.type(b, 'number')
 					..' red='..tostring(0 ~= bit.band(0x80, arg))
 					..' green='..tostring(0 ~= bit.band(0x40, arg))
 					..' blue='..tostring(0 ~= bit.band(0x20, arg))
-					..(0 ~= bit.band(0x10, arg) and 'sub' or 'add'))
+					..(0 ~= bit.band(0x10, arg) and ' sub' or ' add'))
 			elseif cmd == 0xFF then
-				rhsprint'end of animation\n'
+				rhsprint'end animation\n'
 			end
 		end
 	end
