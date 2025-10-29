@@ -516,7 +516,7 @@ return function(rom, game, romsize)
 	for i,addr in ipairs(addrsInOrder) do
 		local addrend = addrsInOrder[i+1] or 0x107fb2
 		print('battleAnimScript addr=0x'..addr:hex()..':')
-		print(' used by script #s: '..battleScriptAddrs[addr]:concat', ')
+		print(' used by script #s: '..battleScriptAddrs[addr]:mapi(function(addr) return ('0x%04x'):format(addr) end):concat', ')
 		local pc = addr
 		local linepc
 		local lhs
@@ -629,7 +629,24 @@ assert.type(b, 'number')
 
 		while pc < addrend do
 			local cmd = read()
-			if cmd >= 0 and cmd < 0x20 then
+			-- is this always and only for the first two bytes?
+			if pc == addr+1 then
+				local subcmd = read()
+				local speed = 1 + bit.rshift(cmd, 4)
+				local x = bit.band(cmd, 0xf)
+				local align = bit.rshift(subcmd, 4)
+				-- 0 = bottom of character
+				-- 2 = center of character
+				-- 4 = top of character
+				-- 6 = unused
+				-- 8 = initial position
+				-- 0xa = center of screen
+				-- 0xc = front of character
+				-- 0xe = "align to character" (which side?)
+				local y = bit.band(subcmd, 4)
+				rhsprint('speed '..speed..' align '..align)
+			
+			elseif cmd >= 0 and cmd < 0x20 then
 				rhsprint('show frame '..u8(cmd))
 			elseif cmd >= 0x20 and cmd < 0x80 then
 				rhsprint('-')	-- that's all it has in the notes ... '-'
@@ -1514,8 +1531,10 @@ assert.type(b, 'number')
 				rhsprint('set BG tile data quadrants 1 = affect bg1 3 = affect bg1 x = quadrant')
 			elseif cmd == 0xEB then
 				-- TODO count as many as threads ... how to determine # of threads?
-				local xxxx = readu16()
-				rhsprint('jump to '..addrtostr(xxxx)..' based on thread index (number of addresses is number of threads)')
+				local addrs = range(3):mapi(function() return readu16() end)
+				rhsprint('jump based on thread to {'
+					..addrs:mapi(function(addr) return addrtostr(addr) end):concat', '
+					..'}')
 			elseif cmd == 0xEC then
 				local xx = read()
 				rhsprint('set thread layer (0 = sprite, 1 = BG1, 2 = BG3)')

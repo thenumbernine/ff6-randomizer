@@ -684,7 +684,7 @@ for i=0,game.numBRRSamples-1 do
 		('pitch=0x%04X'):format(tonumber(game.pitchMults[i])),
 		('loopOffset=0x%04X/9*32'):format(tonumber(game.loopStartOfs[i])),
 	}:concat'\n'..'\n')
-	-- [[ debug plot it so i can see the waveform.
+	--[[ debug plot it so i can see the waveform.
 	require'gnuplot'{
 		terminal = 'svg size '..math.floor(4*numSamples)..',512',
 		output = wavpath(basename..'.svg').path,
