@@ -39,6 +39,9 @@ return function(args)
 				uint16_t = function(value)
 					return ('0x%04x'):format(value)
 				end,
+				uint32_t = function(value)
+					return ('0x%08x'):format(value)
+				end,
 			}
 			if args.metatable then
 				args.metatable(m, ...)

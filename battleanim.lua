@@ -644,8 +644,9 @@ assert.type(b, 'number')
 				-- 0xc = front of character
 				-- 0xe = "align to character" (which side?)
 				local y = bit.band(subcmd, 4)
+				assert.eq(x, 0)
+				assert.eq(y, 0)
 				rhsprint('speed '..speed..' align '..align)
-			
 			elseif cmd >= 0 and cmd < 0x20 then
 				rhsprint('show frame '..u8(cmd))
 			elseif cmd >= 0x20 and cmd < 0x80 then
