@@ -770,8 +770,9 @@ path'WoBMapDataDecompressed.hex':write(WoBMapDataDecompressed:hexdump())
 
 
 -- output town tile graphics
-for i=0,0x80-1 do
-	local ofs = game.townTileGraphicsOffsets[i]
+-- the last 3 are 0xffffff
+for i=0,0x51 do
+	local ofs = game.townTileGraphicsOffsets[i]:value()
 	-- this is times something and then a pointer into game.townTileGraphics
 	print('townTileGraphicsOffsets[0x'..i:hex()..'] = 0x'..ofs:hex())
 end

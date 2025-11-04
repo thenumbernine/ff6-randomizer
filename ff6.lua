@@ -486,6 +486,11 @@ local uint24_t = struct{
 		{lo = 'uint16_t'},
 		{hi = 'uint8_t'},
 	},
+	metatable = function(mt)
+		mt.value = function(self)
+			return bit.bor(self.lo, bit.lshift(self.hi, 16))
+		end
+	end,
 }
 assert.eq(ffi.sizeof'uint24_t', 3)
 local numBRRSamples = 63
@@ -1912,7 +1917,11 @@ local game_t = struct{
 		{locationTileFormationOfs = 'uint16_t['..numLocationTileFormationOfs..']'},		-- 0x1fba00 - 0x1fbb00 -- offset by +0x1e0000
 		{entranceTriggerOfs = 'uint16_t['..numEntranceTriggerOfs..']'},					-- 0x1fbb00 - 0x1fbf02 -- offset by +0x1fbb00
 		{entranceTriggerData = 'uint8_t['..(0x1fda00 - 0x1fbf02)..']'},					-- 0x1fbf02 - 0x1fda00
-		{townTileGraphicsOffsets = 'uint16_t['..(0x80)..']'},							-- 0x1fda00 - 0x1fdb00 = town tile graphics pointers (128 items) (+0x1fdb00)
+		
+		{townTileGraphicsOffsets = 'uint24_t['..(0x55)..']'},							-- 0x1fda00 - 0x1fdaff = town tile graphics pointers (+0x1fdb00)
+		
+		{padding_1fdaff = 'uint8_t[1]'},												-- 0x1fdaff - 0x1fdb00 
+
 		{townTileGraphics = 'uint8_t['..(0x25f400 - 0x1fdb00)..']'},					-- 0x1fdb00 - 0x25f400 = town tile graphics 4bpp
 			-- (within it) 0x21c4c0 - 0x21e4c0 = battle background top graphics: building
 		
