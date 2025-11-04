@@ -768,6 +768,38 @@ print('WoBMapDataDecompressed', #WoBMapDataDecompressed)
 path'WoBMapDataDecompressed.bin':write(WoBMapDataDecompressed)
 path'WoBMapDataDecompressed.hex':write(WoBMapDataDecompressed:hexdump())
 
+
+-- output town tile graphics
+for i=0,0x80-1 do
+	local ofs = game.townTileGraphicsOffsets[i]
+	-- this is times something and then a pointer into game.townTileGraphics
+	print('townTileGraphicsOffsets[0x'..i:hex()..'] = 0x'..ofs:hex())
+end
+do
+	-- 0x30c8 tiles of 8x8x4bpp = 32 bytes in game.townTileGraphics 
+	local bpp = 4
+	local numTiles = (0x25f400 - 0x1fdb00) / (8 * bpp)	-- = 0x30c8
+	-- 128 is just over sqrt numTiles
+	local masterTilesWide = 16 -- 128
+	local masterTilesHigh = math.ceil(numTiles / masterTilesWide)
+	local im = Image(masterTilesWide*tileWidth, masterTilesHigh*tileHeight, 1, 'uint8_t'):clear()
+	for i=0,numTiles-1 do
+		local x = i % masterTilesWide
+		local y = (i - x) / masterTilesWide
+		readTile(im,
+			x * tileWidth,
+			y * tileHeight,
+			game.townTileGraphics + bit.lshift(i, 5),
+			bpp)
+	end
+	-- alright where is the palette info stored?
+	-- and I'm betting somewhere is the 16x16 info that points into this 8x8 tile data...
+	-- and I'm half-suspicious it is compressed ...
+	im.palette = makePalette(game.characterPalettes + 0x11)
+	im:save'towntiles.png'
+end
+
+
 print'end of rom output'
 
 --print('0x047aa0: ', game.padding_047aa0)

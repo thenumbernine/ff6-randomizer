@@ -36,7 +36,6 @@ local tileWidth = 8
 local tileHeight = 8
 
 -- reads as 8bpp-indexed
--- you have to bake palette yourself
 local function readTile(im, xofs, yofs, tile, bitsPerPixel, hflip, vflip)
 	for y=0,tileHeight-1 do
 		local dstp = im.buffer + (xofs + im.width*(yofs+y))

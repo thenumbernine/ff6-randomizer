@@ -1609,7 +1609,7 @@ local location_t = struct{
 }
 assert.eq(ffi.sizeof'location_t', 0x21)
 
-local numLocationTileFormationOfs = 128
+local numLocationTileFormationOfs = 0x80
 local locationTileFormationOfsAddr = 0x1fba00
 
 local numEntranceTriggerOfs = 513
@@ -1898,23 +1898,27 @@ local game_t = struct{
 
 		{padding_18cfec = 'uint8_t['..(0x19a800 - 0x18cfec)..']'},				-- 0x18cfec - 0x19a800
 
+		-- TODO:
 		{locationTileProperties = 'uint8_t['..(0x19cd10 - 0x19a800)..']'},				-- 0x19a800 - 0x19cd10 = location tile properties
 		{locationTilePropertiesOffsets = 'uint16_t['..(0x40)..']'},						-- 0x19cd10 - 0x19cd90 = offsets to location tile properties (+0x19a800)
 		{locationMapDataOffsets = 'uint24_t['..(0x160)..']'},							-- 0x19cd90 - 0x19d1b0 = offsets to location map data (352 items), (+0x19d1b0)
 		{locationMapDataCompressed = 'uint8_t['..(0x1e0000 - 0x19d1b0)..']'},			-- 0x19d1b0 - 0x1e0000 = location map data (compressed)
 		{locationTileFormationsCompressed = 'uint8_t['..(0x1fb400 - 0x1e0000)..']'},	-- 0x1e0000 - 0x1fb400 = location map tile formation (compressed)
+		
 		{formationMPs = 'uint8_t['..numFormationMPs..']'},								-- 0x1fb400 - 0x1fb600
 		{itemColosseumInfos = 'itemColosseumInfo_t['..numItems..']'},					-- 0x1fb600 - 0x1fba00
+		
+		-- TODO:
 		{locationTileFormationOfs = 'uint16_t['..numLocationTileFormationOfs..']'},		-- 0x1fba00 - 0x1fbb00 -- offset by +0x1e0000
 		{entranceTriggerOfs = 'uint16_t['..numEntranceTriggerOfs..']'},					-- 0x1fbb00 - 0x1fbf02 -- offset by +0x1fbb00
 		{entranceTriggerData = 'uint8_t['..(0x1fda00 - 0x1fbf02)..']'},					-- 0x1fbf02 - 0x1fda00
-		{townTileGraphicsOffsets = 'uint16_t['..(0x80)..']'},								-- 0x1fda00 - 0x1fdb00 = town tile graphics pointers (128 items) (+0x1fdb00)
-		{townTileGraphics = 'uint8_t['..(0x25f400 - 0x1fdb00)..']'},					-- 0x1fdb00 - 0x25f400 = town tile graphics
+		{townTileGraphicsOffsets = 'uint16_t['..(0x80)..']'},							-- 0x1fda00 - 0x1fdb00 = town tile graphics pointers (128 items) (+0x1fdb00)
+		{townTileGraphics = 'uint8_t['..(0x25f400 - 0x1fdb00)..']'},					-- 0x1fdb00 - 0x25f400 = town tile graphics 4bpp
 			-- (within it) 0x21c4c0 - 0x21e4c0 = battle background top graphics: building
 		
 		{padding_25f400 = 'uint8_t['..(0x268000 - 0x25f400)..']'},			-- 0x25f400 - 0x268000 = ???
 
-		{characterPalettes = 'palette16_t['..numCharacterPalettes..']'},	-- 0x268000 - 0x268400	-- also map palettes?
+		{characterPalettes = 'palette16_t['..numCharacterPalettes..']'},	-- 0x268000 - 0x268400	-- also town tile palettes?
 		{locationNameOffsets = 'uint16_t['..numLocationNames..']'},			-- 0x268400 - 0x268780
 
 		{padding_268780 = 'uint8_t['..(0x26f4a0 - 0x268780)..']'},			-- 0x268780 - 0x26f4a0
