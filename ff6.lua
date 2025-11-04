@@ -658,7 +658,7 @@ local battleAnimEffectIndex_t = struct{
 			anonymous = true,
 			fields = {
 				{index = 'uint16_t:15'},
-				{unknown_15 = 'uint16_t:1'},
+				{dontRunScript = 'uint16_t:1'},
 			},
 		}},
 	},

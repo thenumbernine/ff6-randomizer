@@ -142,9 +142,8 @@ return function(rom, game, romsize)
 			local paletteIndex = battleAnim['palette'..(j+1)]
 
 			if effectIndex ~= 0xffff then
-				local unknown_15 = 0 ~= bit.band(0x8000, effectIndex)
+				local dontRunScript = 0 ~= bit.band(0x8000, effectIndex)
 				effectIndex = bit.band(0x7fff, effectIndex)
-				-- idk what unknown_15 means.
 				if effectIndex >= numBattleAnimEffects then
 					-- NO MORE OF THESE ERRORS BEING HIT, NICE
 					print('!!! effect is oob !!! '..('%x'):format(effectIndex))
@@ -516,7 +515,7 @@ return function(rom, game, romsize)
 	for i,addr in ipairs(addrsInOrder) do
 		local addrend = addrsInOrder[i+1] or 0x107fb2
 		print('battleAnimScript addr=0x'..addr:hex()..':')
-		print(' used by script #s: '..battleScriptAddrs[addr]:mapi(function(addr) return ('0x%04x'):format(addr) end):concat', ')
+		print(' used by effect #s: '..battleScriptAddrs[addr]:mapi(function(addr) return ('0x%04x'):format(addr) end):concat', ')
 		local pc = addr
 		local linepc
 		local lhs
