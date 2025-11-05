@@ -480,7 +480,7 @@ return function(rom, game, romsize)
 
 				-- use whatever's last as the palette
 				local paletteIndex = paletteForTileIndex[tileIndex] or 0
-				sheet.palette = makePalette(game.battleAnimPalettes + paletteIndex, bit.lshift(1, bpp))
+				sheet.palette = makePalette(game.battleAnimPalettes + paletteIndex, bpp, bit.lshift(1, bpp))
 
 				sheet:pasteInto{
 					image = tileImg,

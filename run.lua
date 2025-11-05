@@ -147,6 +147,12 @@ for _,offset in ipairs(table.keys(monsterSpriteOffsetSet):sort()) do
 end
 --]]
 
+-- [[ write monster palettes
+do
+	local p = path'monsters_graphicset'
+end
+--]]
+
 for i=0,game.numMetamorphSets-1 do
 	print('metamorph set #'..i..' = '..game.metamorphSets[i])
 end
@@ -222,7 +228,7 @@ local chx, chy = 0, 0
 local sheetIndex = 0
 local charSheet = Image(256, 256, 1, 'uint8_t')
 local function flushCharSheet()
-	charSheet.palette = makePalette(game.characterPalettes, 256)
+	charSheet.palette = makePalette(game.characterPalettes, 4, 256)
 	charSheet:save('characters/sheet'..sheetIndex..'.png')
 	charSheet:clear()
 	sheetIndex = sheetIndex + 1
@@ -265,7 +271,7 @@ for charIndex=0,game.numCharacterSprites-1 do
 		--local frameName = tostring(frameIndex)
 		local frameName = ('%02d'):format(frameIndex)
 		local relname = spriteName..'_'..frameName..'.png'
-		im.palette = makePalette(game.characterPalettes + palIndex, 16)
+		im.palette = makePalette(game.characterPalettes + palIndex, 4, 16)
 		im:save('characters/'..relname)
 		--]=]
 		--[=[ save to our char sheet
@@ -304,7 +310,7 @@ print('wrote total pixels', totalPixels)
 --]]
 -- [[ while we're here , why not write out the char palettes
 do
-	local palette = makePalette(game.characterPalettes, 256)
+	local palette = makePalette(game.characterPalettes, 4, 256)
 	Image(16, 16, 4, 'uint8_t', range(0,16*16*4-1):mapi(function(i)
 		return palette[bit.rshift(i,2)+1][bit.band(i,3)+1]
 	end)):save'char_pal.png'
@@ -430,7 +436,7 @@ do
 				tileIndex = tileIndex + 1
 			end
 		end
-		im.palette = makePalette(game.menuPortraitPalette + charIndex, 16)
+		im.palette = makePalette(game.menuPortraitPalette + charIndex, 4, 16)
 		im:save(
 			menucharpath('menu'..charIndex..'.png').path
 		)
@@ -796,7 +802,7 @@ do
 	-- alright where is the palette info stored?
 	-- and I'm betting somewhere is the 16x16 info that points into this 8x8 tile data...
 	-- and I'm half-suspicious it is compressed ...
-	im.palette = makePalette(game.characterPalettes + 0x11)
+	im.palette = makePalette(game.characterPalettes + 0x11, 4, 16)
 	im:save'towntiles.png'
 end
 

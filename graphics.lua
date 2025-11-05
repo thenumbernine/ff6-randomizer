@@ -49,17 +49,17 @@ local function readTile(im, xofs, yofs, tile, bitsPerPixel, hflip, vflip)
 end
 
 -- returns a Lua table of the palette
-local function makePalette(pal) --, n) -- TODO use 'n' for a max index?
-	return range(0,255):mapi(function(i)
-		local b = bit.band(i, 15)
-		local a = bit.rshift(i, 4)
-		return
-		b == 0 and {0,0,0,0} or 	-- 0 always transparent
-		{
-			math.floor(pal[a].s[b].r / 0x1f * 255),
-			math.floor(pal[a].s[b].g / 0x1f * 255),
-			math.floor(pal[a].s[b].b / 0x1f * 255),
-			math.floor((1-pal[a].s[b].a) * 255),
+local function makePalette(pal, bpp, n)
+	pal = ffi.cast('color_t*', pal)
+	local mask = bit.lshift(1, bpp) - 1
+	return range(0,(n or 256)-1):mapi(function(i)
+		-- 0 is always transparent
+		if bit.band(i, mask) == 0 then return {0,0,0,0} end
+		return {
+			math.floor(pal[i].r / 0x1f * 255),
+			math.floor(pal[i].g / 0x1f * 255),
+			math.floor(pal[i].b / 0x1f * 255),
+			math.floor((1-pal[i].a) * 255),
 		}
 	end)
 end
@@ -122,7 +122,7 @@ local function makeTiledImageWithMask(
 		end
 	end
 
-	im.palette = makePalette(assert(pal), bit.lshift(1, bitsPerPixel))
+	im.palette = makePalette(pal, bitsPerPixel, bit.lshift(1, bitsPerPixel))
 
 	return im
 end
