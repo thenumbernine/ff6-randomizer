@@ -483,7 +483,8 @@ for i=0,game.numLocationTileFormationOfs-1 do
 		print(' dist to next entry / end = 0x'..dist:hex())
 		print(' compressed size = 0x'..(endptr - ptr):hex())
 		print(' decompressed size = 0x'..(#row):hex())
-		print(' '..row:hex())
+		--print(' '..row:hex():gsub('..', ' %0'))
+		print(row:hexdump())
 	end
 end
 print()
