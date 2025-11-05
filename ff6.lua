@@ -445,6 +445,24 @@ local color_t = struct{
 		{b = 'uint16_t:5'},
 		{a = 'uint16_t:1'},
 	},
+	metatable = function(mt)
+		mt.rgba = function(self)
+			return
+				bit.bor(
+					bit.lshift(self.r, 3),
+					bit.rshift(self.r, 2)
+				),
+				bit.bor(
+					bit.lshift(self.g, 3),
+					bit.rshift(self.g, 2)
+				),
+				bit.bor(
+					bit.lshift(self.b, 3),
+					bit.rshift(self.b, 2)
+				),
+				self.a == 0 and 0xff or 0
+		end
+	end,
 }
 assert.eq(ffi.sizeof'color_t', 2)
 

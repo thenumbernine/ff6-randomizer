@@ -1,4 +1,5 @@
 local ffi = require 'ffi'
+local path = require 'ext.path'
 local range = require 'ext.range'
 local Image = require 'image'
 
@@ -52,25 +53,11 @@ end
 local function makePalette(pal, bpp, n)
 	pal = ffi.cast('color_t*', pal)
 	local mask = bit.lshift(1, bpp) - 1
-	return range(0,(n or 256)-1):mapi(function(i)
+	return range(0,n-1):mapi(function(i)
 		-- 0 is always transparent
 		if bit.band(i, mask) == 0 then return {0,0,0,0} end
 		local c = pal + i
-		return {
-			bit.bor(
-				bit.lshift(c.r, 3),
-				bit.rshift(c.r, 2)
-			),
-			bit.bor(
-				bit.lshift(c.g, 3),
-				bit.rshift(c.g, 2)
-			),
-			bit.bor(
-				bit.lshift(c.b, 3),
-				bit.rshift(c.b, 2)
-			),
-			c.a == 0 and 0xff or 0,
-		}
+		return {c:rgba()}
 	end)
 end
 
@@ -137,10 +124,30 @@ local function makeTiledImageWithMask(
 	return im
 end
 
+-- make multiple palette#.png images, each 16x16
+local function makePaletteSets(dir, pal, bpp, numColors)
+	dir = path(dir)
+	dir:mkdir()
+	pal = ffi.cast('color_t*', pal)
+	for palSheetIndex=0,math.ceil(numColors / 256)-1 do
+		local palimage = Image(16, 16, 4, 'uint8_t'):clear()
+		local p = palimage.buffer + 0
+		for i=0,255 do
+			local j = bit.bor(bit.lshift(palSheetIndex, 8), i)
+			if j < numColors then
+				p[0], p[1], p[2], p[3] = pal[j]:rgba()
+				p = p + 4
+			end
+		end
+		palimage:save(dir('palette'..(palSheetIndex+1)..'.png').path)
+	end
+end
+
 return {
 	readTile = readTile,
 	tileWidth = tileWidth,
 	tileHeight = tileHeight,
 	makePalette = makePalette,
+	makePaletteSets = makePaletteSets,
 	makeTiledImageWithMask = makeTiledImageWithMask,
 }

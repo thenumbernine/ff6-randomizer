@@ -2,6 +2,7 @@ local ffi = require 'ffi'
 local tolua = require 'ext.tolua'
 local Image = require 'image'
 local makePalette = require 'graphics'.makePalette
+local makePaletteSets = require 'graphics'.makePaletteSets
 local tileWidth = require 'graphics'.tileWidth
 local tileHeight = require 'graphics'.tileHeight
 local readTile = require 'graphics'.readTile
@@ -296,7 +297,7 @@ return function(rom, game, romsize)
 							end
 						end
 
-						local paltable = makePalette(game.battleAnimPalettes + paletteIndex, bit.lshift(1, bpp))
+						local paltable = makePalette(game.battleAnimPalettes + paletteIndex, bpp, bit.lshift(1, bpp))
 						im.palette = paltable
 						im:save(battleAnimSetPath(
 							('%03d'):format(battleAnimSetIndex)
@@ -404,7 +405,7 @@ return function(rom, game, romsize)
 				4*tileHeight,
 				1, 'uint8_t'
 			)
-			im.palette = makePalette(game.battleAnimPalettes + paletteIndex, bit.lshift(1, bpp))
+			im.palette = makePalette(game.battleAnimPalettes + paletteIndex, bpp, bit.lshift(1, bpp))
 			for y=0,3 do
 				for x=0,15 do
 					local graphicSetTile = graphicSetTiles + (x + 0x10 * y)
@@ -1640,19 +1641,12 @@ assert.type(b, 'number')
 	end
 	print()
 
-	local numColors = bit.lshift(game.numBattleAnimPalettes, 3)
-	local paltable = makePalette(game.battleAnimPalettes, 3, numColors)
-	assert.len(paltable, numColors)
-	for palSheetIndex=0,math.ceil(numColors / 256)-1 do
-		local palimage = Image(16, 16, 4, 'uint8_t'):clear()
-		local p = palimage.buffer + 0
-		for i=0,255 do
-			local j = bit.bor(bit.lshift(palSheetIndex, 8), i)
-			if j < numColors then
-				p[0], p[1], p[2], p[3] = table.unpack(paltable[j+1])
-				p = p + 4
-			end
-		end
-		palimage:save(battleAnimGraphicSetsPath('palette'..(palSheetIndex+1)..'.png').path)
-	end
+	local bpp = 3
+	local numColors = bit.lshift(game.numBattleAnimPalettes, bpp)
+	makePaletteSets(
+		battleAnimGraphicSetsPath,
+		game.battleAnimPalettes,
+		bpp,
+		numColors
+	)
 end

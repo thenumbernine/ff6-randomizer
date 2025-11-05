@@ -2,6 +2,7 @@
 local ffi = require 'ffi'
 local Image = require 'image'
 local makePalette = require 'graphics'.makePalette
+local makePaletteSets = require 'graphics'.makePaletteSets
 local tileWidth = require 'graphics'.tileWidth
 local tileHeight = require 'graphics'.tileHeight
 local readTile = require 'graphics'.readTile
@@ -150,6 +151,12 @@ end
 -- [[ write monster palettes
 do
 	local p = path'monsters_graphicset'
+	makePaletteSets(
+		p,
+		game.monsterPalettes,
+		3,
+		bit.lshift(game.numMonsterPalettes, 3)
+	)
 end
 --]]
 
