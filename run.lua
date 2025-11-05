@@ -173,7 +173,7 @@ do
 	local monsterPalettesUnique = table.keys(
 		monsterPalettes_monsterSpriteIndexes
 	):sort()
-	
+
 	-- what about palette indexes that are odd ...
 	-- if a palette index is odd ....
 	local transparents = {}
@@ -462,14 +462,14 @@ print()
 for i=0,game.numLocationTileFormationOfs-1 do
 	local offset = game.locationTileFormationOfs[i]:value()
 	local dist
-	local addr = 0xffffff 
+	local addr = 0xffffff
 	if offset ~= 0xffffff then
 		addr = offset + 0x1e0000
 		local nextoffset = rom - ffi.cast('uint8_t*', game.padding_1fbaff)
 		if i < game.numLocationTileFormationOfs-1 then
 			local nextoffsettest = game.locationTileFormationOfs[i+1]:value()
 			if nextoffsettest ~= 0xffffff then
-				nextoffset = nextoffsettest 
+				nextoffset = nextoffsettest
 			end
 		end
 		dist = nextoffset - offset
@@ -845,7 +845,7 @@ for i=0,0x51 do
 	)
 end
 do
-	-- 0x30c8 tiles of 8x8x4bpp = 32 bytes in game.townTileGraphics 
+	-- 0x30c8 tiles of 8x8x4bpp = 32 bytes in game.townTileGraphics
 	local bpp = 4
 	local numTiles = (0x25f400 - 0x1fdb00) / (8 * bpp)	-- = 0x30c8
 	-- 128 is just over sqrt numTiles

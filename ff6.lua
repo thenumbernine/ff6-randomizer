@@ -1622,54 +1622,114 @@ local locNameRef_t = reftype{
 }
 
 local numLocations = 0x19f
-local location_t = ff6struct{
+local location_t = struct{
 	name = 'location_t',
+	tostringFields = true,
+	tostringOmitFalse = true,
+	tostringOmitNil = true,
+	tostringOmitEmpty = true,
+	--packed = true,		-- applies to all fields
+	packedStruct = true,	-- applies to the struct.
 	fields = {
-		{name = 'locNameRef_t'},		-- 0
-		{enableXZone = 'uint8_t:1'},	-- 1:0
-		{enableWarp = 'uint8_t:1'},		-- 1:1
-		{wavyLayer3 = 'uint8_t:1'},		-- 1:2
-		{wavyLayer2 = 'uint8_t:1'},		-- 1:3
-		{wavyLayer1 = 'uint8_t:1'},		-- 1:4
-		{unknown_1_6 = 'uint8_t:2'},	-- 1:5-6
-		{showTimer = 'uint8_t:1'},		-- 1:7
-		{unknown_2 = 'uint8_t:7'},		-- 2:0-6
-		{layer3Priority = 'uint8_t:1'},	-- 2:7
-		{unknown_3 = 'uint8_t'},		-- 3
-		{tileProps = 'uint8_t'},		-- 4		mapTileProperties[]
-		{attacks = 'uint16_t'},			-- 5
-		{gfx1 = 'uint32_t:7'},			-- 7:0-6
-		{gfx2 = 'uint32_t:7'},			-- 7:7-13
-		{gfx3 = 'uint32_t:7'},			-- 7:14-20
-		{gfx4 = 'uint32_t:7'},			-- 7:21-27
-		{gfxLayer3 = 'uint32_t:4'},		-- 7:28-31
-		{unknown_b = 'uint16_t:2'},		-- 0xb:0-1
-		{tileset1 = 'uint16_t:7'},		-- 0xb:2-8		mapTilesets[]
-		{tileset2 = 'uint16_t:7'},	-- 0xb:8-15		
-		{layout1 = 'uint32_t:10'},		-- 0xd:0-9		mapLayouts[]
-		{layout2 = 'uint32_t:10'},		-- 0xd:10-19
-		{layout3 = 'uint32_t:10'},		-- 0xd:20-29
-		{unknown_d_30 = 'uint32_t:2'},	-- 0xd:30-31
-		{mapOverlayProperties = 'uint8_t'},	-- 0x11
-		{bg2pos = 'xy8b_t'},			-- 0x12
-		{bg3pos = 'xy8b_t'},			-- 0x14
-		{unknown_16 = 'uint8_t'},		-- 0x16
-		{layer2WidthLog2Minus4 = 'uint8_t:2'},		-- 0x17:0-1
-		{layer2HeightLog2Minus4 = 'uint8_t:2'},		-- 0x17:2-3
-		{layer1HeightLog2Minus4 = 'uint8_t:2'},		-- 0x17:4-5	layer1Height = 1 << (layer1HeightLog2Minus4 + 4)
-		{layer1WidthLog2Minus4 = 'uint8_t:2'},		-- 0x17:6-7	layer1Width = 1 << (layer1WidthLog2Minus4 + 4)
-		{unknown_18_0 = 'uint8_t:4'},	-- 0x18:0-3
-		{layer3WidthLog2Minus4 = 'uint8_t:2'},
-		{layer3HeightLog2Minus4 = 'uint8_t:2'},
-		{palette = 'uint8_t'},				-- 0x19
-		{paletteAnimation = 'uint8_t'},		-- 0x1a
-		{animatedTiles = 'uint8_t:5'},	-- 0x1b:0-4
-		{animationLayer3 = 'uint8_t:3'},	-- 0x1b:5-7
-		{music = 'uint8_t'},			-- 0x1c
-		{unknown_1d = 'uint8_t'},		-- 0x1d
-		{size = 'xy8b_t'},				-- 0x1e
-		{colorMath = 'uint8_t'},		-- 0x20
+		{name='name', type='locNameRef_t'},		-- 0
+		{name='enableXZone', type='uint8_t:1'},	-- 1:0
+		{name='enableWarp', type='uint8_t:1'},		-- 1:1
+		{name='wavyLayer3', type='uint8_t:1'},		-- 1:2
+		{name='wavyLayer2', type='uint8_t:1'},		-- 1:3
+		{name='wavyLayer1', type='uint8_t:1'},		-- 1:4
+		{name='enableSpotlights', type='uint8_t:1'},--1:5
+		{name='unknown_1_6', type='uint8_t:1'},	-- 1:6
+		{name='showTimer', type='uint8_t:1'},		-- 1:7
+		{name='battleBackground', type='uint8_t:7'},-- 2:0-6
+		{name='layer3Priority', type='uint8_t:1'},	-- 2:7
+		{name='unknown_3', type='uint8_t'},		-- 3
+		{name='tileProps', type='uint8_t'},		-- 4		mapTileProperties[]
+		{name='attacks', type='uint8_t:7'},		-- 5:0-6
+		{name='enableBattles', type='uint8_t:1'},	-- 5:7
+		{name='windowMask', type='uint8_t:2'},		-- 6:0-1: 0=default, 1=imperial camp, 2=ebot's rock, 3=kefka's tower spotlight
+		{name='unknown_6_2', type='uint8_t:6'},	-- 6:2-7
+
+		-- I can't just put these fields into the base struct... it says "NYI: packed bit fields"
+		-- but if I nest them as an anonymous struct ... works fine
+		{
+			type = struct{
+				anonymous = true,
+				tostringFields = true,
+				tostringOmitFalse = true,
+				tostringOmitNil = true,
+				tostringOmitEmpty = true,
+				fields = {
+					{name='gfx1', type='uint32_t:7'},			-- 7:0-6
+					{name='gfx2', type='uint32_t:7'},			-- 7:7-13
+					{name='gfx3', type='uint32_t:7'},			-- 7:14-20
+					{name='gfx4', type='uint32_t:7'},			-- 7:21-27
+					{name='gfxLayer3', type='uint32_t:4'},		-- 7:28-31
+				},
+			},
+		},
+		{
+			type = struct{
+				anonymous = true,
+				tostringFields = true,
+				tostringOmitFalse = true,
+				tostringOmitNil = true,
+				tostringOmitEmpty = true,
+				fields = {
+					{name='unknown_b', type='uint16_t:2'},		-- 0xb:0-1
+					{name='tileset1', type='uint16_t:7'},		-- 0xb:2-8		mapTilesets[]
+					{name='tileset2', type='uint16_t:7'},		-- 0xb:8-15
+				},
+			},
+		},
+		{
+			type = struct{
+				anonymous = true,
+				tostringFields = true,
+				tostringOmitFalse = true,
+				tostringOmitNil = true,
+				tostringOmitEmpty = true,
+				fields = {
+					{name='layout1', type='uint32_t:10'},		-- 0xd:0-9		mapLayouts[]
+					{name='layout2', type='uint32_t:10'},		-- 0xd:10-19
+					{name='layout3', type='uint32_t:10'},		-- 0xd:20-29
+					{name='unknown_d_30', type='uint32_t:2'},	-- 0xd:30-31
+				},
+			},
+		},
+		{name='mapOverlayProperties', type='uint8_t'},	-- 0x11
+		{name='bg2pos', type='xy8b_t'},			-- 0x12
+		{name='bg3pos', type='xy8b_t'},			-- 0x14
+		{name='mapParallax', type='uint8_t'},		-- 0x16
+		{name='layer2WidthLog2Minus4', type='uint8_t:2'},		-- 0x17:0-1
+		{name='layer2HeightLog2Minus4', type='uint8_t:2'},		-- 0x17:2-3
+		{name='layer1HeightLog2Minus4', type='uint8_t:2'},		-- 0x17:4-5	layer1Height = 1 << (layer1HeightLog2Minus4 + 4)
+		{name='layer1WidthLog2Minus4', type='uint8_t:2'},		-- 0x17:6-7	layer1Width = 1 << (layer1WidthLog2Minus4 + 4)
+		{name='unknown_18_0', type='uint8_t:4'},	-- 0x18:0-3
+		{name='layer3WidthLog2Minus4', type='uint8_t:2'},
+		{name='layer3HeightLog2Minus4', type='uint8_t:2'},
+		{name='palette', type='uint8_t'},				-- 0x19
+		{name='paletteAnimation', type='uint8_t'},		-- 0x1a
+		{name='animatedTiles', type='uint8_t:5'},	-- 0x1b:0-4
+		{name='animationLayer3', type='uint8_t:3'},	-- 0x1b:5-7
+		{name='music', type='uint8_t'},			-- 0x1c
+		{name='unknown_1d', type='uint8_t'},		-- 0x1d
+		{name='size', type='xy8b_t'},				-- 0x1e
+		{name='colorMath', type='uint8_t'},		-- 0x20
 	},
+	metatable = function(m, ...)
+		-- default output to hex
+		m.__index.typeToString = {
+			uint8_t = function(value)
+				return ('0x%02x'):format(value)
+			end,
+			uint16_t = function(value)
+				return ('0x%04x'):format(value)
+			end,
+			uint32_t = function(value)
+				return ('0x%08x'):format(value)
+			end,
+		}
+	end,
 }
 assert.eq(ffi.sizeof'location_t', 0x21)
 
@@ -1994,15 +2054,15 @@ local game_t = ff6struct{
 		{itemColosseumInfos = 'itemColosseumInfo_t['..numItems..']'},					-- 0x1fb600 - 0x1fba00
 
 		-- TODO:
-		{locationTileFormationOfs = 'uint24_t['..numLocationTileFormationOfs..']'},		-- 0x1fba00 - 0x1fbaff -- 24bit, offset by +0x1e0000, points into locationTileFormationsCompressed 
-		{padding_1fbaff = 'uint8_t[28]'},												-- 0x1fbaff - 0x1fbb00 
+		{locationTileFormationOfs = 'uint24_t['..numLocationTileFormationOfs..']'},		-- 0x1fba00 - 0x1fbaff -- 24bit, offset by +0x1e0000, points into locationTileFormationsCompressed
+		{padding_1fbaff = 'uint8_t[28]'},												-- 0x1fbaff - 0x1fbb00
 		{entranceTriggerOfs = 'uint16_t['..numEntranceTriggerOfs..']'},					-- 0x1fbb00 - 0x1fbf02 -- offset by +0x1fbb00
 		{entranceTriggerData = 'uint8_t['..(0x1fda00 - 0x1fbf02)..']'},					-- 0x1fbf02 - 0x1fda00
 		{townTileGraphicsOffsets = 'uint24_t['..(0x52)..']'},							-- 0x1fda00 - 0x1fdaf6 = town tile graphics pointers (+0x1fdb00), points into townTileGraphics
-		{padding_1fdaf6 = 'uint8_t[10]'},												-- 0x1fdaf6 - 0x1fdb00 
+		{padding_1fdaf6 = 'uint8_t[10]'},												-- 0x1fdaf6 - 0x1fdb00
 		{townTileGraphics = 'uint8_t['..(0x25f400 - 0x1fdb00)..']'},					-- 0x1fdb00 - 0x25f400 = town tile graphics 4bpp
 			-- (within it) 0x21c4c0 - 0x21e4c0 = battle background top graphics: building
-		
+
 		{padding_25f400 = 'uint8_t['..(0x268000 - 0x25f400)..']'},			-- 0x25f400 - 0x268000 = ???
 
 		{characterPalettes = 'palette16_t['..numCharacterPalettes..']'},	-- 0x268000 - 0x268400	-- also town tile palettes?
