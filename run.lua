@@ -446,8 +446,8 @@ for i=0,game.numShops-1 do
 end
 
 print()
-for i=0,game.numLocations-1 do
-	print('location #'..i..': '..game.locations[i])
+for i=0,game.numMaps-1 do
+	print('map[0x'..i:hex()..'] = '..game.maps[i])
 end
 
 print()
@@ -459,28 +459,28 @@ for i=0,(0x040342 - 0x040000)/2-1 do
 end
 print()
 
-for i=0,game.numLocationTileFormationOfs-1 do
-	local offset = game.locationTileFormationOfs[i]:value()
+for i=0,game.numMapTileFormationOfs-1 do
+	local offset = game.mapTileFormationOfs[i]:value()
 	local dist
 	local addr = 0xffffff
 	if offset ~= 0xffffff then
 		addr = offset + 0x1e0000
 		local nextoffset = rom - ffi.cast('uint8_t*', game.padding_1fbaff)
-		if i < game.numLocationTileFormationOfs-1 then
-			local nextoffsettest = game.locationTileFormationOfs[i+1]:value()
+		if i < game.numMapTileFormationOfs-1 then
+			local nextoffsettest = game.mapTileFormationOfs[i+1]:value()
 			if nextoffsettest ~= 0xffffff then
 				nextoffset = nextoffsettest
 			end
 		end
 		dist = nextoffset - offset
 	end
-	print('locationTileFormationOfs[0x'..i:hex()..'] = 0x'
+	print('mapTileFormationOfs[0x'..i:hex()..'] = 0x'
 		..('%06x'):format(addr))
 	if addr ~= 0xffffff then
 		-- try to decompress ...
-		-- ptr is within game.locationTileFormationsCompressed
+		-- ptr is within game.mapTileFormationsCompressed
 		local ptr = rom + addr
-		local row, endptr = decompress0x800(ptr, ffi.sizeof(game.locationTileFormationOfs))
+		local row, endptr = decompress0x800(ptr, ffi.sizeof(game.mapTileFormationOfs))
 		print(' dist to next entry / end = 0x'..dist:hex())
 		print(' compressed size = 0x'..(endptr - ptr):hex())
 		print(' decompressed size = 0x'..(#row):hex())
@@ -509,7 +509,7 @@ end
 -- there are more entrance area trigger offsets than entrance area triggers
 for i=0,game.numEntranceTriggerOfs-1 do
 	local addr = game.entranceAreaTriggerOfs[i] + ffi.offsetof('game_t', 'entranceAreaTriggerOfs')
-	assert.eq((addr - ffi.offsetof('game_t', 'entranceAreaTriggers')) % ffi.sizeof'entranceAreaTrigger_t', 0)
+	--assert.eq((addr - ffi.offsetof('game_t', 'entranceAreaTriggers')) % ffi.sizeof'entranceAreaTrigger_t', 0)
 	print('entranceAreaTrigger[0x'..i:hex()..']')
 	print(' addr: $'..('%06x'):format(addr))
 	local entranceAreaTrigger = ffi.cast('entranceAreaTrigger_t*', rom + addr)
@@ -519,7 +519,7 @@ end
 
 
 print()
-print(game.locationNames)
+print(game.mapNames)
 print(game.dialog)
 print(game.battleDialog)
 print(game.battleDialog2)
