@@ -478,13 +478,16 @@ for i=0,game.numLocationTileFormationOfs-1 do
 		..('%06x'):format(addr))
 	if addr ~= 0xffffff then
 		-- try to decompress ...
+		-- ptr is within game.locationTileFormationsCompressed
 		local ptr = rom + addr
 		local row, endptr = decompress0x800(ptr, ffi.sizeof(game.locationTileFormationOfs))
 		print(' dist to next entry / end = 0x'..dist:hex())
 		print(' compressed size = 0x'..(endptr - ptr):hex())
 		print(' decompressed size = 0x'..(#row):hex())
 		--print(' '..row:hex():gsub('..', ' %0'))
+		-- looks good
 		print(row:hexdump())
+		-- now how to use this data
 	end
 end
 print()
@@ -505,6 +508,14 @@ print(game.battleDialog)
 print(game.battleDialog2)
 print(game.battleMessages)
 print(game.positionedText)
+
+for i=0,0xff do
+	print('WoBTileProps[0x'..i:hex()..'] = '..game.WoBTileProps[i])
+end
+for i=0,0xff do
+	print('WoRTileProps[0x'..i:hex()..'] = '..game.WoRTileProps[i])
+end
+print()
 
 print('WoB palette = '..game.WoBpalettes)
 print('WoR palette = '..game.WoRpalettes)

@@ -1621,33 +1621,54 @@ local locNameRef_t = reftype{
 	end,
 }
 
-local numLocations = 415
+local numLocations = 0x19f
 local location_t = ff6struct{
 	name = 'location_t',
 	fields = {
-		-- TODO this is a ref to the location names ...
-		{name = 'locNameRef_t'},
-		{numLayers = 'uint8_t'},
-		{unknown_2 = 'uint8_t'},
-		{unknown_3 = 'uint8_t'},
-		{tileProps = 'uint8_t'},
-		{attacks = 'uint16_t'},
-		{tileGfx = 'uint32_t'},
-		{tileFormations = 'uint16_t'},
-		{mapData = 'uint32_t'},
-		{unknown_11 = 'uint8_t'},
-		{bg0pos = 'xy8b_t'},
-		{bg2pos = 'xy8b_t'},
-		{unknown_16 = 'uint8_t'},
-		{unknown_17 = 'uint8_t'},
-		{unknown_18 = 'uint8_t'},
-		{pal = 'uint8_t'},	-- 0x19
-		{unknown_1a = 'uint8_t'},
-		{unknown_1b = 'uint8_t'},
-		{music = 'uint8_t'},
-		{unknown_1d = 'uint8_t'},
-		{size = 'xy8b_t'},
-		{layerProps = 'uint8_t'},
+		{name = 'locNameRef_t'},		-- 0
+		{enableXZone = 'uint8_t:1'},	-- 1:0
+		{enableWarp = 'uint8_t:1'},		-- 1:1
+		{wavyLayer3 = 'uint8_t:1'},		-- 1:2
+		{wavyLayer2 = 'uint8_t:1'},		-- 1:3
+		{wavyLayer1 = 'uint8_t:1'},		-- 1:4
+		{unknown_1_6 = 'uint8_t:2'},	-- 1:5-6
+		{showTimer = 'uint8_t:1'},		-- 1:7
+		{unknown_2 = 'uint8_t:7'},		-- 2:0-6
+		{layer3Priority = 'uint8_t:1'},	-- 2:7
+		{unknown_3 = 'uint8_t'},		-- 3
+		{tileProps = 'uint8_t'},		-- 4		mapTileProperties[]
+		{attacks = 'uint16_t'},			-- 5
+		{gfx1 = 'uint32_t:7'},			-- 7:0-6
+		{gfx2 = 'uint32_t:7'},			-- 7:7-13
+		{gfx3 = 'uint32_t:7'},			-- 7:14-20
+		{gfx4 = 'uint32_t:7'},			-- 7:21-27
+		{gfxLayer3 = 'uint32_t:4'},		-- 7:28-31
+		{unknown_b = 'uint16_t:2'},		-- 0xb:0-1
+		{tileset1 = 'uint16_t:7'},		-- 0xb:2-8		mapTilesets[]
+		{tileset2 = 'uint16_t:7'},	-- 0xb:8-15		
+		{layout1 = 'uint32_t:10'},		-- 0xd:0-9		mapLayouts[]
+		{layout2 = 'uint32_t:10'},		-- 0xd:10-19
+		{layout3 = 'uint32_t:10'},		-- 0xd:20-29
+		{unknown_d_30 = 'uint32_t:2'},	-- 0xd:30-31
+		{mapOverlayProperties = 'uint8_t'},	-- 0x11
+		{bg2pos = 'xy8b_t'},			-- 0x12
+		{bg3pos = 'xy8b_t'},			-- 0x14
+		{unknown_16 = 'uint8_t'},		-- 0x16
+		{layer2WidthLog2Minus4 = 'uint8_t:2'},		-- 0x17:0-1
+		{layer2HeightLog2Minus4 = 'uint8_t:2'},		-- 0x17:2-3
+		{layer1HeightLog2Minus4 = 'uint8_t:2'},		-- 0x17:4-5	layer1Height = 1 << (layer1HeightLog2Minus4 + 4)
+		{layer1WidthLog2Minus4 = 'uint8_t:2'},		-- 0x17:6-7	layer1Width = 1 << (layer1WidthLog2Minus4 + 4)
+		{unknown_18_0 = 'uint8_t:4'},	-- 0x18:0-3
+		{layer3WidthLog2Minus4 = 'uint8_t:2'},
+		{layer3HeightLog2Minus4 = 'uint8_t:2'},
+		{palette = 'uint8_t'},				-- 0x19
+		{paletteAnimation = 'uint8_t'},		-- 0x1a
+		{animatedTiles = 'uint8_t:5'},	-- 0x1b:0-4
+		{animationLayer3 = 'uint8_t:3'},	-- 0x1b:5-7
+		{music = 'uint8_t'},			-- 0x1c
+		{unknown_1d = 'uint8_t'},		-- 0x1d
+		{size = 'xy8b_t'},				-- 0x1e
+		{colorMath = 'uint8_t'},		-- 0x20
 	},
 }
 assert.eq(ffi.sizeof'location_t', 0x21)
@@ -1681,6 +1702,27 @@ local mapEventTrigger_t = ff6struct{
 	},
 }
 assert.eq(ffi.sizeof'mapEventTrigger_t', 5)
+
+local WorldTileProps_t = ff6struct{
+	name = 'WorldTileProps_t',
+	fields = {
+		{blocksChocobo = 'uint16_t:1'},
+		{blocksAirship = 'uint16_t:1'},
+		{airshipShadow = 'uint16_t:2'},	-- aka elevation?
+		{blocksMovement = 'uint16_t:1'},
+		{bottomCharTransparent = 'uint16_t:1'},
+		{enemyEncounters = 'uint16_t:1'},
+		-- now I can't tell from teh ascii art, but its either 1 unused and 3 for background, or its 4 for background ...
+		-- https://web.archive.org/web/20250429144337/https://www.ff6hacking.com/wiki/doku.php?id=ff3:ff3us:doc:asm:fmt:world_map_tile_properties
+		-- there's 56 total
+		-- https://www.spriters-resource.com/snes/ff6/asset/54685/
+		-- so ... 6 bits?
+		{battleBackground = 'uint16_t:4'},
+		-- hmm ...
+		{unused11 = 'uint16_t:5'},
+	},
+}
+assert.eq(ffi.sizeof'WorldTileProps_t', 2)
 
 ---------------- GAME ----------------
 
@@ -2031,10 +2073,8 @@ local game_t = ff6struct{
 
 		-- 0x2e4842 - 0x2e4851     Sprites used for various positions of map character
 
-		-- World of Balance Tile Properties
-		{WoBTiles = 'uint8_t['..(0x200)..']'},	-- 0x2e9b14 - 0x2e9d14
-		-- World of Ruin Tile Properties
-		{WoRTiles = 'uint8_t['..(0x200)..']'},	-- 0x2e9d14 - 0x2e9f14
+		{WoBTileProps = 'WorldTileProps_t['..(0x100)..']'},	-- 0x2e9b14 - 0x2e9d14
+		{WoRTileProps = 'WorldTileProps_t['..(0x100)..']'},	-- 0x2e9d14 - 0x2e9f14
 
 		{WoBMapData = 'uint8_t['..(0x2f114f - 0x2ed434)..']'},	-- 0x2ed434 - 0x2f114f     World of Balance Map Data (compressed)
 		{WoBBackground = 'uint8_t['..(0x2f324f - 0x2f114f)..']'},	-- 0x2f114f - 0x2f324f     World of Balance Tile Graphics (compressed)
