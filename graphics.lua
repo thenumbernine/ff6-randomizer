@@ -55,11 +55,21 @@ local function makePalette(pal, bpp, n)
 	return range(0,(n or 256)-1):mapi(function(i)
 		-- 0 is always transparent
 		if bit.band(i, mask) == 0 then return {0,0,0,0} end
+		local c = pal + i
 		return {
-			math.floor(pal[i].r / 0x1f * 255),
-			math.floor(pal[i].g / 0x1f * 255),
-			math.floor(pal[i].b / 0x1f * 255),
-			math.floor((1-pal[i].a) * 255),
+			bit.bor(
+				bit.lshift(c.r, 3),
+				bit.rshift(c.r, 2)
+			),
+			bit.bor(
+				bit.lshift(c.g, 3),
+				bit.rshift(c.g, 2)
+			),
+			bit.bor(
+				bit.lshift(c.b, 3),
+				bit.rshift(c.b, 2)
+			),
+			c.a == 0 and 0xff or 0,
 		}
 	end)
 end
