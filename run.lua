@@ -492,14 +492,31 @@ for i=0,game.numLocationTileFormationOfs-1 do
 end
 print()
 
+-- there are less entrance trigger offsets than entrance triggers
+-- all the entranceTriggerOfs point into entranceTriggers aligned to entranceTrigger_t:
+-- so I could dump the whole list of 0x469 entranceTrigger_t's
+--  instead of just the offset list
 for i=0,game.numEntranceTriggerOfs-1 do
 	-- TODO use ref_t or whateever
 	local addr = game.entranceTriggerOfs[i] + ffi.offsetof('game_t', 'entranceTriggerOfs')
-	print('location entrance trigger #'..i)
+	--assert.eq((addr - ffi.offsetof('game_t', 'entranceTriggers')) % ffi.sizeof'entranceTrigger_t', 0)
+	print('entranceTrigger[0x'..i:hex()..']')
 	print(' addr: $'..('%06x'):format(addr))
 	local entranceTrigger = ffi.cast('entranceTrigger_t*', rom + addr)
 	print(' '..entranceTrigger)
 end
+
+-- there are more entrance area trigger offsets than entrance area triggers
+for i=0,game.numEntranceTriggerOfs-1 do
+	local addr = game.entranceAreaTriggerOfs[i] + ffi.offsetof('game_t', 'entranceAreaTriggerOfs')
+	assert.eq((addr - ffi.offsetof('game_t', 'entranceAreaTriggers')) % ffi.sizeof'entranceAreaTrigger_t', 0)
+	print('entranceAreaTrigger[0x'..i:hex()..']')
+	print(' addr: $'..('%06x'):format(addr))
+	local entranceAreaTrigger = ffi.cast('entranceAreaTrigger_t*', rom + addr)
+	print(' '..entranceAreaTrigger)
+end
+
+
 
 print()
 print(game.locationNames)

@@ -11,6 +11,19 @@ local createVec = require 'vec-ffi.create_vec'
 -- https://github.com/subtractionsoup/beyondchaos
 -- https://github.com/everything8215/ff6/blob/main/notes/rom-map.txt
 
+-- default output to hex
+local fieldsToHex = {
+	uint8_t = function(value)
+		return ('0x%02x'):format(value)
+	end,
+	uint16_t = function(value)
+		return ('0x%04x'):format(value)
+	end,
+	uint32_t = function(value)
+		return ('0x%08x'):format(value)
+	end,
+}
+
 return function(rom)
 -- compstr uses game
 local game
@@ -1008,7 +1021,7 @@ local monsterSprite_t = struct{
 	tostringOmitFalse = true,
 	tostringOmitNil = true,
 	tostringOmitEmpty = true,
-	packed = true,
+	packedStruct = true,
 	fields = {
 		{name='offset', type='uint16_t:15'},
 		{name='_3bpp', type='uint16_t:1'},
@@ -1018,18 +1031,7 @@ local monsterSprite_t = struct{
 		{name='tileMaskIndex', type='uint8_t'},
 	},
 	metatable = function(mt)
-		-- default output to hex
-		mt.typeToString = {
-			uint8_t = function(value)
-				return ('0x%02x'):format(value)
-			end,
-			uint16_t = function(value)
-				return ('0x%04x'):format(value)
-			end,
-			uint32_t = function(value)
-				return ('0x%08x'):format(value)
-			end,
-		}
+		mt.typeToString = fieldsToHex
 	end,
 }
 assert.eq(ffi.sizeof'monsterSprite_t', 5)
@@ -1628,26 +1630,25 @@ local location_t = struct{
 	tostringOmitFalse = true,
 	tostringOmitNil = true,
 	tostringOmitEmpty = true,
-	--packed = true,		-- applies to all fields
-	packedStruct = true,	-- applies to the struct.
+	packedStruct = true,
 	fields = {
-		{name='name', type='locNameRef_t'},		-- 0
-		{name='enableXZone', type='uint8_t:1'},	-- 1:0
-		{name='enableWarp', type='uint8_t:1'},		-- 1:1
-		{name='wavyLayer3', type='uint8_t:1'},		-- 1:2
-		{name='wavyLayer2', type='uint8_t:1'},		-- 1:3
-		{name='wavyLayer1', type='uint8_t:1'},		-- 1:4
-		{name='enableSpotlights', type='uint8_t:1'},--1:5
-		{name='unknown_1_6', type='uint8_t:1'},	-- 1:6
-		{name='showTimer', type='uint8_t:1'},		-- 1:7
-		{name='battleBackground', type='uint8_t:7'},-- 2:0-6
-		{name='layer3Priority', type='uint8_t:1'},	-- 2:7
-		{name='unknown_3', type='uint8_t'},		-- 3
-		{name='tileProps', type='uint8_t'},		-- 4		mapTileProperties[]
-		{name='attacks', type='uint8_t:7'},		-- 5:0-6
-		{name='enableBattles', type='uint8_t:1'},	-- 5:7
-		{name='windowMask', type='uint8_t:2'},		-- 6:0-1: 0=default, 1=imperial camp, 2=ebot's rock, 3=kefka's tower spotlight
-		{name='unknown_6_2', type='uint8_t:6'},	-- 6:2-7
+		{name='name', type='locNameRef_t'},						-- 0
+		{name='enableXZone', type='uint8_t:1'},					-- 1.0
+		{name='enableWarp', type='uint8_t:1'},					-- 1.1
+		{name='wavyLayer3', type='uint8_t:1'},					-- 1.2
+		{name='wavyLayer2', type='uint8_t:1'},					-- 1.3
+		{name='wavyLayer1', type='uint8_t:1'},					-- 1.4
+		{name='enableSpotlights', type='uint8_t:1'},			-- 1.5
+		{name='unknown_1_6', type='uint8_t:1'},					-- 1.6
+		{name='showTimer', type='uint8_t:1'},					-- 1.7
+		{name='battleBackground', type='uint8_t:7'},			-- 2.0-6
+		{name='layer3Priority', type='uint8_t:1'},				-- 2.7
+		{name='unknown_3', type='uint8_t'},						-- 3
+		{name='tileProps', type='uint8_t'},						-- 4		mapTileProperties[]
+		{name='attacks', type='uint8_t:7'},						-- 5.0-6
+		{name='enableBattles', type='uint8_t:1'},				-- 5.7
+		{name='windowMask', type='uint8_t:2'},					-- 6.0-1: 0=default, 1=imperial camp, 2=ebot's rock, 3=kefka's tower spotlight
+		{name='unknown_6_2', type='uint8_t:6'},					-- 6.2-7
 
 		-- I can't just put these fields into the base struct... it says "NYI: packed bit fields"
 		-- but if I nest them as an anonymous struct ... works fine
@@ -1659,12 +1660,15 @@ local location_t = struct{
 				tostringOmitNil = true,
 				tostringOmitEmpty = true,
 				fields = {
-					{name='gfx1', type='uint32_t:7'},			-- 7:0-6
-					{name='gfx2', type='uint32_t:7'},			-- 7:7-13
-					{name='gfx3', type='uint32_t:7'},			-- 7:14-20
-					{name='gfx4', type='uint32_t:7'},			-- 7:21-27
-					{name='gfxLayer3', type='uint32_t:4'},		-- 7:28-31
+					{name='gfx1', type='uint32_t:7'},			-- 7.0-6
+					{name='gfx2', type='uint32_t:7'},			-- 7.7-13
+					{name='gfx3', type='uint32_t:7'},			-- 7.14-20
+					{name='gfx4', type='uint32_t:7'},			-- 7.21-27
+					{name='gfxLayer3', type='uint32_t:4'},		-- 7.28-31
 				},
+				metatable = function(mt)
+					mt.typeToString = fieldsToHex
+				end,
 			},
 		},
 		{
@@ -1675,10 +1679,13 @@ local location_t = struct{
 				tostringOmitNil = true,
 				tostringOmitEmpty = true,
 				fields = {
-					{name='unknown_b', type='uint16_t:2'},		-- 0xb:0-1
-					{name='tileset1', type='uint16_t:7'},		-- 0xb:2-8		mapTilesets[]
-					{name='tileset2', type='uint16_t:7'},		-- 0xb:8-15
+					{name='unknown_b', type='uint16_t:2'},		-- 0xb.0-1
+					{name='tileset1', type='uint16_t:7'},		-- 0xb.2-8		mapTilesets[]
+					{name='tileset2', type='uint16_t:7'},		-- 0xb.8-15
 				},
+				metatable = function(mt)
+					mt.typeToString = fieldsToHex
+				end,
 			},
 		},
 		{
@@ -1689,46 +1696,38 @@ local location_t = struct{
 				tostringOmitNil = true,
 				tostringOmitEmpty = true,
 				fields = {
-					{name='layout1', type='uint32_t:10'},		-- 0xd:0-9		mapLayouts[]
-					{name='layout2', type='uint32_t:10'},		-- 0xd:10-19
-					{name='layout3', type='uint32_t:10'},		-- 0xd:20-29
-					{name='unknown_d_30', type='uint32_t:2'},	-- 0xd:30-31
+					{name='layout1', type='uint32_t:10'},		-- 0xd.0-9		mapLayouts[]
+					{name='layout2', type='uint32_t:10'},		-- 0xd.10-19
+					{name='layout3', type='uint32_t:10'},		-- 0xd.20-29
+					{name='unknown_d_30', type='uint32_t:2'},	-- 0xd.30-31
 				},
+				metatable = function(mt)
+					mt.typeToString = fieldsToHex
+				end,
 			},
 		},
-		{name='mapOverlayProperties', type='uint8_t'},	-- 0x11
-		{name='bg2pos', type='xy8b_t'},			-- 0x12
-		{name='bg3pos', type='xy8b_t'},			-- 0x14
-		{name='mapParallax', type='uint8_t'},		-- 0x16
-		{name='layer2WidthLog2Minus4', type='uint8_t:2'},		-- 0x17:0-1
-		{name='layer2HeightLog2Minus4', type='uint8_t:2'},		-- 0x17:2-3
-		{name='layer1HeightLog2Minus4', type='uint8_t:2'},		-- 0x17:4-5	layer1Height = 1 << (layer1HeightLog2Minus4 + 4)
-		{name='layer1WidthLog2Minus4', type='uint8_t:2'},		-- 0x17:6-7	layer1Width = 1 << (layer1WidthLog2Minus4 + 4)
-		{name='unknown_18_0', type='uint8_t:4'},	-- 0x18:0-3
-		{name='layer3WidthLog2Minus4', type='uint8_t:2'},
-		{name='layer3HeightLog2Minus4', type='uint8_t:2'},
-		{name='palette', type='uint8_t'},				-- 0x19
-		{name='paletteAnimation', type='uint8_t'},		-- 0x1a
-		{name='animatedTiles', type='uint8_t:5'},	-- 0x1b:0-4
-		{name='animationLayer3', type='uint8_t:3'},	-- 0x1b:5-7
-		{name='music', type='uint8_t'},			-- 0x1c
-		{name='unknown_1d', type='uint8_t'},		-- 0x1d
-		{name='size', type='xy8b_t'},				-- 0x1e
-		{name='colorMath', type='uint8_t'},		-- 0x20
+		{name='mapOverlayProperties', type='uint8_t'},			-- 0x11
+		{name='bg2pos', type='xy8b_t'},							-- 0x12
+		{name='bg3pos', type='xy8b_t'},							-- 0x14
+		{name='mapParallax', type='uint8_t'},					-- 0x16
+		{name='layer2WidthLog2Minus4', type='uint8_t:2'},		-- 0x17.0-1
+		{name='layer2HeightLog2Minus4', type='uint8_t:2'},		-- 0x17.2-3
+		{name='layer1HeightLog2Minus4', type='uint8_t:2'},		-- 0x17.4-5	layer1Height = 1 << (layer1HeightLog2Minus4 + 4)
+		{name='layer1WidthLog2Minus4', type='uint8_t:2'},		-- 0x17.6-7	layer1Width = 1 << (layer1WidthLog2Minus4 + 4)
+		{name='unknown_18_0', type='uint8_t:4'},				-- 0x18.0-3
+		{name='layer3WidthLog2Minus4', type='uint8_t:2'},		-- 0x18.4-5
+		{name='layer3HeightLog2Minus4', type='uint8_t:2'},		-- 0x18.6-7
+		{name='palette', type='uint8_t'},						-- 0x19
+		{name='paletteAnimation', type='uint8_t'},				-- 0x1a
+		{name='animatedTiles', type='uint8_t:5'},				-- 0x1b.0-4
+		{name='animationLayer3', type='uint8_t:3'},				-- 0x1b.5-7
+		{name='music', type='uint8_t'},							-- 0x1c
+		{name='unknown_1d', type='uint8_t'},					-- 0x1d
+		{name='size', type='xy8b_t'},							-- 0x1e
+		{name='colorMath', type='uint8_t'},						-- 0x20
 	},
-	metatable = function(m, ...)
-		-- default output to hex
-		m.__index.typeToString = {
-			uint8_t = function(value)
-				return ('0x%02x'):format(value)
-			end,
-			uint16_t = function(value)
-				return ('0x%04x'):format(value)
-			end,
-			uint32_t = function(value)
-				return ('0x%08x'):format(value)
-			end,
-		}
+	metatable = function(mt)
+		mt.typeToString = fieldsToHex
 	end,
 }
 assert.eq(ffi.sizeof'location_t', 0x21)
@@ -1740,24 +1739,61 @@ local numEntranceTriggerOfs = 513
 local entranceTrigger_t = ff6struct{
 	name = 'entranceTrigger_t',
 	fields = {
-		{srcX = 'uint8_t'},
-		{srcY = 'uint8_t'},
-		{destIndex = 'uint16_t:11'},
-		{destShowName = 'uint16_t:1'},
-		{destFacingDir = 'uint16_t:2'},
-		{unknown_3_7 = 'uint16_t:2'},
-		{destX = 'uint8_t'},
-		{destY = 'uint8_t'},
+		{pos = 'xy8b_t'},				-- 0-1
+		{locationIndex = 'uint16_t:9'},	-- 2.0-3.0: locations[]
+		{setParentMap = 'uint16_t:1'},	-- 3.1
+		{zLevel = 'uint16_t:1'},		-- 3.2
+		{showDestName = 'uint16_t:1'},	-- 3.3
+		{destFacingDir = 'uint16_t:2'},	-- 3.4-3.5
+		{unknown_3_6 = 'uint16_t:2'},	-- 3.6-3.7
+		{dest = 'xy8b_t'},				-- 4-5
 	},
 }
 assert.eq(ffi.sizeof'entranceTrigger_t', 6)
 
+local entranceAreaTrigger_t = struct{
+	name = 'entranceAreaTrigger_t',
+	tostringFields = true,
+	tostringOmitFalse = true,
+	tostringOmitNil = true,
+	tostringOmitEmpty = true,
+	packedStruct = true,
+	fields = {
+		{name='pos', type='xy8b_t'},				-- 0-1
+		{name='length', type='uint8_t:7'},			-- 2.0-2.6
+		{name='vertical', type='uint8_t:1'},		-- 2.7
+		{
+			type = struct{
+				anonymous = true,
+				tostringFields = true,
+				tostringOmitFalse = true,
+				tostringOmitNil = true,
+				tostringOmitEmpty = true,
+				fields = {
+					{name='locationIndex', type='uint16_t:9'},	-- 3.0-4.0: locations[]
+					{name='setParentMap', type='uint16_t:1'},	-- 3.1
+					{name='zLevel', type='uint16_t:1'},		-- 3.2
+					{name='showDestName', type='uint16_t:1'},	-- 3.3
+					{name='destFacingDir', type='uint16_t:2'},	-- 3.4-3.5
+					{name='unknown_3_6', type='uint16_t:2'},	-- 3.6-3.7
+				},
+				metatable = function(mt)
+					mt.typeToString = fieldsToHex
+				end,
+			},
+		},
+		{name='dest', type='xy8b_t'},				-- 4-5
+	},
+	metatable = function(mt)
+		mt.typeToString = fieldsToHex
+	end,
+}
+assert.eq(ffi.sizeof'entranceAreaTrigger_t', 7)
 
 local mapEventTrigger_t = ff6struct{
 	name = 'mapEventTrigger_t',
 	fields = {
-		{srcX = 'uint8_t'},
-		{srcY = 'uint8_t'},
+		{pos = 'xy8b_t'},
 		{eventCode = 'uint24_t'},
 	},
 }
@@ -2057,7 +2093,8 @@ local game_t = ff6struct{
 		{locationTileFormationOfs = 'uint24_t['..numLocationTileFormationOfs..']'},		-- 0x1fba00 - 0x1fbaff -- 24bit, offset by +0x1e0000, points into locationTileFormationsCompressed
 		{padding_1fbaff = 'uint8_t[28]'},												-- 0x1fbaff - 0x1fbb00
 		{entranceTriggerOfs = 'uint16_t['..numEntranceTriggerOfs..']'},					-- 0x1fbb00 - 0x1fbf02 -- offset by +0x1fbb00
-		{entranceTriggerData = 'uint8_t['..(0x1fda00 - 0x1fbf02)..']'},					-- 0x1fbf02 - 0x1fda00
+		{entranceTriggers = 'entranceTrigger_t['..(0x469)..']'},						-- 0x1fbf02 - 0x1fd978 = entranceTrigger_t[]
+		{padding_1fd978 = 'uint8_t[136]'},												-- 0x1fd978 - 0x1fda00 = 0xFF filler
 		{townTileGraphicsOffsets = 'uint24_t['..(0x52)..']'},							-- 0x1fda00 - 0x1fdaf6 = town tile graphics pointers (+0x1fdb00), points into townTileGraphics
 		{padding_1fdaf6 = 'uint8_t[10]'},												-- 0x1fdaf6 - 0x1fdb00
 		{townTileGraphics = 'uint8_t['..(0x25f400 - 0x1fdb00)..']'},					-- 0x1fdb00 - 0x25f400 = town tile graphics 4bpp
@@ -2124,8 +2161,11 @@ local game_t = ff6struct{
 
 		-- 0x2dc47f - 0x2dc480 = unused
 		-- 0x2dc480 - 0x2dca80 = location map palettes (48 elements, 16 colors each)
-		{padding_2dc47f = 'uint8_t['..(0x2dfe00 - 0x2dc47f)..']'},			-- 0x2dc47f - 0x2dfe00
+		{padding_2dc47f = 'uint8_t['..(0x2df480 - 0x2dc47f)..']'},			-- 0x2dc47f - 0x2df480
 
+		{entranceAreaTriggerOfs = 'uint16_t['..(513)..']'},					-- 0x2df480 - 0x2df882
+		{entranceAreaTriggers = 'entranceAreaTrigger_t['..(0x98)..']'},		-- 0x2df882 - 0x2dfcaa
+		{padding_2dfcaa = 'uint8_t['..(0x2dfe00 - 0x2dfcaa)..']'},			-- 0x2dfcaa - 0x2dfe00 = 0xFF filler
 		{longEsperBonusDescBase = 'uint8_t['..(0x2dffd0 - 0x2dfe00)..']'},	-- 0x2dfe00 - 0x2dffd0
 		{longEsperBonusDescOffsets = 'uint16_t['..numEsperBonuses..']'},	-- 0x2dffd0 - 0x2dfff2
 
