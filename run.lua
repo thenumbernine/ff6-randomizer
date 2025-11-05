@@ -90,14 +90,20 @@ for i=0,game.numRareItems-1 do
 end
 
 for i=0,game.numCharacterPalettes-1 do
-	print('character palette #'..i)
-	print(game.characterPalettes[i])
-	print()
+	print('characterPalettes[0x'..i:hex()..'] = '..game.characterPalettes[i])
 end
+print()
 
-for i=0,game.numMonsterPalettes-1 do
-	print('monster palette #'..i)
-	print(game.monsterPalettes[i])
+do
+	local unique = {}
+	for i=0,game.numMonsterPalettes-1 do
+		print('monsterPalettes[0x'..i:hex()..'] = '..game.monsterPalettes[i])
+		unique[ffi.string(game.monsterPalettes + i, ffi.sizeof'palette8_t')] = true
+	end
+	-- 646 of 768 unique values used
+	-- only indexes 0-656 are used, the rest are black
+	-- overall, 256 x 20.5 palette-blobs are used
+	print('# unique: '..#table.keys(unique))
 	print()
 end
 
@@ -117,23 +123,36 @@ local totalPixels = 0
 -- [[
 local writeMonsterSprite = require 'monstersprite'
 for i=0,game.numMonsterSprites-1 do
-	print('monster sprite #'..i)
-	print(game.monsterSprites[i])
+	print('monsterSprites[0x'..i:hex()..'] = '..game.monsterSprites[i])
 	totalPixels = totalPixels + writeMonsterSprite(game, i)
 end
 print('wrote monster pixels', totalPixels)
+print()
 --]]
 
 -- [[ see how many unique monsters there are ...
 local monsterSpriteOffsetSet = {}
-local monsterSpriteOffsets = table() -- from 1-based monster index to offset #
+--local monsterSpriteOffsets = table() -- from 1-based monster index to offset #
+
+-- from palLo | palHi | _3bpp to monsterSprite.offset
+-- so I can try to group monsterSprite.offset by matching palettes
+local monsterPalettes_monsterSpriteIndexes = {}
+
 for i=0,game.numMonsterSprites-1 do
 	local monsterSprite = game.monsterSprites + i
 	if not monsterSpriteOffsetSet[monsterSprite.offset] then
 		monsterSpriteOffsetSet[monsterSprite.offset] = table()
 	end
 	monsterSpriteOffsetSet[monsterSprite.offset]:insert(i)
-	monsterSpriteOffsets[i+1] = monsterSpriteOffsetSet[monsterSprite.offset][1]
+	--monsterSpriteOffsets[i+1] = monsterSpriteOffsetSet[monsterSprite.offset][1]
+
+	local palIndex = bit.bor(
+		monsterSprite.palLo,
+		bit.lshift(monsterSprite.palHi, 8),
+		bit.lshift(monsterSprite._3bpp, 15)
+	)
+	monsterPalettes_monsterSpriteIndexes[palIndex] = monsterPalettes_monsterSpriteIndexes[palIndex] or {}
+	monsterPalettes_monsterSpriteIndexes[palIndex][i] = true
 end
 
 --print('monsterSpriteOffsets = '..tolua(monsterSpriteOffsets))
@@ -144,18 +163,65 @@ only palHi and palLo vary per offset
 so here, write us only unique monsters with the first palette
 --]]
 for _,offset in ipairs(table.keys(monsterSpriteOffsetSet):sort()) do
-	print('offset '..('%04x'):format(offset)..' has sprites: '..table.concat(monsterSpriteOffsetSet[offset], ', '))
+	print('monsterSpriteOffset '..('0x%04x'):format(offset)..' has sprites: '..table.concat(monsterSpriteOffsetSet[offset], ', '))
 end
---]]
+print()
 
--- [[ write monster palettes
 do
+	local monsterPalettesUnique = table.keys(
+		monsterPalettes_monsterSpriteIndexes
+	):sort()
+	
+	-- what about palette indexes that are odd ...
+	-- if a palette index is odd ....
+	local transparents = {}
+	local opaques = {}
+	for _,pal in ipairs(monsterPalettesUnique) do
+		local indexbase = bit.lshift(bit.band(pal, 0x7fff), 3)
+		local bpp = bit.band(pal, 0x8000) ~= 0 and 3 or 4
+		local numColors = bit.lshift(bpp, 1)
+		transparents[indexbase] = true
+		assert.eq(opaques[indexbase], nil)
+		for i=indexbase+1,indexbase+numColors-1 do
+			opaques[i] = true
+			assert.eq(transparents[i], nil)
+		end
+	end
+	for _,pal in ipairs(monsterPalettesUnique) do
+		local indexes = table.keys(monsterPalettes_monsterSpriteIndexes[pal]):sort()
+		io.write('monsterPalettes[0x'..('%04x'):format(pal)..'] is used by ')
+
+		-- [=[ print indexes
+		io.write('indexes ')
+		for _,index in ipairs(indexes) do
+			io.write(('0x%x'):format(index), ', ')
+		end
+		--]=]
+		--[=[ print offsets, which correlate to unique images
+		local offsets = {}
+		for _,i in ipairs(table.keys(monsterPalettes_monsterSpriteIndexes[pal]):sort()) do
+			local monsterSprite = game.monsterSprites + i
+			offsets[monsterSprite.offset] = true
+		end
+
+		io.write('offsets ')
+		for _,offset in ipairs(table.keys(offsets):sort()) do
+			io.write(('0x%x'):format(offset), ', ')
+		end
+		--]=]
+		print()
+	end
+	print()
+
+	-- write monster palettes
 	local p = path'monsters_graphicset'
 	makePaletteSets(
 		p,
 		game.monsterPalettes,
-		3,
-		bit.lshift(game.numMonsterPalettes, 3)
+		bit.lshift(game.numMonsterPalettes, 3),
+		function(index)
+			return transparents[index]
+		end
 	)
 end
 --]]

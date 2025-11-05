@@ -125,7 +125,7 @@ local function makeTiledImageWithMask(
 end
 
 -- make multiple palette#.png images, each 16x16
-local function makePaletteSets(dir, pal, bpp, numColors)
+local function makePaletteSets(dir, pal, numColors, isTransparent)
 	dir = path(dir)
 	dir:mkdir()
 	pal = ffi.cast('color_t*', pal)
@@ -135,7 +135,9 @@ local function makePaletteSets(dir, pal, bpp, numColors)
 		for i=0,255 do
 			local j = bit.bor(bit.lshift(palSheetIndex, 8), i)
 			if j < numColors then
-				p[0], p[1], p[2], p[3] = pal[j]:rgba()
+				if not (isTransparent and isTransparent(j)) then
+					p[0], p[1], p[2], p[3] = pal[j]:rgba()
+				end
 				p = p + 4
 			end
 		end

@@ -2,7 +2,8 @@ local table = require 'ext.table'
 local class = require 'ext.class'
 local assert = require 'ext.assert'
 local ffi = require 'ffi'
-local struct = require 'ff6struct'
+local struct = require 'struct'
+local ff6struct = require 'ff6struct'
 local createVec = require 'vec-ffi.create_vec'
 
 -- using
@@ -211,7 +212,7 @@ args:
 --]]
 local function bitflagtype(args)
 	local ctype = args.type or 'uint8_t'
-	return struct{
+	return ff6struct{
 		name = assert(args.name),
 		fields = table.mapi(assert(args.options), function(option)
 			return {[assert(option)] = ctype..':1'}
@@ -437,7 +438,7 @@ end
 
 ---------------- GRAPHICS ----------------
 
-local color_t = struct{
+local color_t = ff6struct{
 	name = 'color_t',
 	fields = {
 		{r = 'uint16_t:5'},
@@ -498,7 +499,7 @@ local numMenuChars = 19
 
 ---------------- AUDIO ----------------
 
-local uint24_t = struct{
+local uint24_t = ff6struct{
 	name = 'uint24_t',
 	fields = {
 		{lo = 'uint16_t'},
@@ -543,7 +544,7 @@ local spellref_t = reftype{
 	getterSkipNone = true,
 }
 
-local spell_t = struct{
+local spell_t = ff6struct{
 	name = 'spell_t',
 	fields = {
 		-- 00:
@@ -637,7 +638,7 @@ local esperAttackNamesAddr = 0x26fe8f
 -- also needs a pointer to 'game'
 local function getEsperName(i) return getSpellName(i + 54) end
 
-local spellLearn_t = struct{
+local spellLearn_t = ff6struct{
 	name = 'spellLearn_t',
 	fields = {
 		{rate = 'uint8_t'},
@@ -645,7 +646,7 @@ local spellLearn_t = struct{
 	},
 }
 
-local esper_t = struct{
+local esper_t = ff6struct{
 	name = 'esper_t',
 	fields = {
 		{spellLearn1 = 'spellLearn_t'},
@@ -685,7 +686,7 @@ assert.eq(ffi.sizeof(battleAnimEffectIndex_t), 2)
 --]]
 
 -- collections of up to 3 animation-effects to play
-local battleAnimSet_t = struct{
+local battleAnimSet_t = ff6struct{
 	name = 'battleAnimSet_t',
 	fields = {
 		--[[ TODO get struct to serialize member arrays
@@ -724,7 +725,7 @@ local numBattleAnimSets = 444
 local numBattleAnimPalettes = 0xf0
 
 -- animations made up of frames
-local battleAnimEffect_t = struct{
+local battleAnimEffect_t = ff6struct{
 	name = 'battleAnimEffect_t',
 	fields = {
 		{numFrames = 'uint8_t:6'},
@@ -745,7 +746,7 @@ local battleAnimEffect_t = struct{
 assert.eq(ffi.sizeof'battleAnimEffect_t', 6)
 local numBattleAnimEffects = 650
 
-local battleAnim16x16Tile_t = struct{
+local battleAnim16x16Tile_t = ff6struct{
 	name = 'battleAnim16x16Tile_t',
 	fields = {
 		-- x y destination to place the tile in the frame
@@ -763,7 +764,7 @@ assert.eq(ffi.sizeof'battleAnim16x16Tile_t', 2)
 -- graphicSet is a collection of 0x40 (0x10 x 4) 8x8 tiles
 -- Each 8x8 tile holds info of the tile address, hflip, and vflip
 -- This is pointed to by battleAnimEffect_t.graphicSet
-local battleAnim8x8Tile_t = struct{
+local battleAnim8x8Tile_t = ff6struct{
 	name = 'battleAnim8x8Tile_t',
 	fields = {
 		-- * tileLen (8 * bpp) + tileAddrBase (0x187000 for 2bpp, 0x130000 for 3bpp) gives the 8x8 tile data
@@ -796,7 +797,7 @@ local numFormationMPs = 0x200
 local formationAddr = 0xf6200		-- 576 in size
 local formationMPAddr = 0x1fb400	-- 512 in size
 
-local xy4b_t = struct{
+local xy4b_t = ff6struct{
 	name = 'xy4b_t',
 	fields = {
 		{x = 'uint8_t:4'},
@@ -809,7 +810,7 @@ local xy4b_6_t = createVec{
 	vectype = 'xy4b_6_t',
 }
 
-local formation_t = struct{
+local formation_t = ff6struct{
 	name = 'formation_t',
 	fields = {
 		-- 0x00
@@ -927,7 +928,7 @@ local formationMusicNames = {
 	'no change',
 }
 
-local formation2_t = struct{
+local formation2_t = ff6struct{
 	name = 'formation2_t',
 	fields = {
 		-- 0:
@@ -975,7 +976,7 @@ local numFormationSizeOffsets = 13
 -- because it is referenced by offsets
 local numFormationSizes = 48
 
-local formationSize_t = struct{
+local formationSize_t = ff6struct{
 	name = 'formationSize_t',
 	fields = {
 		{unknown_0 = 'uint8_t'},
@@ -1003,14 +1004,33 @@ local monsterSpriteDataAddr = 0x297000
 
 local monsterSprite_t = struct{
 	name = 'monsterSprite_t',
+	tostringFields = true,
+	tostringOmitFalse = true,
+	tostringOmitNil = true,
+	tostringOmitEmpty = true,
+	packed = true,
 	fields = {
-		{offset = 'uint16_t:15'},
-		{_3bpp = 'uint16_t:1'},
-		{palHi = 'uint8_t:7'},
-		{tile16 = 'uint8_t:1'},
-		{palLo = 'uint8_t'},
-		{tileMaskIndex = 'uint8_t'},
+		{name='offset', type='uint16_t:15'},
+		{name='_3bpp', type='uint16_t:1'},
+		{name='palHi', type='uint8_t:7'},
+		{name='tile16', type='uint8_t:1'},
+		{name='palLo', type='uint8_t'},
+		{name='tileMaskIndex', type='uint8_t'},
 	},
+	metatable = function(mt)
+		-- default output to hex
+		mt.typeToString = {
+			uint8_t = function(value)
+				return ('0x%02x'):format(value)
+			end,
+			uint16_t = function(value)
+				return ('0x%04x'):format(value)
+			end,
+			uint32_t = function(value)
+				return ('0x%08x'):format(value)
+			end,
+		}
+	end,
 }
 assert.eq(ffi.sizeof'monsterSprite_t', 5)
 
@@ -1083,7 +1103,7 @@ local itemSpecialAbilityNames = {
 	'uses MP for mortal blow',
 }
 
-local item_t = struct{
+local item_t = ff6struct{
 	name = 'item_t',
 	fields = {
 		-- 0x00:
@@ -1229,7 +1249,7 @@ assert.eq(ffi.offsetof('item_t', 'raiseStealChance'), 0x0b)
 assert.eq(ffi.offsetof('item_t', 'changeFightToXFight'), 0x0c)
 assert.eq(ffi.sizeof'item_t', 0x1e)
 
-local itemColosseumInfo_t = struct{
+local itemColosseumInfo_t = ff6struct{
 	name = 'itemColosseumInfo_t',
 	fields = {
 		{monster = 'monsterRef_t'},
@@ -1276,7 +1296,7 @@ local monsterSpecialAttackNames = {
 
 local monsterAttackNamesAddr = 0x0fd0d0
 
-local monster_t = struct{
+local monster_t = ff6struct{
 	name = 'monster_t',
 	fields = {
 		-- 0x00:
@@ -1374,7 +1394,7 @@ local monster_t = struct{
 assert.eq(ffi.sizeof'monster_t', 0x20)
 local monstersAddr = 0x0f0000
 
-local monsterItem_t = struct{
+local monsterItem_t = ff6struct{
 	name = 'monsterItem_t',
 	fields = {
 		{rareSteal = 'itemref_t'},
@@ -1445,7 +1465,7 @@ local itemref2_t = createVec{
 	vectype = 'itemref2_t',
 }
 
-local character_t = struct{
+local character_t = ff6struct{
 	name = 'character_t',
 	fields = {
 		{hp = 'uint8_t'},
@@ -1507,7 +1527,7 @@ local numCharacterSprites = 165
 -- these are shared between playable and non-playable and map
 local numCharacterPalettes = 0x20
 
-local charHiAndSize_t = struct{
+local charHiAndSize_t = ff6struct{
 	name = 'charHiAndSize_t',
 	fields = {
 		{hi = 'uint8_t'},
@@ -1534,7 +1554,7 @@ local shopPriceTypes = {
 	'0.5x with Sabin or Edgar',
 }
 
-local shopinfo_t = struct{
+local shopinfo_t = ff6struct{
 	name = 'shopinfo_t',
 	fields = {
 		{shopType = 'uint8_t:4'},
@@ -1565,7 +1585,7 @@ local itemref8_t = createVec{
 	vectype = 'itemref8_t',
 }
 local numShops = 0x80
-local shop_t = struct{
+local shop_t = ff6struct{
 	name = 'shop_t',
 	fields = {
 		{shopinfo = 'shopinfo_t'},
@@ -1585,7 +1605,7 @@ local numBattleMessages = 0x100
 
 local numPositionedText = 5	-- might actually be lower
 
-local xy8b_t = struct{
+local xy8b_t = ff6struct{
 	name = 'xy8b_t',
 	fields = {
 		{x = 'uint8_t'},
@@ -1602,7 +1622,7 @@ local locNameRef_t = reftype{
 }
 
 local numLocations = 415
-local location_t = struct{
+local location_t = ff6struct{
 	name = 'location_t',
 	fields = {
 		-- TODO this is a ref to the location names ...
@@ -1636,7 +1656,7 @@ local numLocationTileFormationOfs = 0x80
 local locationTileFormationOfsAddr = 0x1fba00
 
 local numEntranceTriggerOfs = 513
-local entranceTrigger_t = struct{
+local entranceTrigger_t = ff6struct{
 	name = 'entranceTrigger_t',
 	fields = {
 		{srcX = 'uint8_t'},
@@ -1652,7 +1672,7 @@ local entranceTrigger_t = struct{
 assert.eq(ffi.sizeof'entranceTrigger_t', 6)
 
 
-local mapEventTrigger_t = struct{
+local mapEventTrigger_t = ff6struct{
 	name = 'mapEventTrigger_t',
 	fields = {
 		{srcX = 'uint8_t'},
@@ -1666,7 +1686,7 @@ assert.eq(ffi.sizeof'mapEventTrigger_t', 5)
 
 -- TODO this is clever but ... rigid and with lots of redundancies
 -- the memorymap system of the super metroid randomizer is better.
-local game_t = struct{
+local game_t = ff6struct{
 	name = 'game_t',
 	notostring = true,	-- too big to serialize
 	fields = {

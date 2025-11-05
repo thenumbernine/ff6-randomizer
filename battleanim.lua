@@ -1642,11 +1642,14 @@ assert.type(b, 'number')
 	print()
 
 	local bpp = 3
+	local mask = bit.lshift(1, bpp) - 1
 	local numColors = bit.lshift(game.numBattleAnimPalettes, bpp)
 	makePaletteSets(
 		battleAnimGraphicSetsPath,
 		game.battleAnimPalettes,
-		bpp,
-		numColors
+		numColors,
+		function(index)
+			return bit.band(mask, index) == 0
+		end
 	)
 end
