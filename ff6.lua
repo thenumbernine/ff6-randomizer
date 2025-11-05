@@ -1652,7 +1652,7 @@ local location_t = ff6struct{
 }
 assert.eq(ffi.sizeof'location_t', 0x21)
 
-local numLocationTileFormationOfs = 0x80
+local numLocationTileFormationOfs = 0x4c
 local locationTileFormationOfsAddr = 0x1fba00
 
 local numEntranceTriggerOfs = 513
@@ -1947,15 +1947,16 @@ local game_t = ff6struct{
 		{locationMapDataOffsets = 'uint24_t['..(0x160)..']'},							-- 0x19cd90 - 0x19d1b0 = offsets to location map data (352 items), (+0x19d1b0)
 		{locationMapDataCompressed = 'uint8_t['..(0x1e0000 - 0x19d1b0)..']'},			-- 0x19d1b0 - 0x1e0000 = location map data (compressed)
 		{locationTileFormationsCompressed = 'uint8_t['..(0x1fb400 - 0x1e0000)..']'},	-- 0x1e0000 - 0x1fb400 = location map tile formation (compressed)
-		
+
 		{formationMPs = 'uint8_t['..numFormationMPs..']'},								-- 0x1fb400 - 0x1fb600
 		{itemColosseumInfos = 'itemColosseumInfo_t['..numItems..']'},					-- 0x1fb600 - 0x1fba00
-		
+
 		-- TODO:
-		{locationTileFormationOfs = 'uint16_t['..numLocationTileFormationOfs..']'},		-- 0x1fba00 - 0x1fbb00 -- offset by +0x1e0000
+		{locationTileFormationOfs = 'uint24_t['..numLocationTileFormationOfs..']'},		-- 0x1fba00 - 0x1fbaff -- 24bit, offset by +0x1e0000, points into locationTileFormationsCompressed 
+		{padding_1fbaff = 'uint8_t[28]'},												-- 0x1fbaff - 0x1fbb00 
 		{entranceTriggerOfs = 'uint16_t['..numEntranceTriggerOfs..']'},					-- 0x1fbb00 - 0x1fbf02 -- offset by +0x1fbb00
 		{entranceTriggerData = 'uint8_t['..(0x1fda00 - 0x1fbf02)..']'},					-- 0x1fbf02 - 0x1fda00
-		{townTileGraphicsOffsets = 'uint24_t['..(0x52)..']'},							-- 0x1fda00 - 0x1fdaf6 = town tile graphics pointers (+0x1fdb00)
+		{townTileGraphicsOffsets = 'uint24_t['..(0x52)..']'},							-- 0x1fda00 - 0x1fdaf6 = town tile graphics pointers (+0x1fdb00), points into townTileGraphics
 		{padding_1fdaf6 = 'uint8_t[10]'},												-- 0x1fdaf6 - 0x1fdb00 
 		{townTileGraphics = 'uint8_t['..(0x25f400 - 0x1fdb00)..']'},					-- 0x1fdb00 - 0x25f400 = town tile graphics 4bpp
 			-- (within it) 0x21c4c0 - 0x21e4c0 = battle background top graphics: building

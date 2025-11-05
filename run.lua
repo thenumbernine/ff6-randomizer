@@ -6,6 +6,8 @@ local makePaletteSets = require 'graphics'.makePaletteSets
 local tileWidth = require 'graphics'.tileWidth
 local tileHeight = require 'graphics'.tileHeight
 local readTile = require 'graphics'.readTile
+local decompress = require 'decompress'.decompress
+local decompress0x800 = require 'decompress'.decompress0x800
 require 'ext'
 
 local int16_t = ffi.typeof'int16_t'
@@ -455,13 +457,37 @@ for i=0,(0x040342 - 0x040000)/2-1 do
 	print('mapEventTrigger #'..i..': $'..('%04x'):format(addr))
 	print(' '..mapEventTrigger)
 end
-
 print()
+
 for i=0,game.numLocationTileFormationOfs-1 do
-	print('location tile formation offset: $'..('%04x'):format(game.locationTileFormationOfs[i]))
+	local offset = game.locationTileFormationOfs[i]:value()
+	local dist
+	local addr = 0xffffff 
+	if offset ~= 0xffffff then
+		addr = offset + 0x1e0000
+		local nextoffset = rom - ffi.cast('uint8_t*', game.padding_1fbaff)
+		if i < game.numLocationTileFormationOfs-1 then
+			local nextoffsettest = game.locationTileFormationOfs[i+1]:value()
+			if nextoffsettest ~= 0xffffff then
+				nextoffset = nextoffsettest 
+			end
+		end
+		dist = nextoffset - offset
+	end
+	print('locationTileFormationOfs[0x'..i:hex()..'] = 0x'
+		..('%06x'):format(addr))
+	if addr ~= 0xffffff then
+		-- try to decompress ...
+		local ptr = rom + addr
+		local row, endptr = decompress0x800(ptr, ffi.sizeof(game.locationTileFormationOfs))
+		print(' dist to next entry / end = 0x'..dist:hex())
+		print(' compressed size = 0x'..(endptr - ptr):hex())
+		print(' decompressed size = 0x'..(#row):hex())
+		print(' '..row:hex())
+	end
 end
-
 print()
+
 for i=0,game.numEntranceTriggerOfs-1 do
 	-- TODO use ref_t or whateever
 	local addr = game.entranceTriggerOfs[i] + ffi.offsetof('game_t', 'entranceTriggerOfs')
@@ -490,7 +516,7 @@ do
 	local bpp = 4
 	local tilesWide = 5
 	local tilesHigh = 5
-	local menucharpath = path'menuchars'
+	local menucharpath = path'characters_menu'
 	menucharpath:mkdir()
 	local ptr = game.characterMenuImages
 	for charIndex=0,game.numMenuChars-1 do
@@ -787,60 +813,6 @@ for i=0,game.numBRRSamples-1 do
 	--]]
 end
 
--- decompress one block of 2048 bytes
-local function decompress0x800(ptr, len)
-	local vector = require 'ffi.cpp.vector-lua'
-	local out = vector'uint8_t'
-	local buf = ffi.new('uint8_t[0x800]')
-	ffi.fill(buf, ffi.sizeof(buf))
-	local bufOfs = 0x7de
-print('decompressing len', len)
-	local compressedSize = ffi.cast('uint16_t*', ptr)[0]
-	ffi.cast('uint16_t*', buf + bufOfs)[0] = compressedSize
-	local endptr = ptr + compressedSize	-- end relative to start before size
-	ptr = ptr + 2
-print('compressed stored len', compressedSize)
-	while ptr < endptr do
-		local header = ptr[0]
-		ptr = ptr + 1
-		for i=0,7 do
-			if bit.band(bit.rshift(header, i), 1) == 1 then
---print('writing', ptr[0])
-				local src = ptr[0]
-				ptr = ptr + 1
-				out:emplace_back()[0] = src
-				buf[bufOfs] = src
-				bufOfs = bit.band(bufOfs + 1, 0x7ff)
-			else
-				local w = ffi.cast('uint16_t*', ptr)[0]
-				ptr = ptr + 2
-				local ofs = bit.band(w, 0x7ff)
-				local size = bit.rshift(w, 11) + 3
---print('decompress block ofs', ofs, 'size', size)
-				for j=0,size-1 do
-					local src = buf[bit.band(ofs + j, 0x7ff)]
-					out:emplace_back()[0] = src
-					buf[bufOfs] = src
-					bufOfs = bit.band(bufOfs + 1, 0x7ff)
-				end
-			end
-		end
-	end
-	--return ffi.string(buf, ffi.sizeof(buf)), ptr
-	return out:dataToStr(), ptr
-end
-
-local function decompress(ptr, len)
-	local endptr = ptr + len
-	local s = table()
-	while ptr < endptr do
-		local row
-		row, ptr = decompress0x800(ptr, endptr - ptr)
-		s:insert(row)
-	end
-	return s:concat()
-end
-
 -- 141002 bytes ... needs 131072 bytes ... has 9930 extra bytes ...
 path'WoBMapDataCompressed.bin':write( ffi.string(game.WoBMapData+0, ffi.sizeof(game.WoBMapData)))
 path'WoBMapDataCompressed.hex':write( ffi.string(game.WoBMapData+0, ffi.sizeof(game.WoBMapData)):hexdump())
@@ -855,7 +827,10 @@ path'WoBMapDataDecompressed.hex':write(WoBMapDataDecompressed:hexdump())
 for i=0,0x51 do
 	local ofs = game.townTileGraphicsOffsets[i]:value()
 	-- this is times something and then a pointer into game.townTileGraphics
-	print('townTileGraphicsOffsets[0x'..i:hex()..'] = 0x'..ofs:hex())
+	print('townTileGraphicsOffsets[0x'..i:hex()..'] = 0x'..ofs:hex()
+-- the space between them is arbitrary
+--		..(i>0 and ('\tdiff=0x'..(game.townTileGraphicsOffsets[i]:value() - game.townTileGraphicsOffsets[i-1]:value()):hex()) or '')
+	)
 end
 do
 	-- 0x30c8 tiles of 8x8x4bpp = 32 bytes in game.townTileGraphics 
