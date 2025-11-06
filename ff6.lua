@@ -23,6 +23,13 @@ local fieldsToHex = {
 		return ('0x%08x'):format(value)
 	end,
 }
+for _,size in ipairs{8, 16, 32} do
+	for i=1,size do
+		fieldsToHex['uint'..size..'_t:'..i] = function(value)
+			return ('0x%0'..math.ceil(i/4)..'x'):format(value)
+		end
+	end
+end
 
 return function(rom)
 -- compstr uses game
@@ -1616,14 +1623,13 @@ local xy8b_t = ff6struct{
 }
 assert.eq(ffi.sizeof'xy8b_t', 2)
 
-local locNameRef_t = reftype{
-	name = 'locNameRef_t',
+local mapNameRef_t = reftype{
+	name = 'mapNameRef_t',
 	getter = function(i)
 		return obj.mapNames[i]
 	end,
 }
 
-local numMaps = 0x19f
 local map_t = struct{
 	name = 'map_t',
 	tostringFields = true,
@@ -1632,7 +1638,7 @@ local map_t = struct{
 	tostringOmitEmpty = true,
 	packedStruct = true,
 	fields = {
-		{name='name', type='locNameRef_t'},						-- 0
+		{name='name', type='mapNameRef_t'},						-- 0
 		{name='enableXZone', type='uint8_t:1'},					-- 1.0
 		{name='enableWarp', type='uint8_t:1'},					-- 1.1
 		{name='wavyLayer3', type='uint8_t:1'},					-- 1.2
@@ -1732,7 +1738,6 @@ local map_t = struct{
 }
 assert.eq(ffi.sizeof'map_t', 0x21)
 
-local numMapTileFormationOfs = 0x4c
 local mapTileFormationOfsAddr = 0x1fba00
 
 local numEntranceTriggerOfs = 513
@@ -2082,22 +2087,22 @@ local game_t = ff6struct{
 		-- TODO:
 		{mapTileProperties = 'uint8_t['..(0x19cd10 - 0x19a800)..']'},			-- 0x19a800 - 0x19cd10 = map tile properties
 		{mapTilePropertiesOffsets = 'uint16_t['..(0x40)..']'},					-- 0x19cd10 - 0x19cd90 = offsets to map tile properties (+0x19a800)
-		{mapDataOffsets = 'uint24_t['..(0x160)..']'},							-- 0x19cd90 - 0x19d1b0 = offsets to map data (352 items), (+0x19d1b0)
-		{mapDataCompressed = 'uint8_t['..(0x1e0000 - 0x19d1b0)..']'},			-- 0x19d1b0 - 0x1e0000 = map data (compressed)
+		{mapTilesetOffsets = 'uint24_t['..(0x160)..']'},						-- 0x19cd90 - 0x19d1b0 = offsets to map data (352 items), (+0x19d1b0)
+		{mapTilesetCompressed = 'uint8_t['..(0x1e0000 - 0x19d1b0)..']'},		-- 0x19d1b0 - 0x1e0000 = map data (compressed)
 		{mapTileFormationsCompressed = 'uint8_t['..(0x1fb400 - 0x1e0000)..']'},	-- 0x1e0000 - 0x1fb400 = map tile formation (compressed)
 
 		{formationMPs = 'uint8_t['..numFormationMPs..']'},						-- 0x1fb400 - 0x1fb600
 		{itemColosseumInfos = 'itemColosseumInfo_t['..numItems..']'},			-- 0x1fb600 - 0x1fba00
 
 		-- TODO:
-		{mapTileFormationOfs = 'uint24_t['..numMapTileFormationOfs..']'},		-- 0x1fba00 - 0x1fbaff -- 24bit, offset by +0x1e0000, points into mapTileFormationsCompressed
+		{mapTileFormationOfs = 'uint24_t['..(0x4c)..']'},		-- 0x1fba00 - 0x1fbaff -- 24bit, offset by +0x1e0000, points into mapTileFormationsCompressed
 		{padding_1fbaff = 'uint8_t[28]'},										-- 0x1fbaff - 0x1fbb00
 		{entranceTriggerOfs = 'uint16_t['..numEntranceTriggerOfs..']'},			-- 0x1fbb00 - 0x1fbf02 -- offset by +0x1fbb00
 		{entranceTriggers = 'entranceTrigger_t['..(0x469)..']'},				-- 0x1fbf02 - 0x1fd978 = entranceTrigger_t[]
 		{padding_1fd978 = 'uint8_t[136]'},										-- 0x1fd978 - 0x1fda00 = 0xFF filler
-		{townTileGraphicsOffsets = 'uint24_t['..(0x52)..']'},					-- 0x1fda00 - 0x1fdaf6 = town tile graphics pointers (+0x1fdb00), points into townTileGraphics
+		{mapTileGraphicsOffsets = 'uint24_t['..(0x52)..']'},					-- 0x1fda00 - 0x1fdaf6 = town tile graphics pointers (+0x1fdb00), points into mapTileGraphics
 		{padding_1fdaf6 = 'uint8_t[10]'},										-- 0x1fdaf6 - 0x1fdb00
-		{townTileGraphics = 'uint8_t['..(0x25f400 - 0x1fdb00)..']'},			-- 0x1fdb00 - 0x25f400 = town tile graphics 4bpp
+		{mapTileGraphics = 'uint8_t['..(0x25f400 - 0x1fdb00)..']'},				-- 0x1fdb00 - 0x25f400 = town tile graphics 4bpp
 			-- (within it) 0x21c4c0 - 0x21e4c0 = battle background top graphics: building
 
 		{padding_25f400 = 'uint8_t['..(0x268000 - 0x25f400)..']'},				-- 0x25f400 - 0x268000 = ???
@@ -2157,13 +2162,13 @@ local game_t = ff6struct{
 		{padding_2d82f4 = 'uint8_t['..(0x2d8f00 - 0x2d82f4)..']'},			-- 0x2d82f4 - 0x2d8f00
 
 		--  map propeties (415 elements, 33 bytes each)
-		{maps = 'map_t['..numMaps..']'},						-- 0x2d8f00 - 0x2dc47f
+		{maps = 'map_t['..(0x19f)..']'},									-- 0x2d8f00 - 0x2dc47f
+		{padding_2dc47f = 'uint8_t[1]'},									-- 0x2dc47f - 0x2df480
+		{mapPalettes = 'palette16_t[48]'},	-- 0x2dc480 - 0x2dca80 = map palettes (48 elements, 16 colors each)
 
-		-- 0x2dc47f - 0x2dc480 = unused
-		-- 0x2dc480 - 0x2dca80 = map palettes (48 elements, 16 colors each)
-		{padding_2dc47f = 'uint8_t['..(0x2df480 - 0x2dc47f)..']'},			-- 0x2dc47f - 0x2df480
+		{padding_2dca80 = 'uint8_t['..(0x2df480 - 0x2dca80 )..']'},			-- 0x2dca80 - 0x2df480
 
-		{entranceAreaTriggerOfs = 'uint16_t['..numEntranceTriggerOfs..']'},					-- 0x2df480 - 0x2df882
+		{entranceAreaTriggerOfs = 'uint16_t['..numEntranceTriggerOfs..']'},	-- 0x2df480 - 0x2df882
 		{entranceAreaTriggers = 'entranceAreaTrigger_t['..(0x98)..']'},		-- 0x2df882 - 0x2dfcaa
 		{padding_2dfcaa = 'uint8_t['..(0x2dfe00 - 0x2dfcaa)..']'},			-- 0x2dfcaa - 0x2dfe00 = 0xFF filler
 		{longEsperBonusDescBase = 'uint8_t['..(0x2dffd0 - 0x2dfe00)..']'},	-- 0x2dfe00 - 0x2dffd0
@@ -2327,9 +2332,7 @@ obj.numSwordTechs = numSwordTechs
 obj.numBlitzes = numBlitzes
 obj.numLores = numLores
 obj.numShops = numShops
-obj.numMaps = numMaps
 obj.numMapNames = numMapNames
-obj.numMapTileFormationOfs = numMapTileFormationOfs
 obj.numEntranceTriggerOfs = numEntranceTriggerOfs
 obj.numDialogs = numDialogs
 obj.numBattleDialogs = numBattleDialogs

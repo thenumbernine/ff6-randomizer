@@ -10,6 +10,10 @@ local decompress = require 'decompress'.decompress
 local decompress0x800 = require 'decompress'.decompress0x800
 require 'ext'
 
+local function countof(array)
+	return ffi.sizeof(array) / ffi.sizeof(array[0])
+end
+
 local int16_t = ffi.typeof'int16_t'
 
 local infn, outfn = ...
@@ -444,11 +448,118 @@ print()
 for i=0,game.numShops-1 do
 	print('shop #'..i..': '..game.shops[i])
 end
-
 print()
-for i=0,game.numMaps-1 do
-	print('map[0x'..i:hex()..'] = '..game.maps[i])
+
+-- cache decompressed data
+local mapTilesets = table()	-- 0-based
+for i=0,countof(game.mapTilesetOffsets)-1 do
+	local offset = game.mapTilesetOffsets[i]:value()
+	local addr = 0xffffff
+	if offset ~= 0xffffff then
+		addr = offset + ffi.offsetof('game_t', 'mapTilesetCompressed')
+		local ptr = rom + addr
+		local data, endptr = decompress0x800(ptr, ffi.sizeof(game.mapTilesetCompressed))
+		mapTilesets[i] = {
+			index = i,
+			offset = offset,
+			addr = addr,
+			data = data,
+		}
+	end
+	print('tileset[0x'..i:hex()..']',
+		offset:hex(),
+		addr:hex())
 end
+
+local mapTileFormations = table()	-- 0-based
+for i=0,countof(game.mapTileFormationOfs)-1 do
+	local offset = game.mapTileFormationOfs[i]:value()
+	local addr = 0xffffff
+	if offset ~= 0xffffff then
+		addr = offset + 0x1e0000
+		if addr ~= 0xffffff then
+			local ptr = rom + addr
+			local data, endptr = decompress0x800(ptr, ffi.sizeof(game.mapTileFormationOfs))
+			print(' compressed size = 0x'..(endptr - ptr):hex())
+			print(' decompressed size = 0x'..(#data):hex())
+			--print(data:hexdump())
+			mapTileFormations[i] = {
+				index = i,
+				offset = offset,
+				addr = addr,
+				data = data,
+			}
+		end
+	end
+	print('mapTileFormationOfs[0x'..i:hex()..'] = 0x'
+		..('%06x'):format(addr))
+end
+print()
+
+local mappath = path'maps'
+mappath:mkdir()
+
+-- output town tile graphics
+-- the last 3 are 0xffffff
+local mapTileGraphics = table()	-- 0-based
+for i=0,countof(game.mapTileGraphicsOffsets)-1 do
+	local offset = game.mapTileGraphicsOffsets[i]:value()
+	local addr = offset + ffi.offsetof('game_t', 'mapTileGraphics')
+	-- this is times something and then a pointer into game.mapTileGraphics
+	print('mapTileGraphicsOffsets[0x'..i:hex()..'] = 0x'..offset:hex()
+-- the space between them is arbitrary
+--		..(i>0 and ('\tdiff=0x'..(game.mapTileGraphicsOffsets[i]:value() - game.mapTileGraphicsOffsets[i-1]:value()):hex()) or '')
+	)
+	mapTileGraphics[i] = {
+		index = i,
+		offset = offset,
+		addr = addr,
+	}
+end
+do	-- here decompress all 'mapTileGraphics' tiles irrespective of offset table
+	-- 0x30c8 tiles of 8x8x4bpp = 32 bytes in game.mapTileGraphics
+	local bpp = 4
+	local numTiles = (0x25f400 - 0x1fdb00) / (8 * bpp)	-- = 0x30c8
+	-- 128 is just over sqrt numTiles
+	local masterTilesWide = 16 -- 128
+	local masterTilesHigh = math.ceil(numTiles / masterTilesWide)
+	local im = Image(masterTilesWide*tileWidth, masterTilesHigh*tileHeight, 1, 'uint8_t'):clear()
+	for i=0,numTiles-1 do
+		local x = i % masterTilesWide
+		local y = (i - x) / masterTilesWide
+		readTile(im,
+			x * tileWidth,
+			y * tileHeight,
+			game.mapTileGraphics + bit.lshift(i, 5),
+			bpp)
+	end
+	-- alright where is the palette info stored?
+	-- and I'm betting somewhere is the 16x16 info that points into this 8x8 tile data...
+	-- and I'm half-suspicious it is compressed ...
+	im.palette = makePalette(game.mapPalettes + 0, 4, 16)
+	im:save((mappath/'tiles.png').path)
+end
+
+makePaletteSets(
+	mappath,
+	game.mapPalettes,
+	ffi.sizeof(game.mapPalettes) / ffi.sizeof'color_t',
+	function(index) return bit.band(0xf, index) == 0 end
+)
+
+for i=0,countof(game.maps)-1 do
+	local map = game.maps + i
+	print('map[0x'..i:hex()..'] = '..game.maps[i])
+	-- map.gfx* points into mapTileGraphicsOffsets into mapTileGraphics
+	local gfx1Addr = mapTileGraphics[map.gfx1].addr
+	local gfx2Addr = mapTileGraphics[map.gfx2].addr
+	local gfx3Addr = mapTileGraphics[map.gfx3].addr
+	local gfx4Addr = mapTileGraphics[map.gfx4].addr
+	local tileset1 = mapTilesets[map.tileset1]
+	local tileset2 = mapTilesets[map.tileset2]
+	local palette = game.mapPalettes[map.palette]
+end
+
 
 print()
 for i=0,(0x040342 - 0x040000)/2-1 do
@@ -456,39 +567,6 @@ for i=0,(0x040342 - 0x040000)/2-1 do
 	local mapEventTrigger = ffi.cast('mapEventTrigger_t*', rom + addr)
 	print('mapEventTrigger #'..i..': $'..('%04x'):format(addr))
 	print(' '..mapEventTrigger)
-end
-print()
-
-for i=0,game.numMapTileFormationOfs-1 do
-	local offset = game.mapTileFormationOfs[i]:value()
-	local dist
-	local addr = 0xffffff
-	if offset ~= 0xffffff then
-		addr = offset + 0x1e0000
-		local nextoffset = rom - ffi.cast('uint8_t*', game.padding_1fbaff)
-		if i < game.numMapTileFormationOfs-1 then
-			local nextoffsettest = game.mapTileFormationOfs[i+1]:value()
-			if nextoffsettest ~= 0xffffff then
-				nextoffset = nextoffsettest
-			end
-		end
-		dist = nextoffset - offset
-	end
-	print('mapTileFormationOfs[0x'..i:hex()..'] = 0x'
-		..('%06x'):format(addr))
-	if addr ~= 0xffffff then
-		-- try to decompress ...
-		-- ptr is within game.mapTileFormationsCompressed
-		local ptr = rom + addr
-		local row, endptr = decompress0x800(ptr, ffi.sizeof(game.mapTileFormationOfs))
-		print(' dist to next entry / end = 0x'..dist:hex())
-		print(' compressed size = 0x'..(endptr - ptr):hex())
-		print(' decompressed size = 0x'..(#row):hex())
-		--print(' '..row:hex():gsub('..', ' %0'))
-		-- looks good
-		print(row:hexdump())
-		-- now how to use this data
-	end
 end
 print()
 
@@ -849,42 +927,6 @@ local WoBMapDataDecompressed = decompress(game.WoBMapData+0, ffi.sizeof(game.WoB
 print('WoBMapDataDecompressed', #WoBMapDataDecompressed)
 path'WoBMapDataDecompressed.bin':write(WoBMapDataDecompressed)
 path'WoBMapDataDecompressed.hex':write(WoBMapDataDecompressed:hexdump())
-
-
--- output town tile graphics
--- the last 3 are 0xffffff
-for i=0,0x51 do
-	local ofs = game.townTileGraphicsOffsets[i]:value()
-	-- this is times something and then a pointer into game.townTileGraphics
-	print('townTileGraphicsOffsets[0x'..i:hex()..'] = 0x'..ofs:hex()
--- the space between them is arbitrary
---		..(i>0 and ('\tdiff=0x'..(game.townTileGraphicsOffsets[i]:value() - game.townTileGraphicsOffsets[i-1]:value()):hex()) or '')
-	)
-end
-do
-	-- 0x30c8 tiles of 8x8x4bpp = 32 bytes in game.townTileGraphics
-	local bpp = 4
-	local numTiles = (0x25f400 - 0x1fdb00) / (8 * bpp)	-- = 0x30c8
-	-- 128 is just over sqrt numTiles
-	local masterTilesWide = 16 -- 128
-	local masterTilesHigh = math.ceil(numTiles / masterTilesWide)
-	local im = Image(masterTilesWide*tileWidth, masterTilesHigh*tileHeight, 1, 'uint8_t'):clear()
-	for i=0,numTiles-1 do
-		local x = i % masterTilesWide
-		local y = (i - x) / masterTilesWide
-		readTile(im,
-			x * tileWidth,
-			y * tileHeight,
-			game.townTileGraphics + bit.lshift(i, 5),
-			bpp)
-	end
-	-- alright where is the palette info stored?
-	-- and I'm betting somewhere is the 16x16 info that points into this 8x8 tile data...
-	-- and I'm half-suspicious it is compressed ...
-	im.palette = makePalette(game.characterPalettes + 0x11, 4, 16)
-	im:save'towntiles.png'
-end
-
 
 print'end of rom output'
 
