@@ -517,7 +517,7 @@ end
 do	-- here decompress all 'mapTileGraphics' tiles irrespective of offset table
 	-- 0x30c8 tiles of 8x8x4bpp = 32 bytes in game.mapTileGraphics
 	local bpp = 4
-	local numTiles = (0x25f400 - 0x1fdb00) / (8 * bpp)	-- = 0x30c8
+	local numTiles = ffi.sizeof(game.mapTileGraphics) / bit.lshift(bpp, 3)	-- = 0x30c8
 	-- 128 is just over sqrt numTiles
 	local masterTilesWide = 16 -- 128
 	local masterTilesHigh = math.ceil(numTiles / masterTilesWide)
@@ -534,7 +534,7 @@ do	-- here decompress all 'mapTileGraphics' tiles irrespective of offset table
 	-- alright where is the palette info stored?
 	-- and I'm betting somewhere is the 16x16 info that points into this 8x8 tile data...
 	-- and I'm half-suspicious it is compressed ...
-	im.palette = makePalette(game.mapPalettes + 0, 4, 16)
+	im.palette = makePalette(game.mapPalettes + 0xc, 4, 16 * 8)
 	im:save((mappath/'tiles.png').path)
 end
 
@@ -645,15 +645,16 @@ for mapIndex=0,countof(game.maps)-1 do
 				for i=0,15 do
 					for yofs=0,1 do
 						for xofs=0,1 do
-							local graphicSetTile = ffi.cast('uint16_t*', tileset1ptr)[
-								--[=[
-								xofs + 2 * (yofs + 2 * (i + 16 * j))
-								--]=]
-								-- [=[
-								(xofs + 2 * i)
-								+ (yofs + 2 * j) * 32
-								--]=]
-							]
+							local graphicSetTile = bit.bor(
+								tileset1ptr[
+									i + 16 * (j + 16 * (xofs + 2 * yofs))
+								],
+								bit.lshift(
+									tileset1ptr[
+										0x400
+										+ i + 16 * (j + 16 * (xofs + 2 * yofs))
+									], 8)
+							)
 							-- when i==8, j==0 we get ofs=16
 							-- that should be the offset for i=0, j=0, yofs=1
 							-- yofs gets assigned to bit 4 ...
@@ -661,18 +662,37 @@ for mapIndex=0,countof(game.maps)-1 do
 							local zLevel = bit.band(0x2000, graphicSetTile) ~= 0
 							local hFlip8 = bit.band(0x4000, graphicSetTile) ~= 0
 							local vFlip8 = bit.band(0x8000, graphicSetTile) ~= 0
-							graphicSetTile = bit.band(graphicSetTile, 0x3ff)
+							local gfxno = bit.band(3, bit.rshift(graphicSetTile, 8))
+							graphicSetTile = bit.band(graphicSetTile, 0xff)
 
-							local bpp = 4
-							readTile(img,
-								bit.lshift(bit.bor(bit.lshift(i, 1), xofs), 3),
-								bit.lshift(bit.bor(bit.lshift(j, 1), yofs), 3),
-								gfx1ptr + bit.lshift(graphicSetTile, 1 + bpp),	-- 8x4 = size of 8x8 4bpp tile
-								bpp,
-								hFlip8,
-								vFlip8,
-								bit.lshift(highPal, 4)
-							)
+							local gfxaddr = ({
+								gfx1.addr,
+								gfx2.addr,
+								gfx3.addr,
+								gfx4.addr
+							})[gfxno+1]
+							if gfxaddr then
+								if gfxno == 2 then
+									-- skip 8x15 tiles ... idk why
+									gfxaddr = gfxaddr + 8 * 15 * 32
+								end
+								-- upper half of gfx3 is not used (why?)
+								-- last 8 of gfx2 isn't used also?
+								if gfxno == 2 and graphicSetTile >= 0x80 then
+								else
+									local bpp = 4
+									local tileptr = rom + gfxaddr + bit.lshift(graphicSetTile, bpp + 1)
+									readTile(img,
+										bit.lshift(bit.bor(bit.lshift(i, 1), xofs), 3),
+										bit.lshift(bit.bor(bit.lshift(j, 1), yofs), 3),
+										tileptr,
+										bpp,
+										hFlip8,
+										vFlip8,
+										bit.lshift(highPal, 4)
+									)
+								end
+							end
 						end
 					end
 				end
@@ -686,20 +706,46 @@ for mapIndex=0,countof(game.maps)-1 do
 			-- TODO just save one of these per mapTileGraphics[]
 			-- how far into the 8x8 tile does each gfx go?
 			-- 1 byte = 8 bits = 16x16?
-			-- 10 bits = 0x3ff = 32x32?
-			local tile8x8keySize = {32,32}
+			-- 10 bits = 0x3ff = 32x32 = 16x64
+			-- the first 256 tiles look similar to other tools
+			-- but the next don't ... hmm ... why
+			local tile8x8keySize = {16,40}
 			local img = Image(tile8x8keySize[1] * tileWidth, tile8x8keySize[2] * tileHeight, 1, 'uint8_t'):clear()
-			local gfx1ptr = ffi.cast('uint8_t*', rom + gfx1.addr)
 			for j=0,tile8x8keySize[2]-1 do
 				for i=0,tile8x8keySize[1]-1 do
 					local tile8x8 = i + tile8x8keySize[1] * j
-					readTile(
-						img,
-						bit.lshift(i, 3),
-						bit.lshift(j, 3),
-						gfx1ptr + bit.lshift(tile8x8, 5),
-						4
-					)
+					--local gfx = mapTileGraphics[tonumber(map.gfx1) + bit.rshift(tile8x8, 8)]
+					do--if gfx and gfx.addr then
+						--local gfxptr = rom + gfx.addr
+						--tile8x8 = bit.band(0xff, tile8x8)
+						
+						-- past the 256 mark and my tiles stop matching ... why ...
+						local gfxno = bit.rshift(tile8x8, 8)
+						tile8x8 = bit.band(0xff, tile8x8)
+						-- looks like the next 2 bits are the gfx1-4 set?
+						local gfxaddr = ({
+							gfx1.addr,
+							gfx2.addr,
+							gfx3.addr,
+							gfx4.addr
+						})[gfxno+1]
+						-- then what format are those in?
+						local bpp = ({4,4,4,3})[gfxno+1]
+						if gfxaddr then
+							if gfxno == 2 then
+								-- skip 8x15 tiles ... idk why
+								gfxaddr = gfxaddr + 8 * 15 * 32
+							end
+							local tileptr = rom + gfxaddr + bit.lshift(tile8x8, bpp + 1)
+							readTile(
+								img,
+								bit.lshift(i, 3),
+								bit.lshift(j, 3),
+								tileptr,
+								bpp
+							)
+						end
+					end
 				end
 			end
 			img.palette = palette
@@ -1068,6 +1114,7 @@ for i=0,game.numBRRSamples-1 do
 	--]]
 end
 
+--[[
 -- 141002 bytes ... needs 131072 bytes ... has 9930 extra bytes ...
 path'WoBMapDataCompressed.bin':write( ffi.string(game.WoBMapData+0, ffi.sizeof(game.WoBMapData)))
 path'WoBMapDataCompressed.hex':write( ffi.string(game.WoBMapData+0, ffi.sizeof(game.WoBMapData)):hexdump())
@@ -1075,6 +1122,7 @@ local WoBMapDataDecompressed = decompress(game.WoBMapData+0, ffi.sizeof(game.WoB
 print('WoBMapDataDecompressed', #WoBMapDataDecompressed)
 path'WoBMapDataDecompressed.bin':write(WoBMapDataDecompressed)
 path'WoBMapDataDecompressed.hex':write(WoBMapDataDecompressed:hexdump())
+--]]
 
 print'end of rom output'
 
