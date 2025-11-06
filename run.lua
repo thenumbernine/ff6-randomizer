@@ -6,6 +6,7 @@ local makePaletteSets = require 'graphics'.makePaletteSets
 local tileWidth = require 'graphics'.tileWidth
 local tileHeight = require 'graphics'.tileHeight
 local readTile = require 'graphics'.readTile
+local drawTile = require 'graphics'.drawTile
 local decompress = require 'decompress'.decompress
 local decompress0x800 = require 'decompress'.decompress0x800
 require 'ext'
@@ -470,7 +471,7 @@ for i=0,countof(game.mapLayoutOffsets)-1 do
 		offset:hex(),
 		addr:hex(),
 		data and (#data):hex())
-	if data then print(data:hexdump()) end
+	--if data then print(data:hexdump()) end
 end
 
 local mapTilesets = table()	-- 0-based
@@ -490,7 +491,7 @@ for i=0,countof(game.mapTilesetOffsets)-1 do
 	end
 	print('mapTilesetOffsets[0x'..i:hex()..'] = 0x'
 		..('%06x'):format(addr))
-	if data then print(data:hexdump()) end
+	--if data then print(data:hexdump()) end
 end
 print()
 
@@ -545,6 +546,7 @@ makePaletteSets(
 	function(index) return bit.band(0xf, index) == 0 end
 )
 
+
 for mapIndex=0,countof(game.maps)-1 do
 	local map = game.maps + mapIndex
 	print('maps[0x'..mapIndex:hex()..'] = '..game.maps[mapIndex])
@@ -554,204 +556,183 @@ for mapIndex=0,countof(game.maps)-1 do
 	local gfx2 = mapTileGraphics[tonumber(map.gfx2)]
 	local gfx3 = mapTileGraphics[tonumber(map.gfx3)]
 	local gfx4 = mapTileGraphics[tonumber(map.gfx4)]
-	-- are these the 16x16 tile info?
-	local tileset1 = mapTilesets[tonumber(map.tileset1)]
-	local tileset2 = mapTilesets[tonumber(map.tileset2)]
-	local layout1 = mapLayouts[tonumber(map.layout1)]
-	local layout2 = mapLayouts[tonumber(map.layout2)]
-	local layout3 = mapLayouts[tonumber(map.layout3)]
-	local palette = game.mapPalettes[map.palette]
 
-	local width1 = bit.lshift(1, 4 + map.layer1WidthLog2Minus4)
-	local height1 = bit.lshift(1, 4 + map.layer1HeightLog2Minus4)
-	local width2 = bit.lshift(1, 4 + map.layer2WidthLog2Minus4)
-	local height2 = bit.lshift(1, 4 + map.layer2HeightLog2Minus4)
-	local width3 = bit.lshift(1, 4 + map.layer3WidthLog2Minus4)
-	local height3 = bit.lshift(1, 4 + map.layer3HeightLog2Minus4)
+	local tilesets = table()
+	for i=1,2 do
+		tilesets[i] = mapTilesets[tonumber(map['tileset'..i])]
+		print('map tileset'..i..' data size', tilesets[i] and #tilesets[i].data)
+	end
 
-	print('map layer 1 size', width1, height1, 'volume', width1 * height1)
-	print('map layer 2 size', width2, height2, 'volume', width2 * height2)
-	print('map layer 3 size', width3, height3, 'volume', width3 * height3)
-	print('map layout1 data size', layout1 and #layout1.data)
-	print('map layout2 data size', layout2 and #layout2.data)
-	print('map layout3 data size', layout3 and #layout3.data)
-	print('map tileset1 data size', tileset1 and #tileset1.data)
-	print('map tileset2 data size', tileset2 and #tileset2.data)
+	local layerSizes = table()
+	local layouts = table()
+	for i=1,3 do
+		local width = bit.lshift(1, 4 + map['layer'..i..'WidthLog2Minus4'])
+		local height = bit.lshift(1, 4 + map['layer'..i..'HeightLog2Minus4'])
+		layerSizes[i] = {width, height}
+		layouts[i] = mapLayouts[tonumber(map['layout'..i])]
+		print('map layer '..i..' size', layerSizes[i][1], layerSizes[i][2], 'volume', layerSizes[i][1] * layerSizes[i][2])
+		print('map layout'..i..' data size', layouts[i] and #layouts[i].data)
+	end
 
-	if not (tileset1 and tileset1.data) then
-		print("map is missing tileset1 data")
-	elseif #tileset1.data ~= 2048 then
-		print("tileset1 data isn't equal to 8x256")
-	elseif not (gfx1 and gfx1.addr) then
-		print("map is missing gfx1 data")
-	elseif width1 * height1 ~= #layout1.data then
-		print("map layout1 data size doesn't match layer1 size")
+	local palette
+	if map.palette >= 0 and map.palette < countof(game.mapPalettes) then
+		palette = makePalette(game.mapPalettes + map.palette, 4, 16*8)
 	else
-		do -- if mapIndex == 19 then
-			local img = Image(
-				-- map size is in 16x16 right?
-				width1 * 16,
-				height1 * 16,
-				1,
-				'uint8_t'
-			):clear()
-			
-			local layout1ptr = ffi.cast('uint8_t*', layout1.data)
-			local tileset1ptr = ffi.cast('uint8_t*', tileset1.data)
-			local gfx1ptr = ffi.cast('uint8_t*', rom + gfx1.addr)
-			for tileY=0,height1-1 do
-				for tileX=0,width1-1 do
-					local tile16x16Index = layout1ptr[0]
-					local tile16x = bit.band(tile16x16Index, 0xf)
-					local tile16y = bit.rshift(tile16x16Index, 4)
-					-- this index into the tileset?
-					-- and tileset is the 16x16 which points into the gfx?
-					-- tilesets are all 2048 in size, which is 8 x 256
-					-- which is 2 bytes x (2 x 2) for 8x8 per 16x16
-					-- and the 2 bytes works like in battle animation?
-					-- lower 14 bits is 8x8 tile index, upper 2 is hflip and vflip?
-					for yofs=0,1 do
-						for xofs=0,1 do
-							local tile8x8Index = tileset1ptr[
-								(tile16x * 2) + xofs
-								+ (tile16y * 2 + yofs) * 32
-							]
-							--tile8x8Index = bit.band(0xff, tile8x8Index)
-							readTile(img,
-								(tileX * 2 + xofs) * 8,
-								(tileY * 2 + yofs) * 8,
-								gfx1ptr 
-								+ tile8x8Index * 32,	-- 8x4 = size of 8x8 4bpp tile
-								4
-							)
-						end
-					end
-					layout1ptr = layout1ptr + 1
-				end
-			end
-			local palette
-			if map.palette >= 0 and map.palette < countof(game.mapPalettes) then
-				palette = makePalette(game.mapPalettes + map.palette, 4, 16*8)
-			else
-				print(' map has invalid palette!')
-			end
-			img.palette = palette
-			img:save((mappath/('map'..mapIndex..'.png')).path)
+		print(' map has invalid palette!')
+	end
 
-			-- save all map tileset 16x16 graphics separately
-			local img = Image(16 * 16, 16 * 16, 1, 'uint8_t')
-			-- what is its format?
-			for j=0,15 do
-				for i=0,15 do
-					for yofs=0,1 do
-						for xofs=0,1 do
-							local graphicSetTile = bit.bor(
-								tileset1ptr[
-									i + 16 * (j + 16 * (xofs + 2 * yofs))
-								],
-								bit.lshift(
-									tileset1ptr[
-										0x400
-										+ i + 16 * (j + 16 * (xofs + 2 * yofs))
-									], 8)
-							)
-							-- when i==8, j==0 we get ofs=16
-							-- that should be the offset for i=0, j=0, yofs=1
-							-- yofs gets assigned to bit 4 ...
-							local highPal = bit.band(7, bit.rshift(graphicSetTile, 10))
-							local zLevel = bit.band(0x2000, graphicSetTile) ~= 0
-							local hFlip8 = bit.band(0x4000, graphicSetTile) ~= 0
-							local vFlip8 = bit.band(0x8000, graphicSetTile) ~= 0
-							local gfxno = bit.band(3, bit.rshift(graphicSetTile, 8))
-							graphicSetTile = bit.band(graphicSetTile, 0xff)
+	local function tile8x8toptr(tile8x8)
+	--local gfx = mapTileGraphics[tonumber(map.gfx1) + bit.rshift(tile8x8, 8)]
+	--if gfx and gfx.addr then
+		--local gfxptr = rom + gfx.addr
+		--tile8x8 = bit.band(0xff, tile8x8)
 
-							local gfxaddr = ({
-								gfx1.addr,
-								gfx2.addr,
-								gfx3.addr,
-								gfx4.addr
-							})[gfxno+1]
-							if gfxaddr then
-								if gfxno == 2 then
-									-- skip 8x15 tiles ... idk why
-									gfxaddr = gfxaddr + 8 * 15 * 32
-								end
-								-- upper half of gfx3 is not used (why?)
-								-- last 8 of gfx2 isn't used also?
-								if gfxno == 2 and graphicSetTile >= 0x80 then
-								else
-									local bpp = 4
-									local tileptr = rom + gfxaddr + bit.lshift(graphicSetTile, bpp + 1)
-									readTile(img,
-										bit.lshift(bit.bor(bit.lshift(i, 1), xofs), 3),
-										bit.lshift(bit.bor(bit.lshift(j, 1), yofs), 3),
-										tileptr,
-										bpp,
-										hFlip8,
-										vFlip8,
-										bit.lshift(highPal, 4)
-									)
-								end
-							end
-						end
+		-- past the 256 mark and my tiles stop matching ... why ...
+		local gfxno = bit.rshift(tile8x8, 8)
+		tile8x8 = bit.band(0xff, tile8x8)
+		-- looks like the next 2 bits are the gfx1-4 set?
+		local gfxaddr = ({
+			gfx1.addr,
+			gfx2.addr,
+			gfx3.addr,
+			gfx4.addr
+		})[gfxno+1]
+		-- then what format are those in?
+		local bpp = ({4,4,4,3})[gfxno+1]
+		if not gfxaddr then return end
+		if gfxno == 2 then
+			-- gfx3 doesn't use indexes 0x80 and over (reserved for something else?)
+			if tile8x8 >= 0x80 then return end
+			-- skip 8x15 tiles ... idk why
+			gfxaddr = gfxaddr + 8 * 15 * 32
+		end
+		return rom + gfxaddr + bit.lshift(tile8x8, bpp + 1), bpp
+	end
+
+	local function drawtile16x16(img, x, y, tile16x16, layer, zLevel)
+		if not tilesets[layer] then return end
+		local data = tilesets[layer].data
+		assert.len(data, 2048)
+		if not data then return end
+		local tilesetptr = ffi.cast('uint8_t*', data)
+		for yofs=0,1 do
+			for xofs=0,1 do
+				local i = bit.lshift(bit.bor(xofs, bit.lshift(yofs, 1)), 8)
+				local tilesetTile = bit.bor(
+					tilesetptr[tile16x16 + i],
+					bit.lshift(tilesetptr[tile16x16 + bit.bor(0x400, i)], 8)
+				)
+				-- when i==8, j==0 we get ofs=16
+				-- that should be the offset for i=0, j=0, yofs=1
+				-- yofs gets assigned to bit 4 ...
+				local tileZLevel = bit.band(0x2000, tilesetTile) ~= 0
+				if tileZLevel == zLevel then
+					local tile8x8 = bit.band(tilesetTile, 0x3ff)
+					local tileptr, bpp = tile8x8toptr(tile8x8)
+					if tileptr then
+						local highPal = bit.band(7, bit.rshift(tilesetTile, 10))
+						local hFlip8 = bit.band(0x4000, tilesetTile) ~= 0
+						local vFlip8 = bit.band(0x8000, tilesetTile) ~= 0
+						drawTile(img,
+							x + xofs * 8,
+							y + yofs * 8,
+							tileptr,
+							bpp,
+							hFlip8,
+							vFlip8,
+							bit.lshift(highPal, 4),
+							palette
+						)
 					end
 				end
 			end
-			img.palette = palette
-			img:save((mappath/('map'..mapIndex..'_tile16x16.png')).path)
-			
-
-			-- save all map tile graphics separately
-			-- it'll be the gfx1 and the map palette
-			-- TODO just save one of these per mapTileGraphics[]
-			-- how far into the 8x8 tile does each gfx go?
-			-- 1 byte = 8 bits = 16x16?
-			-- 10 bits = 0x3ff = 32x32 = 16x64
-			-- the first 256 tiles look similar to other tools
-			-- but the next don't ... hmm ... why
-			local tile8x8keySize = {16,40}
-			local img = Image(tile8x8keySize[1] * tileWidth, tile8x8keySize[2] * tileHeight, 1, 'uint8_t'):clear()
-			for j=0,tile8x8keySize[2]-1 do
-				for i=0,tile8x8keySize[1]-1 do
-					local tile8x8 = i + tile8x8keySize[1] * j
-					--local gfx = mapTileGraphics[tonumber(map.gfx1) + bit.rshift(tile8x8, 8)]
-					do--if gfx and gfx.addr then
-						--local gfxptr = rom + gfx.addr
-						--tile8x8 = bit.band(0xff, tile8x8)
-						
-						-- past the 256 mark and my tiles stop matching ... why ...
-						local gfxno = bit.rshift(tile8x8, 8)
-						tile8x8 = bit.band(0xff, tile8x8)
-						-- looks like the next 2 bits are the gfx1-4 set?
-						local gfxaddr = ({
-							gfx1.addr,
-							gfx2.addr,
-							gfx3.addr,
-							gfx4.addr
-						})[gfxno+1]
-						-- then what format are those in?
-						local bpp = ({4,4,4,3})[gfxno+1]
-						if gfxaddr then
-							if gfxno == 2 then
-								-- skip 8x15 tiles ... idk why
-								gfxaddr = gfxaddr + 8 * 15 * 32
-							end
-							local tileptr = rom + gfxaddr + bit.lshift(tile8x8, bpp + 1)
-							readTile(
-								img,
-								bit.lshift(i, 3),
-								bit.lshift(j, 3),
-								tileptr,
-								bpp
-							)
-						end
-					end
-				end
-			end
-			img.palette = palette
-			img:save((mappath/('map'..mapIndex..'_tile8x8.png')).path)
 		end
 	end
+
+	local img = Image(
+		-- map size is in 16x16 tiles, right?
+		-- and should I size it by the first layer, or by the max of all layers?
+		layerSizes[1][1] * 16,
+		layerSizes[1][2] * 16,
+		1,
+		'uint8_t'
+	):clear()
+
+	--for layer=1,3 do
+	for z=0,1 do
+		for layer=2,1,-1 do
+			if not layouts[layer] then
+			elseif layerSizes[layer][1] * layerSizes[layer][2] ~= #layouts[layer].data then
+				print("map layout"..layer.." data size doesn't match layer size")
+			else
+				local layoutptr = ffi.cast('uint8_t*', layouts[layer].data)
+				for tileY=0,layerSizes[1][2]-1 do
+					for tileX=0,layerSizes[1][1]-1 do
+						drawtile16x16(img,
+							tileX * 16,
+							tileY * 16,
+							layoutptr[0],
+							layer,
+							z == 1)
+						layoutptr = layoutptr + 1
+					end
+				end
+			end
+		end
+	end
+
+	img.palette = palette
+	img:save((mappath/('map'..mapIndex..'.png')).path)
+
+	-- save all map tileset 16x16 graphics separately
+	local img = Image(16 * 16, 16 * 16, 1, 'uint8_t')
+	for layer=1,2 do
+		img:clear()
+		-- what is its format?
+		for j=0,15 do
+			for i=0,15 do
+				for z=0,1 do
+					drawtile16x16(
+						img,
+						bit.lshift(i, 4),
+						bit.lshift(j, 4),
+						bit.bor(i, bit.lshift(j, 4)),
+						layer,
+						z == 1
+					)
+				end
+			end
+		end
+		img.palette = palette
+		img:save((mappath/('tile16x16_'..mapIndex..'_'..layer..'.png')).path)
+	end
+
+	-- save all map tile graphics separately
+	-- it'll be the gfx1 and the map palette
+	-- TODO just save one of these per mapTileGraphics[]
+	-- how far into the 8x8 tile does each gfx go?
+	-- 1 byte = 8 bits = 16x16?
+	-- 10 bits = 0x3ff = 32x32 = 16x64
+	-- the first 256 tiles look similar to other tools
+	-- but the next don't ... hmm ... why
+	local tile8x8keySize = {16,40}
+	local img = Image(tile8x8keySize[1] * tileWidth, tile8x8keySize[2] * tileHeight, 1, 'uint8_t'):clear()
+	for j=0,tile8x8keySize[2]-1 do
+		for i=0,tile8x8keySize[1]-1 do
+			local tileptr, bpp = tile8x8toptr(i + tile8x8keySize[1] * j)
+			if tileptr then
+				readTile(
+					img,
+					bit.lshift(i, 3),
+					bit.lshift(j, 3),
+					tileptr,
+					bpp
+				)
+			end
+		end
+	end
+	img.palette = palette
+	img:save((mappath/('tile8x8_'..mapIndex..'.png')).path)
 end
 
 

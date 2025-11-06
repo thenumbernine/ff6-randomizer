@@ -4,27 +4,27 @@ local range = require 'ext.range'
 local Image = require 'image'
 
 -- reads a 8x8 tile
--- bitsPerPixel is 3 or 4
-local function readpixel(tile, x, y, bitsPerPixel)
+-- bpp is 3 or 4
+local function readpixel(tile, x, y, bpp)
 	local yhistep = 1
-	if bitsPerPixel == 4 then
+	if bpp == 4 then
 		yhistep = 2
 	end
 
 	-- bits 0,1,2
 
 	-- bit 3
-	if bitsPerPixel == 2 then
+	if bpp == 2 then
 		return bit.bor(
 			bit.band(1, bit.rshift(tile[2*y], 7-x)),
 			bit.lshift(bit.band(1, bit.rshift(tile[2*y+1], 7-x)), 1)
 		)
-	elseif bitsPerPixel == 3 then
+	elseif bpp == 3 then
 		return bit.bor(
 			bit.band(1, bit.rshift(tile[2*y], 7-x)),
 			bit.lshift(bit.band(1, bit.rshift(tile[2*y+1], 7-x)), 1),
 			bit.lshift(bit.band(1, bit.rshift(tile[y+16], 7-x)), 2))
-	elseif bitsPerPixel == 4 then
+	elseif bpp == 4 then
 		return bit.bor(
 			bit.band(1, bit.rshift(tile[2*y], 7-x)),
 			bit.lshift(bit.band(1, bit.rshift(tile[2*y+1], 7-x)), 1),
@@ -37,14 +37,33 @@ local tileWidth = 8
 local tileHeight = 8
 
 -- reads as 8bpp-indexed
-local function readTile(im, xofs, yofs, tile, bitsPerPixel, hflip, vflip, palor)
+local function readTile(im, xofs, yofs, tile, bpp, hflip, vflip)
+	for y=0,tileHeight-1 do
+		local dstp = im.buffer + (xofs + im.width*(yofs+y))
+		local cy = vflip and tileHeight-1-y or y
+		for x=0,tileWidth-1 do
+			local cx = hflip and tileWidth-1-x or x
+			dstp[0] = readpixel(tile, cx, cy, bpp)
+			dstp = dstp + 1
+		end
+	end
+end
+
+-- same as readTile but skips transparent pixels
+-- palette is 1-based
+local function drawTile(im, xofs, yofs, tile, bpp, hflip, vflip, palor, palette)
+	assert(palette)
 	palor = palor or 0
 	for y=0,tileHeight-1 do
 		local dstp = im.buffer + (xofs + im.width*(yofs+y))
 		local cy = vflip and tileHeight-1-y or y
 		for x=0,tileWidth-1 do
 			local cx = hflip and tileWidth-1-x or x
-			dstp[0] = bit.bor(palor, readpixel(tile, cx, cy, bitsPerPixel))
+			local colorIndex = bit.bor(palor, readpixel(tile, cx, cy, bpp))
+			local color = palette[colorIndex+1]
+			if color and (not color[4] or color[4] > 0) then
+				dstp[0] = colorIndex
+			end
 			dstp = dstp + 1
 		end
 	end
@@ -70,13 +89,13 @@ end
 local function makeTiledImageWithMask(
 	tilesWide,
 	tilesHigh,
-	bitsPerPixel,
+	bpp,
 	tileMaskData,
 	tileMaskIndex,
 	tileptr,
 	pal
 )
-	assert(bitsPerPixel == 3 or bitsPerPixel == 4, "got invalid bpp: "..tostring(bitsPerPixel))
+	assert(bpp == 3 or bpp == 4, "got invalid bpp: "..tostring(bpp))
 	tileMaskData = ffi.cast('uint8_t*', assert(tileMaskData))
 	tileptr = ffi.cast('uint8_t*', assert(tileptr))
 	-- pal better be palette_t of some kind
@@ -106,7 +125,7 @@ local function makeTiledImageWithMask(
 
 	-- monsters have a set of tiles, in-order (cuz there aren't many duplicates),
 	-- flagged on/off (cuz there are often 8x8 transparent holes in the sprites)
-	local tilesize = bit.rshift(tileWidth * tileHeight * bitsPerPixel, 3)
+	local tilesize = bit.rshift(tileWidth * tileHeight * bpp, 3)
 	for y=0,tilesHigh-1 do
 		for x=0,tilesWide-1 do
 			local tileMaskBit = bit.lshift(tileMaskIndex * tileMaskStep, 3) + x + tilesWide * y
@@ -114,13 +133,13 @@ local function makeTiledImageWithMask(
 				tileMaskData[bit.rshift(tileMaskBit, 3)],
 				7 - bit.band(tileMaskBit, 7)
 			) ~= 0 then
-				readTile(im, x*tileWidth, y*tileHeight, tileptr, bitsPerPixel)
+				readTile(im, x*tileWidth, y*tileHeight, tileptr, bpp)
 				tileptr = tileptr + tilesize
 			end
 		end
 	end
 
-	im.palette = makePalette(pal, bitsPerPixel, bit.lshift(1, bitsPerPixel))
+	im.palette = makePalette(pal, bpp, bit.lshift(1, bpp))
 
 	return im
 end
@@ -148,6 +167,7 @@ end
 
 return {
 	readTile = readTile,
+	drawTile = drawTile,
 	tileWidth = tileWidth,
 	tileHeight = tileHeight,
 	makePalette = makePalette,
