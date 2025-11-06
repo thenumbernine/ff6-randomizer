@@ -10,6 +10,7 @@ return function(args)
 		tostringOmitEmpty = true,
 		name = args.name,
 		anonymous = args.anonymous,
+		packed = true,
 		union = true,
 		fields = {
 			{name='s', type='uint8_t[1]', no_iter=true},

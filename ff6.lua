@@ -1028,7 +1028,7 @@ local monsterSprite_t = struct{
 	tostringOmitFalse = true,
 	tostringOmitNil = true,
 	tostringOmitEmpty = true,
-	packedStruct = true,
+	packed = true,
 	fields = {
 		{name='offset', type='uint16_t:15'},
 		{name='_3bpp', type='uint16_t:1'},
@@ -1636,7 +1636,7 @@ local map_t = struct{
 	tostringOmitFalse = true,
 	tostringOmitNil = true,
 	tostringOmitEmpty = true,
-	packedStruct = true,
+	packed = true,
 	fields = {
 		{name='name', type='mapNameRef_t'},						-- 0
 		{name='enableXZone', type='uint8_t:1'},					-- 1.0
@@ -1738,7 +1738,7 @@ local map_t = struct{
 }
 assert.eq(ffi.sizeof'map_t', 0x21)
 
-local mapTileFormationOfsAddr = 0x1fba00
+local mapTilesetOfsAddr = 0x1fba00
 
 local numEntranceTriggerOfs = 513
 local entranceTrigger_t = ff6struct{
@@ -1762,7 +1762,7 @@ local entranceAreaTrigger_t = struct{
 	tostringOmitFalse = true,
 	tostringOmitNil = true,
 	tostringOmitEmpty = true,
-	packedStruct = true,
+	packed = true,
 	fields = {
 		{name='pos', type='xy8b_t'},				-- 0-1
 		{name='length', type='uint8_t:7'},			-- 2.0-2.6
@@ -2029,11 +2029,11 @@ local game_t = ff6struct{
 
 		{padding_10fd00 = 'uint8_t['..(0x110141 - 0x10fd00)..']'},				-- 0x10fd00 - 0x110141
 
-		{battleAnimFrame16x16Tiles = 'battleAnim16x16Tile_t['..(0x74cb)..']'},	-- 0x110141 - 0x11ead7 ... 2 bytes each ... pointers from battleAnimFrame16x16TileOffsets offset by 0x110000 but point into here
+		{battleAnimFrame16x16Tiles = 'battleAnim16x16Tile_t[0x74cb]'},			-- 0x110141 - 0x11ead7 ... 2 bytes each ... pointers from battleAnimFrame16x16TileOffsets offset by 0x110000 but point into here
 
 		{padding_11ead7 = 'uint8_t'},											-- 0x11ead7 - 0x11ead8
 
-		{battleAnimScriptOffsets = 'uint16_t['..(660)..']'},					-- 0x11ead8 - 0x11f000 ... uint16 offsets +0x100000 ... maybe there are only 650 of these to match with `numBattleAnimEffects`?
+		{battleAnimScriptOffsets = 'uint16_t[660]'},							-- 0x11ead8 - 0x11f000 ... uint16 offsets +0x100000 ... maybe there are only 650 of these to match with `numBattleAnimEffects`?
 		{battleMessageBase = 'uint8_t['..(0x11f7a0 - 0x11f000)..']'},			-- 0x11f000 - 0x11f7a0
 		{battleMessageOffsets = 'uint16_t['..numBattleMessages..']'},			-- 0x11f7a0 - 0x11f9a0
 
@@ -2067,7 +2067,7 @@ local game_t = ff6struct{
 		{padding_14c998 = 'uint8_t['..(0x14d000 - 0x14c998)..']'},				-- 0x14c998 - 0x14d000
 
 		{battleAnimEffects = 'battleAnimEffect_t['..numBattleAnimEffects..']'},	-- 0x14d000 - 0x14df3c
-		{battleAnimFrame16x16TileOffsets = 'uint16_t['..(4194)..']'},			-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid.  each is a uint16_t, add to 0x110000 to get the start of the variable-length battleAnim16x16Tile_t list into battleAnimFrame16x16Tiles
+		{battleAnimFrame16x16TileOffsets = 'uint16_t[4194]'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid.  each is a uint16_t, add to 0x110000 to get the start of the variable-length battleAnim16x16Tile_t list into battleAnimFrame16x16Tiles
 
 		-- 0x150000 - ? = character images, 0x16a0 bytes each
 		{fieldSpriteGraphics = 'uint8_t['..(0x185000 - 0x150000)..']'},			-- 0x150000 - 0x185000
@@ -2084,23 +2084,19 @@ local game_t = ff6struct{
 
 		{padding_18cfec = 'uint8_t['..(0x19a800 - 0x18cfec)..']'},				-- 0x18cfec - 0x19a800
 
-		-- TODO:
 		{mapTileProperties = 'uint8_t['..(0x19cd10 - 0x19a800)..']'},			-- 0x19a800 - 0x19cd10 = map tile properties
-		{mapTilePropertiesOffsets = 'uint16_t['..(0x40)..']'},					-- 0x19cd10 - 0x19cd90 = offsets to map tile properties (+0x19a800)
-		{mapTilesetOffsets = 'uint24_t['..(0x160)..']'},						-- 0x19cd90 - 0x19d1b0 = offsets to map data (352 items), (+0x19d1b0)
-		{mapTilesetCompressed = 'uint8_t['..(0x1e0000 - 0x19d1b0)..']'},		-- 0x19d1b0 - 0x1e0000 = map data (compressed)
-		{mapTileFormationsCompressed = 'uint8_t['..(0x1fb400 - 0x1e0000)..']'},	-- 0x1e0000 - 0x1fb400 = map tile formation (compressed)
-
+		{mapTilePropertiesOffsets = 'uint16_t[0x40]'},							-- 0x19cd10 - 0x19cd90 = offsets to map tile properties (+0x19a800)
+		{mapLayoutOffsets = 'uint24_t[0x160]'},									-- 0x19cd90 - 0x19d1b0 = offsets to map data (352 items), (+0x19d1b0)
+		{mapLayoutsCompressed = 'uint8_t['..(0x1e0000 - 0x19d1b0)..']'},		-- 0x19d1b0 - 0x1e0000 = map data (compressed)
+		{mapTilesetsCompressed = 'uint8_t['..(0x1fb400 - 0x1e0000)..']'},		-- 0x1e0000 - 0x1fb400 = map tile formation (compressed)
 		{formationMPs = 'uint8_t['..numFormationMPs..']'},						-- 0x1fb400 - 0x1fb600
 		{itemColosseumInfos = 'itemColosseumInfo_t['..numItems..']'},			-- 0x1fb600 - 0x1fba00
-
-		-- TODO:
-		{mapTileFormationOfs = 'uint24_t['..(0x4c)..']'},		-- 0x1fba00 - 0x1fbaff -- 24bit, offset by +0x1e0000, points into mapTileFormationsCompressed
+		{mapTilesetOffsets = 'uint24_t[0x4c]'},									-- 0x1fba00 - 0x1fbaff -- 24bit, offset by +0x1e0000, points into mapTilesetsCompressed
 		{padding_1fbaff = 'uint8_t[28]'},										-- 0x1fbaff - 0x1fbb00
 		{entranceTriggerOfs = 'uint16_t['..numEntranceTriggerOfs..']'},			-- 0x1fbb00 - 0x1fbf02 -- offset by +0x1fbb00
-		{entranceTriggers = 'entranceTrigger_t['..(0x469)..']'},				-- 0x1fbf02 - 0x1fd978 = entranceTrigger_t[]
+		{entranceTriggers = 'entranceTrigger_t[0x469]'},						-- 0x1fbf02 - 0x1fd978 = entranceTrigger_t[]
 		{padding_1fd978 = 'uint8_t[136]'},										-- 0x1fd978 - 0x1fda00 = 0xFF filler
-		{mapTileGraphicsOffsets = 'uint24_t['..(0x52)..']'},					-- 0x1fda00 - 0x1fdaf6 = town tile graphics pointers (+0x1fdb00), points into mapTileGraphics
+		{mapTileGraphicsOffsets = 'uint24_t[0x52]'},							-- 0x1fda00 - 0x1fdaf6 = town tile graphics pointers (+0x1fdb00), points into mapTileGraphics
 		{padding_1fdaf6 = 'uint8_t[10]'},										-- 0x1fdaf6 - 0x1fdb00
 		{mapTileGraphics = 'uint8_t['..(0x25f400 - 0x1fdb00)..']'},				-- 0x1fdb00 - 0x25f400 = town tile graphics 4bpp
 			-- (within it) 0x21c4c0 - 0x21e4c0 = battle background top graphics: building
@@ -2162,14 +2158,11 @@ local game_t = ff6struct{
 		{padding_2d82f4 = 'uint8_t['..(0x2d8f00 - 0x2d82f4)..']'},			-- 0x2d82f4 - 0x2d8f00
 
 		--  map propeties (415 elements, 33 bytes each)
-		{maps = 'map_t['..(0x19f)..']'},									-- 0x2d8f00 - 0x2dc47f
+		{maps = 'map_t[0x19f]'},											-- 0x2d8f00 - 0x2dc47f
 		{padding_2dc47f = 'uint8_t[1]'},									-- 0x2dc47f - 0x2df480
-		{mapPalettes = 'palette16_t[48]'},	-- 0x2dc480 - 0x2dca80 = map palettes (48 elements, 16 colors each)
-
-		{padding_2dca80 = 'uint8_t['..(0x2df480 - 0x2dca80 )..']'},			-- 0x2dca80 - 0x2df480
-
+		{mapPalettes = 'palette16_8_t[48]'},								-- 0x2dc480 - 0x2df480 = map palettes (48 elements, 16x8 colors each)
 		{entranceAreaTriggerOfs = 'uint16_t['..numEntranceTriggerOfs..']'},	-- 0x2df480 - 0x2df882
-		{entranceAreaTriggers = 'entranceAreaTrigger_t['..(0x98)..']'},		-- 0x2df882 - 0x2dfcaa
+		{entranceAreaTriggers = 'entranceAreaTrigger_t[0x98]'},				-- 0x2df882 - 0x2dfcaa
 		{padding_2dfcaa = 'uint8_t['..(0x2dfe00 - 0x2dfcaa)..']'},			-- 0x2dfcaa - 0x2dfe00 = 0xFF filler
 		{longEsperBonusDescBase = 'uint8_t['..(0x2dffd0 - 0x2dfe00)..']'},	-- 0x2dfe00 - 0x2dffd0
 		{longEsperBonusDescOffsets = 'uint16_t['..numEsperBonuses..']'},	-- 0x2dffd0 - 0x2dfff2
@@ -2178,11 +2171,11 @@ local game_t = ff6struct{
 
 		-- 0x2e4842 - 0x2e4851     Sprites used for various positions of map character
 
-		{WoBTileProps = 'WorldTileProps_t['..(0x100)..']'},	-- 0x2e9b14 - 0x2e9d14
-		{WoRTileProps = 'WorldTileProps_t['..(0x100)..']'},	-- 0x2e9d14 - 0x2e9f14
+		{WoBTileProps = 'WorldTileProps_t[0x100]'},							-- 0x2e9b14 - 0x2e9d14
+		{WoRTileProps = 'WorldTileProps_t[0x100]'},							-- 0x2e9d14 - 0x2e9f14
 
-		{WoBMapData = 'uint8_t['..(0x2f114f - 0x2ed434)..']'},	-- 0x2ed434 - 0x2f114f     World of Balance Map Data (compressed)
-		{WoBBackground = 'uint8_t['..(0x2f324f - 0x2f114f)..']'},	-- 0x2f114f - 0x2f324f     World of Balance Tile Graphics (compressed)
+		{WoBMapData = 'uint8_t['..(0x2f114f - 0x2ed434)..']'},				-- 0x2ed434 - 0x2f114f     World of Balance Map Data (compressed)
+		{WoBBackground = 'uint8_t['..(0x2f324f - 0x2f114f)..']'},			-- 0x2f114f - 0x2f324f     World of Balance Tile Graphics (compressed)
 --[[ everything8215's FF6 mem map info:
       "file_path": "src/gfx/world_1_bg.pal",
       "asset_range": "0xD2EC00-0xD2ECFF"
@@ -2282,7 +2275,7 @@ assert.eq(ffi.offsetof('game_t', 'menuNames'), menuNamesAddr)
 assert.eq(ffi.offsetof('game_t', 'spellDescOffsets'), spellDescOffsetsAddr)
 assert.eq(ffi.offsetof('game_t', 'formationMPs'), 0x1fb400)
 assert.eq(ffi.offsetof('game_t', 'itemColosseumInfos'), itemColosseumInfosAddr)
-assert.eq(ffi.offsetof('game_t', 'mapTileFormationOfs'), mapTileFormationOfsAddr)
+assert.eq(ffi.offsetof('game_t', 'mapTilesetOffsets'), mapTilesetOfsAddr)
 assert.eq(ffi.offsetof('game_t', 'spellNames_0to53'), spellNamesAddr)
 assert.eq(ffi.offsetof('game_t', 'esperAttackNames'), esperAttackNamesAddr)
 assert.eq(ffi.offsetof('game_t', 'mogDanceNames'), mogDanceNamesAddr)
