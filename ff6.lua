@@ -534,7 +534,6 @@ local numBRRSamples = 63
 local numSpells = 0x100
 
 
-local spellNamesAddr = 0x26f567
 -- needs 'game' as a parameter ... but can't always get it there ... so look for a global instead
 local function getSpellName(i)
 	i = bit.band(i, 0xff)
@@ -1729,8 +1728,8 @@ local map_t = struct{
 		{name='layer3HeightLog2Minus4', type='uint8_t:2'},		-- 0x18.6-7
 		{name='palette', type='uint8_t'},						-- 0x19
 		{name='paletteAnimation', type='uint8_t'},				-- 0x1a
-		{name='animatedTiles', type='uint8_t:5'},				-- 0x1b.0-4
-		{name='animationLayer3', type='uint8_t:3'},				-- 0x1b.5-7
+		{name='animatedLayers1And2', type='uint8_t:5'},			-- 0x1b.0-4
+		{name='animatedLayer3', type='uint8_t:3'},				-- 0x1b.5-7
 		{name='music', type='uint8_t'},							-- 0x1c
 		{name='unknown_1d', type='uint8_t'},					-- 0x1d
 		-- map 21, size is {44,52}, tiles are defined up to {46,54} ... why is it 2 less?
@@ -1742,6 +1741,25 @@ local map_t = struct{
 	end,
 }
 assert.eq(ffi.sizeof'map_t', 0x21)
+
+local mapAnimProps_t = ff6struct{
+	name = 'mapAnimProps_t',
+	fields = {
+		{speed='uint16_t'},		-- 0-1
+		{frames='uint16_t[4]'},	-- 2-9
+	},
+}
+assert.eq(ffi.sizeof'mapAnimProps_t', 0xa)
+
+local mapAnimPropsLayer3_t = ff6struct{
+	name = 'mapAnimPropsLayer3_t',
+	fields = {
+		{speed='uint16_t'},		-- 0-1
+		{size='uint16_t'},		-- 2-3
+		{frames='uint16_t[8]'},	-- 4-0x13
+	},
+}
+assert.eq(ffi.sizeof'mapAnimPropsLayer3_t', 0x14)
 
 local mapTilesetOfsAddr = 0x1fba00
 
@@ -1844,11 +1862,15 @@ local game_t = ff6struct{
 		{characterMenuImageTileLayout = 'uint8_t[25]'},										-- 0x0051da - 0x0051f3
 
 		-- 0x00c27f - 0x00c28f = something to do with battle background? -rpglegion
+		-- 0x0091d5-0x0091ff = map animation properties pointer table (+0x0091ff)
+		-- 0x0091ff-0x00979f = map animation properties [20]
+		-- 0x0097ad-0x009825 = map animation properties layer 3 [6]
+		-- 0x00979f-0x0097ad = map animation properties layer 3 pointer table (+0x0097ad)
 		{padding_0051f3 = 'uint8_t['..(0x00ce3a - 0x0051f3)..']'}, 							-- 0x0051f3 - 0x00ce3a
 
 		-- offset of map character sprite parts
 		-- interleaved row-major, 2x3
-		{characterFrameTileOffsets = 'uint16_t['..(numCharacterSpriteFrames * 6)..']'},		-- 0x0051f3 - 0x00d026
+		{characterFrameTileOffsets = 'uint16_t['..(numCharacterSpriteFrames * 6)..']'},		-- 0x00ce3a - 0x00d026
 
 		{padding_00d026 = 'uint8_t['..(0x00d0f2  - 0x00d026)..']'},							-- 0x00d026 - 0x00d0f2
 
@@ -2056,7 +2078,7 @@ local game_t = ff6struct{
 		{monsterSpriteTileMask16Ofs = 'uint16_t'},								-- 0x12a822 - 0x12a824
 		{monsterSpriteTileMaskData = 'uint8_t['..(0x12b300 - 0x12a824 )..']'},	-- 0x12a824 - 0x12b300
 		{itemNames = 'str13_t['..numItems..']'},								-- 0x12b300 - 0x12c000
-		{battleAnimGraphicsSets2bpp = 'battleAnim8x8Tile_t['..(0x20 * 0xb0)..']'},	-- 0x12c000 - 0x12ec00	-- should be 2bpp battle animation 16x16-tile-info referenced by .graphicSet
+		{battleAnimGraphicsSets2bpp = 'battleAnim8x8Tile_t['..(0x20 * 0xb0)..']'},-- 0x12c000 - 0x12ec00	-- should be 2bpp battle animation 16x16-tile-info referenced by .graphicSet
 		{WoBpalettes = 'palette16_8_t'},										-- 0x12ec00 - 0x12ed00
 		{WoRpalettes = 'palette16_8_t'},										-- 0x12ed00 - 0x12ee00
 		{setzerAirshipPalette = 'palette16_t'},									-- 0x12ee00 - 0x12ee20
@@ -2106,12 +2128,19 @@ local game_t = ff6struct{
 		{mapTileGraphics = 'uint8_t['..(0x25f400 - 0x1fdb00)..']'},				-- 0x1fdb00 - 0x25f400 = town tile graphics 4bpp
 			-- (within it) 0x21c4c0 - 0x21e4c0 = battle background top graphics: building
 
-		{padding_25f400 = 'uint8_t['..(0x268000 - 0x25f400)..']'},				-- 0x25f400 - 0x268000 = ???
+		{padding_25f400 = 'uint8_t['..(0x260000 - 0x25f400)..']'},				-- 0x25f400 - 0x260000
 
+		{mapAnimGraphics = 'uint8_t['..(0x268000 - 0x260000)..']'},				-- 0x260000 - 0x268000 = 4bpp
 		{characterPalettes = 'palette16_t['..numCharacterPalettes..']'},		-- 0x268000 - 0x268400	-- also town tile palettes?
 		{mapNameOffsets = 'uint16_t['..numMapNames..']'},						-- 0x268400 - 0x268780
 
-		{padding_268780 = 'uint8_t['..(0x26f4a0 - 0x268780)..']'},				-- 0x268780 - 0x26f4a0
+		{padding_268780 = 'uint8_t['..(0x26cda0 - 0x268780)..']'},				-- 0x268780 - 0x26cda0
+
+		{mapAnimGraphicsOffsets = 'uint24_t[0xa]'},								-- 0x26cda0 - 0x26cdbe = offset, add 0x26cdc0
+		{padding_26cdbe = 'uint8_t[2]'},										-- 0x26cdbe - 0x26cdc0
+		{mapAnimGraphicsLayer3 = 'uint8_t['..(0x26f198 - 0x26cdc0)..']'},		-- 0x26cdc0 - 0x26f198 = 2bpp, compressed
+
+		{padding_26f198 = 'uint8_t['..(0x26f4a0 - 0x26f198)..']'},				-- 0x26f198 - 0x26f4a0 
 
 		{hpIncPerLevelUp = 'uint8_t['..numLevels..']'},							-- 0x26f4a0 - 0x26f502
 		{mpIncPerLevelUp = 'uint8_t['..numLevels..']'},							-- 0x26f502 - 0x26f564
@@ -2124,7 +2153,7 @@ local game_t = ff6struct{
 		{esperAttackNames = 'str10_t['..numEspers..']'},						-- 0x26fe8f - 0x26ff9d
 		{mogDanceNames = 'str12_t['..numMogDances..']'},						-- 0x26ff9d - 0x26fffd
 
-		{padding_26fffd = 'uint8_t['..(0x271650 - 0x26fffd)..']'},			-- 0x26fffd - 0x271650
+		{padding_26fffd = 'uint8_t['..(0x271650 - 0x26fffd)..']'},				-- 0x26fffd - 0x271650
 
 		-- 0x270150 - = bottom battle background palettes (16 colors each)
 
@@ -2223,80 +2252,90 @@ local game_t = ff6struct{
 --]]
 	},
 }
-assert.eq(ffi.offsetof('game_t', 'characterFrameTileOffsets'), 0x00ce3a)
-assert.eq(ffi.offsetof('game_t', 'characterSpriteOffsetLo'), 0x00d0f2)
-assert.eq(ffi.offsetof('game_t', 'characterSpriteOffsetHiAndSize'), 0x00d23c)
-assert.eq(ffi.offsetof('game_t', 'characterPaletteIndexes'), 0x02ce2b)
-assert.eq(ffi.offsetof('game_t', 'formationSizeOffsets'), 0x02d01a)
-assert.eq(ffi.offsetof('game_t', 'formationSizes'), 0x02d034)
-assert.eq(ffi.offsetof('game_t', 'positionedTextOffsets'), 0x03c00e)
-assert.eq(ffi.offsetof('game_t', 'positionedTextBase'), 0x03c2fc)
-assert.eq(ffi.offsetof('game_t', 'spells'), spellsAddr)
-assert.eq(ffi.offsetof('game_t', 'characterNames'), characterNamesAddr)
-assert.eq(ffi.offsetof('game_t', 'shops'), shopsAddr)
-assert.eq(ffi.offsetof('game_t', 'metamorphSets'), metamorphSetsAddr)
-assert.eq(ffi.offsetof('game_t', 'font'), 0x047fc0)
-assert.eq(ffi.offsetof('game_t', 'font16_widths'), 0x048fc0)
-assert.eq(ffi.offsetof('game_t', 'font16_20_to_7f'), 0x0490c0)
-assert.eq(ffi.offsetof('game_t', 'spcMainCodeLoopLen'), 0x05070e)
-assert.eq(ffi.offsetof('game_t', 'spcMainCode'), 0x050710)
-assert.eq(ffi.offsetof('game_t', 'brrSamplePtrs'), 0x053c5f)
-assert.eq(ffi.offsetof('game_t', 'loopStartOfs'), 0x053d1c)
-assert.eq(ffi.offsetof('game_t', 'pitchMults'), 0x053d9a)
-assert.eq(ffi.offsetof('game_t', 'adsrData'), 0x053e18)
-assert.eq(ffi.offsetof('game_t', 'brrSamples'), 0x054a35)
-assert.eq(ffi.offsetof('game_t', 'dialogOffsets'), 0x0ce600)
-assert.eq(ffi.offsetof('game_t', 'dialogBase'), 0x0d0000)
-assert.eq(ffi.offsetof('game_t', 'mapNameBase'), 0x0ef100)
-assert.eq(ffi.offsetof('game_t', 'rareItemDescOffsets'), rareItemDescOffsetAddr)
-assert.eq(ffi.offsetof('game_t', 'rareItemNames'), rareItemNamesAddr)
-assert.eq(ffi.offsetof('game_t', 'rareItemDescBase'), rareItemDescBaseAddr)
-assert.eq(ffi.offsetof('game_t', 'monsters'), monstersAddr)
-assert.eq(ffi.offsetof('game_t', 'monsterItems'), monsterItemsAddr)
-assert.eq(ffi.offsetof('game_t', 'esperDescBase'), esperDescBaseAddr)
-assert.eq(ffi.offsetof('game_t', 'swordTechNames'), swordTechNamesAddr)
-assert.eq(ffi.offsetof('game_t', 'monsterSpells'), monsterSpellsAddr)
-assert.eq(ffi.offsetof('game_t', 'monsterSketches'), monsterSketchesAddr)
-assert.eq(ffi.offsetof('game_t', 'monsterRages'), monsterRagesAddr)
-assert.eq(ffi.offsetof('game_t', 'monsterNames'), monsterNamesAddr)
-assert.eq(ffi.offsetof('game_t', 'monsterAttackNames'), monsterAttackNamesAddr)
-assert.eq(ffi.offsetof('game_t', 'blitzDescBase'), blitzDescBaseAddr)
-assert.eq(ffi.offsetof('game_t', 'swordTechDescBase'), swordTechDescBaseAddr)
-assert.eq(ffi.offsetof('game_t', 'esperDescOffsets'), esperDescOffsetsAddr)
-assert.eq(ffi.offsetof('game_t', 'esperBonusDescs'), esperBonusDescsAddr)
-assert.eq(ffi.offsetof('game_t', 'blitzDescOffsets'), blitzDescOffsetsAddr)
-assert.eq(ffi.offsetof('game_t', 'swordTechDescOffsets'), swordTechDescOffsetsAddr)
-assert.eq(ffi.offsetof('game_t', 'monsterSprites'), monsterSpritesAddr)
-assert.eq(ffi.offsetof('game_t', 'monsterPalettes'), monsterPalettesAddr)
-assert.eq(ffi.offsetof('game_t', 'itemNames'), itemNamesAddr)
-assert.eq(ffi.offsetof('game_t', 'WoBpalettes'), 0x12ec00)
-assert.eq(ffi.offsetof('game_t', 'WoRpalettes'), 0x12ed00)
-assert.eq(ffi.offsetof('game_t', 'setzerAirshipPalette'), 0x12ee00)
-assert.eq(ffi.offsetof('game_t', 'darylAirshipPalette'), 0x12ef00)
-assert.eq(ffi.offsetof('game_t', 'items'), itemsAddr)
-assert.eq(ffi.offsetof('game_t', 'espers'), espersAddr)
-assert.eq(ffi.offsetof('game_t', 'spellDescBase'), spellDescBaseAddr)
-assert.eq(ffi.offsetof('game_t', 'menuNames'), menuNamesAddr)
-assert.eq(ffi.offsetof('game_t', 'spellDescOffsets'), spellDescOffsetsAddr)
-assert.eq(ffi.offsetof('game_t', 'formationMPs'), 0x1fb400)
-assert.eq(ffi.offsetof('game_t', 'itemColosseumInfos'), itemColosseumInfosAddr)
-assert.eq(ffi.offsetof('game_t', 'mapTilesetOffsets'), mapTilesetOfsAddr)
-assert.eq(ffi.offsetof('game_t', 'spellNames_0to53'), spellNamesAddr)
-assert.eq(ffi.offsetof('game_t', 'esperAttackNames'), esperAttackNamesAddr)
-assert.eq(ffi.offsetof('game_t', 'mogDanceNames'), mogDanceNamesAddr)
-assert.eq(ffi.offsetof('game_t', 'topBackgroundPaletteOffset'), 0x271650)
-assert.eq(ffi.offsetof('game_t', 'monsterSpriteData'), monsterSpriteDataAddr)
-assert.eq(ffi.offsetof('game_t', 'menuImages'), 0x2d0000)
-assert.eq(ffi.offsetof('game_t', 'menuWindowPalettes'), 0x2d1c00)
-assert.eq(ffi.offsetof('game_t', 'characterMenuImages'), 0x2d1d00)
-assert.eq(ffi.offsetof('game_t', 'itemDescBase'), itemDescBaseAddr)
-assert.eq(ffi.offsetof('game_t', 'loreDescBase'), loreDescBaseAddr)
-assert.eq(ffi.offsetof('game_t', 'loreDescOffsets'), loreDescOffsetsAddr)
-assert.eq(ffi.offsetof('game_t', 'itemDescOffsets'), itemDescOffsetsAddr)
-assert.eq(ffi.offsetof('game_t', 'characters'), charactersAddr)
---assert.eq(ffi.offsetof('game_t', 'expForLevelUp'), expForLevelUpAddr)
-assert.eq(ffi.offsetof('game_t', 'longEsperBonusDescBase'), longEsperBonusDescBaseAddr)
-assert.eq(ffi.offsetof('game_t', 'longEsperBonusDescOffsets'), longEsperBonusDescOffsetsAddr)
+local function assertOffset(name, addr)
+	assert.eq(ffi.offsetof('game_t', name), addr, name)
+end
+
+assertOffset('characterFrameTileOffsets', 0x00ce3a)
+assertOffset('characterSpriteOffsetLo', 0x00d0f2)
+assertOffset('characterSpriteOffsetHiAndSize', 0x00d23c)
+assertOffset('characterPaletteIndexes', 0x02ce2b)
+assertOffset('formationSizeOffsets', 0x02d01a)
+assertOffset('formationSizes', 0x02d034)
+assertOffset('positionedTextOffsets', 0x03c00e)
+assertOffset('positionedTextBase', 0x03c2fc)
+assertOffset('spells', spellsAddr)
+assertOffset('characterNames', characterNamesAddr)
+assertOffset('shops', shopsAddr)
+assertOffset('metamorphSets', metamorphSetsAddr)
+assertOffset('font', 0x047fc0)
+assertOffset('font16_widths', 0x048fc0)
+assertOffset('font16_20_to_7f', 0x0490c0)
+assertOffset('spcMainCodeLoopLen', 0x05070e)
+assertOffset('spcMainCode', 0x050710)
+assertOffset('brrSamplePtrs', 0x053c5f)
+assertOffset('loopStartOfs', 0x053d1c)
+assertOffset('pitchMults', 0x053d9a)
+assertOffset('adsrData', 0x053e18)
+assertOffset('brrSamples', 0x054a35)
+assertOffset('dialogOffsets', 0x0ce600)
+assertOffset('dialogBase', 0x0d0000)
+assertOffset('mapNameBase', 0x0ef100)
+assertOffset('rareItemDescOffsets', rareItemDescOffsetAddr)
+assertOffset('rareItemNames', rareItemNamesAddr)
+assertOffset('rareItemDescBase', rareItemDescBaseAddr)
+assertOffset('monsters', monstersAddr)
+assertOffset('monsterItems', monsterItemsAddr)
+assertOffset('esperDescBase', esperDescBaseAddr)
+assertOffset('swordTechNames', swordTechNamesAddr)
+assertOffset('monsterSpells', monsterSpellsAddr)
+assertOffset('monsterSketches', monsterSketchesAddr)
+assertOffset('monsterRages', monsterRagesAddr)
+assertOffset('monsterNames', monsterNamesAddr)
+assertOffset('monsterAttackNames', monsterAttackNamesAddr)
+assertOffset('blitzDescBase', blitzDescBaseAddr)
+assertOffset('swordTechDescBase', swordTechDescBaseAddr)
+assertOffset('esperDescOffsets', esperDescOffsetsAddr)
+assertOffset('esperBonusDescs', esperBonusDescsAddr)
+assertOffset('blitzDescOffsets', blitzDescOffsetsAddr)
+assertOffset('swordTechDescOffsets', swordTechDescOffsetsAddr)
+assertOffset('monsterSprites', monsterSpritesAddr)
+assertOffset('monsterPalettes', monsterPalettesAddr)
+assertOffset('itemNames', itemNamesAddr)
+assertOffset('WoBpalettes', 0x12ec00)
+assertOffset('WoRpalettes', 0x12ed00)
+assertOffset('setzerAirshipPalette', 0x12ee00)
+assertOffset('darylAirshipPalette', 0x12ef00)
+assertOffset('items', itemsAddr)
+assertOffset('espers', espersAddr)
+assertOffset('spellDescBase', spellDescBaseAddr)
+assertOffset('menuNames', menuNamesAddr)
+assertOffset('spellDescOffsets', spellDescOffsetsAddr)
+assertOffset('formationMPs', 0x1fb400)
+assertOffset('itemColosseumInfos', itemColosseumInfosAddr)
+assertOffset('mapTilesetOffsets', mapTilesetOfsAddr)
+assertOffset('characterPalettes', 0x268000) 
+assertOffset('mapNameOffsets', 0x268400)
+assertOffset('mapAnimGraphicsOffsets', 0x26cda0)
+assertOffset('mapAnimGraphicsLayer3', 0x26cdc0)
+assertOffset('hpIncPerLevelUp', 0x26f4a0)
+assertOffset('mpIncPerLevelUp', 0x26f502)
+assertOffset('spellNames_0to53', 0x26f567)
+assertOffset('esperAttackNames', esperAttackNamesAddr)
+assertOffset('mogDanceNames', mogDanceNamesAddr)
+assertOffset('topBackgroundPaletteOffset', 0x271650)
+assertOffset('monsterSpriteData', monsterSpriteDataAddr)
+assertOffset('menuImages', 0x2d0000)
+assertOffset('menuWindowPalettes', 0x2d1c00)
+assertOffset('characterMenuImages', 0x2d1d00)
+assertOffset('itemDescBase', itemDescBaseAddr)
+assertOffset('loreDescBase', loreDescBaseAddr)
+assertOffset('loreDescOffsets', loreDescOffsetsAddr)
+assertOffset('itemDescOffsets', itemDescOffsetsAddr)
+assertOffset('characters', charactersAddr)
+--assertOffset('expForLevelUp', expForLevelUpAddr)
+assertOffset('longEsperBonusDescBase', longEsperBonusDescBaseAddr)
+assertOffset('longEsperBonusDescOffsets', longEsperBonusDescOffsetsAddr)
 
 game = ffi.cast('game_t*', rom)
 
