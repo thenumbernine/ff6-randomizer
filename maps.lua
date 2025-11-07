@@ -187,6 +187,18 @@ for mapIndex=0,countof(game.maps)-1 do
 			return tileptr, bpp
 		end
 
+		-- if gfx3 == gfx4 then gfx3's tiles are 0x180-0x27f
+		if gfxs[3] == gfxs[4] then
+			local bpp = 4
+			local gfx = gfxs[3]
+			if not gfx then return end
+			-- is it 0x180 -> 0 or 0x180 -> 0x80?
+			tile8x8 = bit.band(0xff, tile8x8 - 0x80)
+			local tileptr = rom + gfx.addr + bit.lshift(tile8x8, bpp+1)
+			return tileptr, bpp
+
+		end
+
 		-- [[ from 0x180 to 0x200 I'm getting discrepencies as well...
 		-- (what does bit-7 here represent?)
 		if tile8x8 < 0x200 then
@@ -209,6 +221,11 @@ for mapIndex=0,countof(game.maps)-1 do
 			local tileptr = rom + gfx.addr + bit.lshift(tile8x8, bpp+1)
 			return tileptr, bpp
 		end
+
+		-- extra notes to remember for later:
+		-- animated tiles start at 0x280
+		-- dialog graphics start at 0x2e0
+		-- tiles 0x300-0x3ff aren't used by bg1 & bg2
 	end
 
 	local function drawtile16x16(img, x, y, tile16x16, layer, zLevel)

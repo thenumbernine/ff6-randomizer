@@ -26,3 +26,4 @@ Resources:
 - https://github.com/subtractionsoup/beyondchaos
 - https://github.com/everything8215/ff6
 - https://github.com/everything8215/ff6tool
+- just asking everything8215
