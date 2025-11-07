@@ -1,4 +1,7 @@
 local ffi = require 'ffi'
+local path = require 'ext.path'
+local table = require 'ext.table'
+local assert = require 'ext.assert'
 local Image = require 'image'
 local makePalette = require 'graphics'.makePalette
 local makePaletteSets = require 'graphics'.makePaletteSets
@@ -8,6 +11,7 @@ local readTile = require 'graphics'.readTile
 local drawTile = require 'graphics'.drawTile
 local decompress = require 'decompress'.decompress
 local decompress0x800 = require 'decompress'.decompress0x800
+
 
 local function countof(array)
 	return ffi.sizeof(array) / ffi.sizeof(array[0])
