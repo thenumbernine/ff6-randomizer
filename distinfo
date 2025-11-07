@@ -1,16 +1,22 @@
-name = "ff6-randomizer"
+name = "ff6lib"
 files = {
-	["README.md"] = "ff6-randomizer/README.md",
-	["charsprite.lua"] = "ff6-randomizer/charsprite.lua",
-	["ff6.lua"] = "ff6-randomizer/ff6.lua",
-	["ff6struct.lua"] = "ff6-randomizer/ff6struct.lua",
-	["graphics.lua"] = "ff6-randomizer/graphics.lua",
-	["monstersprite.lua"] = "ff6-randomizer/monstersprite.lua",
-	["reftype.lua"] = "ff6-randomizer/reftype.lua",
-	["run.lua"] = "ff6-randomizer/run.lua",
+	["README.md"] = "ff6lib/README.md",
+	["battleanim.lua"] = "ff6lib/battleanim.lua",
+	["charsprite.lua"] = "ff6lib/charsprite.lua",
+	["decompress.lua"] = "ff6lib/decompress.lua",
+	["ff6.lua"] = "ff6lib/ff6.lua",
+	["ff6struct.lua"] = "ff6lib/ff6struct.lua",
+	["graphics.lua"] = "ff6lib/graphics.lua",
+	["maps.lua"] = "ff6lib/maps.lua",
+	["monstersprite.lua"] = "ff6lib/monstersprite.lua",
+	["reftype.lua"] = "ff6lib/reftype.lua",
+	["run.lua"] = "ff6lib/run.lua",
+	["sounds.lua"] = "ff6lib/sounds.lua",
 }
 deps = {
+	"audio",
 	"ext",
+	"ffi",
 	"image",
 	"struct",
 	"vec-ffi",

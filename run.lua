@@ -556,11 +556,12 @@ output audio ...
 --]]
 
 print('spcMainCodeLoopLen = '..game.spcMainCodeLoopLen)
+--[[
 print('spcMainCode = '..
 	range(0,math.min(game.spcMainCodeLoopLen, ffi.sizeof(game.spcMainCode))-1)
 	:mapi(function(i) return (' %02x'):format(game.spcMainCode[i]) end):concat()
 )
-
+--]]
 require 'sounds'(rom, game, romsize)
 
 print'end of rom output'

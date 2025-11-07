@@ -6,11 +6,6 @@ local struct = require 'struct'
 local ff6struct = require 'ff6struct'
 local createVec = require 'vec-ffi.create_vec'
 
--- using
--- http://www.rpglegion.com/ff6/hack/ff3info.txt
--- https://github.com/subtractionsoup/beyondchaos
--- https://github.com/everything8215/ff6/blob/main/notes/rom-map.txt
-
 -- default output to hex
 local fieldsToHex = {
 	uint8_t = function(value)
@@ -1614,6 +1609,15 @@ local numBattleMessages = 0x100
 
 local numPositionedText = 5	-- might actually be lower
 
+local xy8sb_t = ff6struct{
+	name = 'xy8sb_t',
+	fields = {
+		{x = 'int8_t'},
+		{y = 'int8_t'},
+	},
+}
+assert.eq(ffi.sizeof'xy8sb_t', 2)
+
 local xy8b_t = ff6struct{
 	name = 'xy8b_t',
 	fields = {
@@ -1713,9 +1717,9 @@ local map_t = struct{
 			},
 		},
 		{name='mapOverlayProperties', type='uint8_t'},			-- 0x11
-		{name='bg2pos', type='xy8b_t'},							-- 0x12
-		{name='bg3pos', type='xy8b_t'},							-- 0x14
-		{name='mapParallax', type='uint8_t'},					-- 0x16
+		{name='layer2Pos', type='xy8sb_t'},						-- 0x12
+		{name='layer3Pos', type='xy8sb_t'},						-- 0x14
+		{name='parallax', type='uint8_t'},					-- 0x16
 		{name='layer2WidthLog2Minus4', type='uint8_t:2'},		-- 0x17.0-1
 		{name='layer2HeightLog2Minus4', type='uint8_t:2'},		-- 0x17.2-3
 		{name='layer1HeightLog2Minus4', type='uint8_t:2'},		-- 0x17.4-5	layer1Height = 1 << (layer1HeightLog2Minus4 + 4)
@@ -1729,6 +1733,7 @@ local map_t = struct{
 		{name='animationLayer3', type='uint8_t:3'},				-- 0x1b.5-7
 		{name='music', type='uint8_t'},							-- 0x1c
 		{name='unknown_1d', type='uint8_t'},					-- 0x1d
+		-- map 21, size is {44,52}, tiles are defined up to {46,54} ... why is it 2 less?
 		{name='size', type='xy8b_t'},							-- 0x1e
 		{name='colorMath', type='uint8_t'},						-- 0x20
 	},

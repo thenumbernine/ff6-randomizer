@@ -53,18 +53,24 @@ end
 -- palette is 1-based
 local function drawTile(im, xofs, yofs, tile, bpp, hflip, vflip, palor, palette)
 	assert(palette)
+	assert.eq(im.channels, 1)
 	palor = palor or 0
 	for y=0,tileHeight-1 do
-		local dstp = im.buffer + (xofs + im.width*(yofs+y))
-		local cy = vflip and tileHeight-1-y or y
-		for x=0,tileWidth-1 do
-			local cx = hflip and tileWidth-1-x or x
-			local colorIndex = bit.bor(palor, readpixel(tile, cx, cy, bpp))
-			local color = palette[colorIndex+1]
-			if color and (not color[4] or color[4] > 0) then
-				dstp[0] = colorIndex
+		local dsty = y + yofs
+		if dsty >= 0 and dsty < im.height then
+			local cy = vflip and tileHeight-1-y or y
+			for x=0,tileWidth-1 do
+				local dstx = x + xofs
+				if dstx >= 0 and dstx < im.width then
+					local dstp = im.buffer + (dstx + im.width * dsty)
+					local cx = hflip and tileWidth-1-x or x
+					local colorIndex = bit.bor(palor, readpixel(tile, cx, cy, bpp))
+					local color = palette[colorIndex+1]
+					if color and (not color[4] or color[4] > 0) then
+						dstp[0] = colorIndex
+					end
+				end
 			end
-			dstp = dstp + 1
 		end
 	end
 end
