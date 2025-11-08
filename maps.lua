@@ -1,6 +1,7 @@
 local ffi = require 'ffi'
 local path = require 'ext.path'
 local table = require 'ext.table'
+local string = require 'ext.string'
 local range = require 'ext.range'
 local assert = require 'ext.assert'
 local tolua = require 'ext.tolua'
@@ -69,7 +70,8 @@ for i=0,countof(game.mapTilesetOffsets)-1 do
 			data = data,
 			mapIndexes = table(),
 			palettes = table(),
-			gfxs = {},	-- gfx1/gfx2/gfx3/gfx4
+			gfxstrs = {},	-- gfx1/gfx2/gfx3/gfx4
+			paletteForGfxStr = {},
 		}
 	end
 	print('mapTilesets[0x'..i:hex()..'] offset=0x'
@@ -250,8 +252,9 @@ local function layer1and2tile8x8toptr(tile8x8, gfxIndexes)
 
 end
 
-local function layer3tile8x8toptr(tile8x8, gfxLayer3)
+local function layer3tile8x8toptr(tile8x8, gfxLayer3Index)
 	local bpp = 2
+	local gfxLayer3 = mapTileGraphicsLayer3[gfxLayer3Index]
 	if not gfxLayer3 then return end
 	if not gfxLayer3.data then return end
 	local ofs = 0x40 + bit.band(0xff, tile8x8) * bit.lshift(bpp, 3)
@@ -260,7 +263,77 @@ local function layer3tile8x8toptr(tile8x8, gfxLayer3)
 	return tileptr, bpp
 end
 
+local function layer1and2drawtile16x16(img, x, y, tile16x16, tilesetIndex, zLevel, gfxIndexes, palette)
+	local tileset = mapTilesets[tilesetIndex]
+	if not tileset then return end
+	local data = tileset.data
+	assert.len(data, 0x800)
+	if not data then return end
+	local tilesetptr = ffi.cast('uint8_t*', data)
+	for yofs=0,1 do
+		for xofs=0,1 do
+			local i = bit.lshift(bit.bor(xofs, bit.lshift(yofs, 1)), 8)
+			local tilesetTile = bit.bor(
+				tilesetptr[tile16x16 + i],
+				bit.lshift(tilesetptr[tile16x16 + bit.bor(0x400, i)], 8)
+			)
+			local tileZLevel = bit.band(0x2000, tilesetTile) ~= 0
+			if tileZLevel == zLevel then
+				local tile8x8 = bit.band(tilesetTile, 0x3ff)
+				local tileptr, bpp = layer1and2tile8x8toptr(tile8x8, gfxIndexes)
+				if tileptr then
+					local highPal = bit.band(7, bit.rshift(tilesetTile, 10))
+					local hFlip8 = bit.band(0x4000, tilesetTile) ~= 0
+					local vFlip8 = bit.band(0x8000, tilesetTile) ~= 0
+					drawTile(img,
+						x + bit.lshift(xofs, 3),
+						y + bit.lshift(yofs, 3),
+						tileptr,
+						bpp,
+						hFlip8,
+						vFlip8,
+						bit.lshift(highPal, 4),
+						palette
+					)
+				end
+			end
+		end
+	end
+end
 
+local function layer3drawtile16x16(img, x, y, tile16x16, zLevel, gfxLayer3Index, palette)
+	for yofs=0,1 do
+		for xofs=0,1 do
+			-- wait because tile16x16 << 2 has to be 8 bits
+			-- that means tile16x16 can only be 6 bits
+			-- and it also means that zLevel, hFlip, vFlip, highPal all must be 0
+			local tilesetTile = bit.bor(
+				bit.lshift(tile16x16, 2),
+				bit.lshift(yofs, 1),
+				xofs
+			)
+			tilesetTile = bit.band(tilesetTile, 0xff)
+			local tileZLevel = bit.band(0x2000, tilesetTile) ~= 0
+			if tileZLevel == zLevel then
+				local tile8x8 = bit.band(tilesetTile, 0x3ff)
+				-- bpp is always 2 for layer3
+				local tileptr, bpp = layer3tile8x8toptr(tile8x8, gfxLayer3Index)
+				if tileptr then
+					drawTile(img,
+						x + bit.lshift(xofs, 3),
+						y + bit.lshift(yofs, 3),
+						tileptr,
+						bpp,
+						nil,	-- hflip
+						nil,	-- vflip
+						nil,	-- palor
+						palette
+					)
+				end
+			end
+		end
+	end
+end
 
 --for mapIndex=0,countof(game.maps)-1 do
 do local mapIndex=19
@@ -282,21 +355,24 @@ do local mapIndex=19
 			gfxs[i].mapIndexes[mapIndex] = true
 		end
 	end
-	local gfxLayer3 = mapTileGraphicsLayer3[tonumber(map.gfxLayer3)]
+	local gfxLayer3Index =  tonumber(map.gfxLayer3)
+	local gfxLayer3 = mapTileGraphicsLayer3[gfxLayer3Index]
 	if gfxLayer3 then
 		gfxLayer3.mapIndexes[mapIndex] = true
 	end
 
+	local tilesetIndexes = table()
 	local tilesets = table()
 	for i=1,2 do
-		tilesets[i] = mapTilesets[tonumber(map['tileset'..i])]
+		tilesetIndexes[i] = tonumber(map['tileset'..i])
+		tilesets[i] = mapTilesets[tilesetIndexes[i]]
 		print('map tileset'..i..' data size', tilesets[i] and #tilesets[i].data)
 		if tilesets[i] then
 			tilesets[i].mapIndexes[mapIndex] = true
 			tilesets[i].palettes[paletteIndex] = true
-			tilesets[i].gfxs[
-				gfxIndexes:mapi(tostring):concat'/'
-			] = true
+			local gfxstr = gfxIndexes:mapi(tostring):concat'/'
+			tilesets[i].gfxstrs[gfxstr] = true
+			tilesets[i].paletteForGfxStr[gfxstr] = paletteIndex
 		end
 	end
 
@@ -325,91 +401,11 @@ do local mapIndex=19
 		print(' map has invalid palette!')
 	end
 
-	local function tile8x8toptr(layer, tile8x8)
-		if layer == 3 then
-			return layer3tile8x8toptr(tile8x8, gfxLayer3)
-		end
-		assert(layer == 1 or layer == 2)
-		return layer1and2tile8x8toptr(tile8x8, gfxIndexes)
-	end
-
-	local function layer1and2drawtile16x16(img, x, y, tile16x16, layer, zLevel)
-		if not tilesets[layer] then return end
-		local data = tilesets[layer].data
-		assert.len(data, 0x800)
-		if not data then return end
-		local tilesetptr = ffi.cast('uint8_t*', data)
-		for yofs=0,1 do
-			for xofs=0,1 do
-				local i = bit.lshift(bit.bor(xofs, bit.lshift(yofs, 1)), 8)
-				local tilesetTile = bit.bor(
-					tilesetptr[tile16x16 + i],
-					bit.lshift(tilesetptr[tile16x16 + bit.bor(0x400, i)], 8)
-				)
-				local tileZLevel = bit.band(0x2000, tilesetTile) ~= 0
-				if tileZLevel == zLevel then
-					local tile8x8 = bit.band(tilesetTile, 0x3ff)
-					local tileptr, bpp = tile8x8toptr(layer, tile8x8)
-					if tileptr then
-						local highPal = bit.band(7, bit.rshift(tilesetTile, 10))
-						local hFlip8 = bit.band(0x4000, tilesetTile) ~= 0
-						local vFlip8 = bit.band(0x8000, tilesetTile) ~= 0
-						drawTile(img,
-							x + bit.lshift(xofs, 3),
-							y + bit.lshift(yofs, 3),
-							tileptr,
-							bpp,
-							hFlip8,
-							vFlip8,
-							bit.lshift(highPal, 4),
-							palette
-						)
-					end
-				end
-			end
-		end
-	end
-	
-	local function layer3drawtile16x16(img, x, y, tile16x16, zLevel)
-		local layer = 3
-		for yofs=0,1 do
-			for xofs=0,1 do
-				-- wait because tile16x16 << 2 has to be 8 bits
-				-- that means tile16x16 can only be 6 bits
-				-- and it also means that zLevel, hFlip, vFlip, highPal all must be 0
-				local tilesetTile = bit.bor(
-					bit.lshift(tile16x16, 2),
-					bit.lshift(yofs, 1),
-					xofs
-				)
-				tilesetTile = bit.band(tilesetTile, 0xff)
-				local tileZLevel = bit.band(0x2000, tilesetTile) ~= 0
-				if tileZLevel == zLevel then
-					local tile8x8 = bit.band(tilesetTile, 0x3ff)
-					-- bpp is always 2 for layer3
-					local tileptr, bpp = tile8x8toptr(layer, tile8x8)
-					if tileptr then
-						drawTile(img,
-							x + bit.lshift(xofs, 3),
-							y + bit.lshift(yofs, 3),
-							tileptr,
-							bpp,
-							nil,	-- hflip
-							nil,	-- vflip
-							nil,	-- palor
-							palette
-						)
-					end
-				end
-			end
-		end
-	end
-
 	local function drawtile16x16(img, x, y, tile16x16, layer, zLevel)
 		if layer == 3 then
-			return layer3drawtile16x16(img, x, y, tile16x16, zLevel)
+			return layer3drawtile16x16(img, x, y, tile16x16, zLevel, gfxLayer3Index, palette)
 		else
-			return layer1and2drawtile16x16(img, x, y, tile16x16, layer, zLevel)
+			return layer1and2drawtile16x16(img, x, y, tile16x16, tilesetIndexes[layer], zLevel, gfxIndexes, palette)
 		end
 	end
 
@@ -522,8 +518,16 @@ do local mapIndex=19
 	end
 
 	-- save all map tile graphics separately
-	-- hmm why 40?  16x16 for gfx1, 16x16 for gfx2, 16x8 for gfx3 ... gfx4?
-	-- 10 bits total
+	-- hmm why 40?  16x16 for gfx1, 16x16 for gfx2, 16x8 for gfx3 ... gfx4? 
+	-- ... gfx1 uses 256 values, gfx2,3,4 use 128 values each, total 640 values
+	-- 10 bits total ... the rest up to 1024 are other stuff like animation, menu, etc.
+	local function tile8x8toptr(layer, tile8x8)
+		if layer == 3 then
+			return layer3tile8x8toptr(tile8x8, gfxLayer3Index)
+		end
+		assert(layer == 1 or layer == 2)
+		return layer1and2tile8x8toptr(tile8x8, gfxIndexes)
+	end
 	for layer=2,3 do
 		local size = layer == 3 and vec2i(16,16) or vec2i(16,40)
 		local img = Image(size.x * tileWidth, size.y * tileHeight, 1, 'uint8_t'):clear()
@@ -548,13 +552,47 @@ do local mapIndex=19
 	end
 end
 
-for _,i in ipairs(mapTilesets:keys():sort()) do
-	local tileset = mapTilesets[i]
+for _,tilesetIndex in ipairs(mapTilesets:keys():sort()) do
+	local tileset = mapTilesets[tilesetIndex]
 	if tileset then
-		print('mapTilesets[0x'..i:hex()..']')
+		print('mapTilesets[0x'..tilesetIndex:hex()..']')
 		print('','mapIndexes='..tolua(tileset.mapIndexes:keys():sort()))
 		print('','palettes='..tolua(tileset.palettes:keys():sort()))
-		print('','gfxs='..tolua(table.keys(tileset.gfxs):sort()))
+		print('','gfxstrs='..tolua(table.keys(tileset.gfxstrs):sort()))
+	end
+	for tilesetGfxPerm,gfxstr in ipairs(table.keys(tileset.gfxstrs):sort()) do
+		local paletteIndex = tileset.paletteForGfxStr[gfxstr] or 0
+		local palette = makePalette(game.mapPalettes + paletteIndex, 4, 16*8)
+		
+		local gfxIndexes = string.split(gfxstr,'/'):mapi(function(s) return tonumber(s) end)
+print('drawing '..gfxstr..' with palette '..paletteIndex)
+	
+		local size = vec2i(16, 16)
+		local img = Image(16 * size.x, 16 * size.y, 1, 'uint8_t'):clear()
+		-- what is its format?
+		local tile16x16 = 0
+		for j=0,size.y-1 do
+			local y = bit.lshift(j, 4)
+			for i=0,size.x-1 do
+				local x = bit.lshift(i, 4)
+				-- TODO need z-test and to disable it here
+				for z=0,1 do
+					layer1and2drawtile16x16(
+						img,
+						x,
+						y,
+						tile16x16,
+						tilesetIndex,
+						z==1,
+						gfxIndexes,
+						palette
+					)
+				end
+				tile16x16 = tile16x16 + 1
+			end
+		end
+		img.palette = palette
+		img:save((mappath/('tileset_'..tilesetIndex..'_'..tilesetGfxPerm..'.png')).path)
 	end
 end
 
