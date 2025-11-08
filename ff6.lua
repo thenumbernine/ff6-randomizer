@@ -2118,8 +2118,8 @@ local game_t = ff6struct{
 		{mapTilesetsCompressed = 'uint8_t['..(0x1fb400 - 0x1e0000)..']'},		-- 0x1e0000 - 0x1fb400 = map tile formation (compressed)
 		{formationMPs = 'uint8_t['..numFormationMPs..']'},						-- 0x1fb400 - 0x1fb600
 		{itemColosseumInfos = 'itemColosseumInfo_t['..numItems..']'},			-- 0x1fb600 - 0x1fba00
-		{mapTilesetOffsets = 'uint24_t[0x4c]'},									-- 0x1fba00 - 0x1fbaff -- 24bit, offset by +0x1e0000, points into mapTilesetsCompressed
-		{padding_1fbaff = 'uint8_t[28]'},										-- 0x1fbaff - 0x1fbb00
+		{mapTilesetOffsets = 'uint24_t[0x4b]'},									-- 0x1fba00 - 0x1fbaff -- 24bit, offset by +0x1e0000, points into mapTilesetsCompressed ... last points to invalid data so I cut it off.
+		{padding_1fbaff = 'uint8_t[31]'},										-- 0x1fbaff - 0x1fbb00
 		{entranceTriggerOfs = 'uint16_t['..numEntranceTriggerOfs..']'},			-- 0x1fbb00 - 0x1fbf02 -- offset by +0x1fbb00
 		{entranceTriggers = 'entranceTrigger_t[0x469]'},						-- 0x1fbf02 - 0x1fd978 = entranceTrigger_t[]
 		{padding_1fd978 = 'uint8_t[136]'},										-- 0x1fd978 - 0x1fda00 = 0xFF filler

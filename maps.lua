@@ -377,7 +377,7 @@ for mapIndex=0,countof(game.maps)-1 do
 			tilesets[i].gfxstrs[gfxstr] = true
 			tilesets[i].paletteForGfxStr[gfxstr] = paletteIndex
 			-- map from gfxstr to tilesetIndex/paletteIndex
-			-- this is unique for each set of 640 tile8x8's rendered (used by tilesets) 
+			-- this is unique for each set of 640 tile8x8's rendered (used by tilesets)
 			mapGfxStrs[gfxstr] = mapGfxStrs[gfxstr] or {}
 			mapGfxStrs[gfxstr][tilesetIndex..'/'..paletteIndex] = true
 		end
@@ -408,19 +408,14 @@ for mapIndex=0,countof(game.maps)-1 do
 		print(' map has invalid palette!')
 	end
 
-	local function drawtile16x16(img, x, y, tile16x16, layer, zLevel)
-		if layer == 3 then
-			return layer3drawtile16x16(img, x, y, tile16x16, gfxLayer3Index, palette)
-		else
-			return layer1and2drawtile16x16(img, x, y, tile16x16, tilesetIndexes[layer], zLevel, gfxIndexes, palette)
-		end
-	end
+	local layout1Data = layouts[1] and layouts[1].data
+	local layer1Size = layerSizes[1]
 
 	local img = Image(
 		-- map size is in 16x16 tiles, right?
 		-- and should I size it by the first layer, or by the max of all layers?
-		bit.lshift(layerSizes[1].x, 4),
-		bit.lshift(layerSizes[1].y, 4),
+		bit.lshift(layer1Size.x, 4),
+		bit.lshift(layer1Size.y, 4),
 		1,
 		'uint8_t'
 	):clear()
@@ -428,7 +423,7 @@ for mapIndex=0,countof(game.maps)-1 do
 	for _,zAndLayer in ipairs(
 		map.layer3Priority == 0
 		and {
-			{0,3},	-- layer 3 has no zOrder
+			{0,3},	-- layer 3 has no zLevel
 			{0,2},
 			{0,1},
 			{1,2},
@@ -439,7 +434,7 @@ for mapIndex=0,countof(game.maps)-1 do
 			{0,1},
 			{1,2},
 			{1,1},
-			{0,3},	-- layer 3 has no zOrder
+			{0,3},	-- layer 3 has no zLevel
 		}
 	)do
 		local z, layer = table.unpack(zAndLayer)
@@ -470,6 +465,11 @@ for mapIndex=0,countof(game.maps)-1 do
 		--elseif layerSize:volume() ~= #layouts[layer].data then
 		--	print("map layout"..layer.." data size doesn't match layer size")
 		-- I guess just modulo?
+		--elseif layout1Data 	-- if we're missing layout[1].data then we are in the dark as to volume check
+		--and #layoutData ~= #layout1Data
+		--then
+			-- sometimes happens like with map 6 Blackjack Exterior
+			--print("layer "..layer.."'s data size doesn't match layer 1's data size:", #layoutData, #layout1Data)
 		else
 			local posx, posy = 0, 0
 			if layerPos[layer]
@@ -479,16 +479,26 @@ for mapIndex=0,countof(game.maps)-1 do
 				posx, posy = layerPos[layer]:unpack()
 			end
 			local layoutptr = ffi.cast('uint8_t*', layoutData)
-			for dstY=0,layerSizes[1].y-1 do
-				for dstX=0,layerSizes[1].x-1 do
+			for dstY=0,layer1Size.y-1 do
+				local y = bit.lshift(dstY, 4)
+				for dstX=0,layer1Size.x-1 do
+					local x = bit.lshift(dstX, 4)
+					--[[ when do you reshape (map 15)
+					local srcX = (dstX + posx) % layer1Size.x
+					local srcY = (dstY + posy) % layer1Size.y
+					local tile16x16 = layoutptr[((srcX + layer1Size.x * srcY) % #layoutData)]
+					--]]
+					-- [[ and when do you just modulo to layer 2/3 size (map 6)?
 					local srcX = (dstX + posx) % layerSize.x
 					local srcY = (dstY + posy) % layerSize.y
-					drawtile16x16(img,
-						bit.lshift(dstX, 4),
-						bit.lshift(dstY, 4),
-						layoutptr[((srcX + layerSize.x * srcY) % #layoutData)],
-						layer,
-						bit.lshift(1, z))
+					local tile16x16 = layoutptr[((srcX + layerSize.x * srcY) % #layoutData)]
+					--]]
+					if layer == 3 then
+						layer3drawtile16x16(img, x, y, tile16x16, gfxLayer3Index, palette)
+					else
+						local zLevelFlags = bit.lshift(1, z)
+						layer1and2drawtile16x16(img, x, y, tile16x16, tilesetIndexes[layer], zLevelFlags, gfxIndexes, palette)
+					end
 				end
 			end
 		end
@@ -497,14 +507,14 @@ for mapIndex=0,countof(game.maps)-1 do
 	img.palette = palette
 	img:save((mappath/('map'..mapIndex..'.png')).path)
 
-	--[[ 
+	--[[
 	-- This draws all the 8x8 tiles that this map has access to via gfx1/2/3/4
 	-- It is unique to the map, however there are a lot of them.
 	-- So I'll just draw mapTileGraphics per palette used.
 	--
 	-- The tile8x8 will be unique per gfx-combination (and palette)
 	-- save all map tile graphics separately
-	-- hmm why 40?  16x16 for gfx1, 16x16 for gfx2, 16x8 for gfx3 ... gfx4? 
+	-- hmm why 40?  16x16 for gfx1, 16x16 for gfx2, 16x8 for gfx3 ... gfx4?
 	-- ... gfx1 uses 256 values, gfx2,3,4 use 128 values each, total 640 values
 	-- 10 bits total ... the rest up to 1024 are other stuff like animation, menu, etc.
 	do
@@ -545,10 +555,10 @@ for _,tilesetIndex in ipairs(mapTilesets:keys():sort()) do
 	for tilesetGfxPerm,gfxstr in ipairs(gfxstrs) do
 		local paletteIndex = tileset.paletteForGfxStr[gfxstr] or 0
 		local palette = makePalette(game.mapPalettes + paletteIndex, 4, 16*8)
-		
+
 		local gfxIndexes = string.split(gfxstr,'/'):mapi(function(s) return tonumber(s) end)
 --print('drawing '..gfxstr..' with palette '..paletteIndex)
-	
+
 		local size = vec2i(16, 16)
 		local img = Image(16 * size.x, 16 * size.y, 1, 'uint8_t'):clear()
 		-- what is its format?
