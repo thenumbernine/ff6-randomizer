@@ -20,6 +20,7 @@ end
 
 return function(rom, game, romsize)
 
+-- this holds the info of the 16x16 map blocks, interaction with player, etc
 -- cache decompressed data
 local mapLayouts = table()	-- 0-based
 for i=0,countof(game.mapLayoutOffsets)-1 do
@@ -44,6 +45,7 @@ for i=0,countof(game.mapLayoutOffsets)-1 do
 	--if data then print(data:hexdump()) end
 end
 
+-- this holds the mapping from 16x16 to 8x8 tiles
 local mapTilesets = table()	-- 0-based
 for i=0,countof(game.mapTilesetOffsets)-1 do
 	local offset = game.mapTilesetOffsets[i]:value()
@@ -86,6 +88,7 @@ for i=0,countof(game.mapTileGraphicsOffsets)-1 do
 		index = i,
 		offset = offset,
 		addr = addr,
+		mapIndexes = table(),
 	}
 end
 do	-- here decompress all 'mapTileGraphics' tiles irrespective of offset table
@@ -123,6 +126,7 @@ for i=0,countof(game.mapTileGraphicsLayer3Offsets)-1 do
 		offset = offset,
 		addr = addr,
 		data = data,
+		mapIndexes = table(),
 	}
 	print('mapTileGraphicsLayer3[0x'..i:hex()..'] offset=0x'
 		..offset:hex()
@@ -166,8 +170,88 @@ makePaletteSets(
 	function(index) return bit.band(0xf, index) == 0 end
 )
 
+local function layer1and2tile8x8toptr(tile8x8, gfxs)
+	-- first 256 is gfx1
+	if tile8x8 < 0x100 then
+		local bpp = 4
+		local gfx = gfxs[1]
+		if not gfx then return end
+		local tileptr = rom + gfx.addr + tile8x8 * bit.lshift(bpp, 3)
+		return tileptr, bpp
+	end
 
-for mapIndex=0,countof(game.maps)-1 do
+	-- next 256 belong to gfx2?
+	-- or only 128 of it?
+	--if tile8x8 < 0x200 then
+	-- (what does bit-7 here represent?)
+	if tile8x8 < 0x180 then
+		local bpp = 4
+		local gfx = gfxs[2]
+		if not gfx then return end
+		tile8x8 = bit.band(0x7f, tile8x8)
+		-- 256-511 and my tiles stop matching until I use this offset ... why
+		-- skip 8x15 tiles ... idk why ... does the last 8 represent something special?
+		--local gfxaddr = gfx.addr + 8 * 15 * 32
+		local tileptr = rom + gfx.addr + tile8x8 * bit.lshift(bpp, 3)
+		return tileptr, bpp
+	end
+
+	-- if gfx3 == gfx4 then gfx3's tiles are 0x180-0x27f
+	if gfxs[3] == gfxs[4] then
+		local bpp = 4
+		local gfx = gfxs[3]
+		if not gfx then return end
+		-- is it 0x180 -> 0 or 0x180 -> 0x80?
+		tile8x8 = bit.band(0xff, tile8x8 - 0x80)
+		local tileptr = rom + gfx.addr + tile8x8 * bit.lshift(bpp, 3)
+		return tileptr, bpp
+
+	end
+
+	-- [[ from 0x180 to 0x200 I'm getting discrepencies as well...
+	-- (what does bit-7 here represent?)
+	if tile8x8 < 0x200 then
+		local bpp = 4
+		local gfx = gfxs[3]
+		if not gfx then return end
+		tile8x8 = bit.band(0x7f, tile8x8)
+		local tileptr = rom + gfx.addr + tile8x8 * bit.lshift(bpp, 3)
+		return tileptr, bpp
+	end
+	--]]
+
+	-- gfx3 doesn't use indexes 0x80 and over (reserved for something else?)
+	-- (what does bit-7 here represent?)
+	if tile8x8 < 0x280 then
+		local bpp = 4
+		local gfx = gfxs[4]
+		if not gfx then return end
+		tile8x8 = bit.band(0x7f, tile8x8)
+		local tileptr = rom + gfx.addr + tile8x8 * bit.lshift(bpp, 3)
+		return tileptr, bpp
+	end
+
+	-- extra notes to remember for later:
+	-- animated tiles start at 0x280
+	-- dialog graphics start at 0x2e0
+	-- tiles 0x300-0x3ff aren't used by bg1 & bg2
+
+end
+
+local function layer3tile8x8toptr(tile8x8, gfxLayer3)
+	local bpp = 2
+	if not gfxLayer3 then return end
+	if not gfxLayer3.data then return end
+	local ofs = 0x40 + bit.band(0xff, tile8x8) * bit.lshift(bpp, 3)
+	assert.lt(ofs, #gfxLayer3.data)
+	local tileptr = ffi.cast('uint8_t*', gfxLayer3.data) + ofs
+	return tileptr, bpp
+end
+
+
+
+--for mapIndex=0,countof(game.maps)-1 do
+do local mapIndex=19
 	local map = game.maps + mapIndex
 	print('maps[0x'..mapIndex:hex()..'] = '..game.maps[mapIndex])
 	-- map.gfx* points into mapTileGraphicsOffsets into mapTileGraphics
@@ -176,8 +260,14 @@ for mapIndex=0,countof(game.maps)-1 do
 	local gfxs = table()
 	for i=1,4 do
 		gfxs[i] = mapTileGraphics[tonumber(map['gfx'..i])]
+		if gfxs[i] then
+			gfxs[i].mapIndexes[mapIndex] = true
+		end
 	end
 	local gfxLayer3 = mapTileGraphicsLayer3[tonumber(map.gfxLayer3)]
+	if gfxLayer3 then
+		gfxLayer3.mapIndexes[mapIndex] = true
+	end
 
 	local tilesets = table()
 	for i=1,2 do
@@ -210,82 +300,12 @@ for mapIndex=0,countof(game.maps)-1 do
 		print(' map has invalid palette!')
 	end
 
-	local function tile8x8toptr(tile8x8, layer)
+	local function tile8x8toptr(layer, tile8x8)
 		if layer == 3 then
-			local bpp = 2
-			if not gfxLayer3 then return end
-			if not gfxLayer3.data then return end
-			local ofs = 0x40 + bit.band(0xff, tile8x8) * bit.lshift(bpp, 3)
-			assert.lt(ofs, #gfxLayer3.data)
-			local tileptr = ffi.cast('uint8_t*', gfxLayer3.data) + ofs
-			return tileptr, bpp
+			return layer3tile8x8toptr(tile8x8, gfxLayer3)
 		end
 		assert(layer == 1 or layer == 2)
-
-		-- first 256 is gfx1
-		if tile8x8 < 0x100 then
-			local bpp = 4
-			local gfx = gfxs[1]
-			if not gfx then return end
-			local tileptr = rom + gfx.addr + tile8x8 * bit.lshift(bpp, 3)
-			return tileptr, bpp
-		end
-
-		-- next 256 belong to gfx2?
-		-- or only 128 of it?
-		--if tile8x8 < 0x200 then
-		-- (what does bit-7 here represent?)
-		if tile8x8 < 0x180 then
-			local bpp = 4
-			local gfx = gfxs[2]
-			if not gfx then return end
-			tile8x8 = bit.band(0x7f, tile8x8)
-			-- 256-511 and my tiles stop matching until I use this offset ... why
-			-- skip 8x15 tiles ... idk why ... does the last 8 represent something special?
-			--local gfxaddr = gfx.addr + 8 * 15 * 32
-			local tileptr = rom + gfx.addr + tile8x8 * bit.lshift(bpp, 3)
-			return tileptr, bpp
-		end
-
-		-- if gfx3 == gfx4 then gfx3's tiles are 0x180-0x27f
-		if gfxs[3] == gfxs[4] then
-			local bpp = 4
-			local gfx = gfxs[3]
-			if not gfx then return end
-			-- is it 0x180 -> 0 or 0x180 -> 0x80?
-			tile8x8 = bit.band(0xff, tile8x8 - 0x80)
-			local tileptr = rom + gfx.addr + tile8x8 * bit.lshift(bpp, 3)
-			return tileptr, bpp
-
-		end
-
-		-- [[ from 0x180 to 0x200 I'm getting discrepencies as well...
-		-- (what does bit-7 here represent?)
-		if tile8x8 < 0x200 then
-			local bpp = 4
-			local gfx = gfxs[3]
-			if not gfx then return end
-			tile8x8 = bit.band(0x7f, tile8x8)
-			local tileptr = rom + gfx.addr + tile8x8 * bit.lshift(bpp, 3)
-			return tileptr, bpp
-		end
-		--]]
-
-		-- gfx3 doesn't use indexes 0x80 and over (reserved for something else?)
-		-- (what does bit-7 here represent?)
-		if tile8x8 < 0x280 then
-			local bpp = 4
-			local gfx = gfxs[4]
-			if not gfx then return end
-			tile8x8 = bit.band(0x7f, tile8x8)
-			local tileptr = rom + gfx.addr + tile8x8 * bit.lshift(bpp, 3)
-			return tileptr, bpp
-		end
-
-		-- extra notes to remember for later:
-		-- animated tiles start at 0x280
-		-- dialog graphics start at 0x2e0
-		-- tiles 0x300-0x3ff aren't used by bg1 & bg2
+		return layer1and2tile8x8toptr(tile8x8, gfxs)
 	end
 
 	local function drawtile16x16(img, x, y, tile16x16, layer, zLevel, blend)
@@ -326,7 +346,7 @@ for mapIndex=0,countof(game.maps)-1 do
 				local tileZLevel = bit.band(0x2000, tilesetTile) ~= 0
 				if tileZLevel == zLevel then
 					local tile8x8 = bit.band(tilesetTile, 0x3ff)
-					local tileptr, bpp = tile8x8toptr(tile8x8, layer)
+					local tileptr, bpp = tile8x8toptr(layer, tile8x8)
 					if tileptr then
 						local highPal = bit.band(7, bit.rshift(tilesetTile, 10))
 						local hFlip8 = bit.band(0x4000, tilesetTile) ~= 0
@@ -466,7 +486,7 @@ for mapIndex=0,countof(game.maps)-1 do
 		local tile8x8 = 0
 		for j=0,size.y-1 do
 			for i=0,size.x-1 do
-				local tileptr, bpp = tile8x8toptr(tile8x8, layer)
+				local tileptr, bpp = tile8x8toptr(layer, tile8x8)
 				if tileptr then
 					readTile(
 						img,
@@ -482,6 +502,20 @@ for mapIndex=0,countof(game.maps)-1 do
 		img.palette = palette
 		img:save((mappath/('tile8x8_'..mapIndex..'_'..(layer == 2 and '1and2' or '3')..'.png')).path)
 	end
+end
+
+-- 8x8 tiles are going to be 16x40 = 640 in size
+-- 16x16 tiles are going to be 16x16 = 256 in size
+for i=0,countof(game.mapTileGraphicsOffsets)-1 do
+	local gfx = mapTileGraphics[i]
+	local mapIndex = gfx.mapIndexes:keys():sort()[1] or 0
+end
+
+-- 8x8 tiles are going to be 16x16 = 256 in size
+-- 16x16 tiles are going to be 16x16 = 256 in size
+for i=0,countof(game.mapTileGraphicsLayer3Offsets)-1 do
+	local gfx = mapTileGraphicsLayer3[i]
+	local mapIndex = gfx.mapIndexes:keys():sort()[1] or 0
 end
 
 

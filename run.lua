@@ -444,6 +444,30 @@ end
 print()
 print()
 
+local gnuplot = require 'gnuplot'
+gnuplot{
+	terminal = 'png size 1024,768',
+	output = 'hp_inc_per_level.png',
+	title = 'HP inc per level up',
+	style = 'data lines',
+	data = {
+		range(1,game.numLevels),
+		range(0,game.numLevels-1):mapi(function(i) return game.hpIncPerLevelUp[i] end),
+	},
+	{using='1:2', notitle=true},
+}
+gnuplot{
+	terminal = 'png size 1024,768',
+	output = 'mp_inc_per_level.png',
+	title = 'MP inc per level up',
+	style = 'data lines',
+	data = {
+		range(1,game.numLevels),
+		range(0,game.numLevels-1):mapi(function(i) return game.mpIncPerLevelUp[i] end),
+	},
+	{using='1:2', notitle=true},
+}
+
 for i=0,game.numShops-1 do
 	print('shop #'..i..': '..game.shops[i])
 end
