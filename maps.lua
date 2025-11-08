@@ -140,6 +140,7 @@ for i=0,countof(game.mapTileGraphicsLayer3Offsets)-1 do
 		addr = addr,
 		data = data,
 		mapIndexes = table(),
+		palettes = table(),
 	}
 	print('mapTileGraphicsLayer3[0x'..i:hex()..'] offset=0x'
 		..offset:hex()
@@ -301,7 +302,7 @@ local function layer1and2drawtile16x16(img, x, y, tile16x16, tilesetIndex, zLeve
 	end
 end
 
-local function layer3drawtile16x16(img, x, y, tile16x16, zLevel, gfxLayer3Index, palette)
+local function layer3drawtile16x16(img, x, y, tile16x16, gfxLayer3Index, palette)
 	for yofs=0,1 do
 		for xofs=0,1 do
 			-- wait because tile16x16 << 2 has to be 8 bits
@@ -313,23 +314,20 @@ local function layer3drawtile16x16(img, x, y, tile16x16, zLevel, gfxLayer3Index,
 				xofs
 			)
 			tilesetTile = bit.band(tilesetTile, 0xff)
-			local tileZLevel = bit.band(0x2000, tilesetTile) ~= 0
-			if tileZLevel == zLevel then
-				local tile8x8 = bit.band(tilesetTile, 0x3ff)
-				-- bpp is always 2 for layer3
-				local tileptr, bpp = layer3tile8x8toptr(tile8x8, gfxLayer3Index)
-				if tileptr then
-					drawTile(img,
-						x + bit.lshift(xofs, 3),
-						y + bit.lshift(yofs, 3),
-						tileptr,
-						bpp,
-						nil,	-- hflip
-						nil,	-- vflip
-						nil,	-- palor
-						palette
-					)
-				end
+			local tile8x8 = bit.band(tilesetTile, 0x3ff)
+			-- bpp is always 2 for layer3
+			local tileptr, bpp = layer3tile8x8toptr(tile8x8, gfxLayer3Index)
+			if tileptr then
+				drawTile(img,
+					x + bit.lshift(xofs, 3),
+					y + bit.lshift(yofs, 3),
+					tileptr,
+					bpp,
+					nil,	-- hflip
+					nil,	-- vflip
+					nil,	-- palor
+					palette
+				)
 			end
 		end
 	end
@@ -358,6 +356,7 @@ do local mapIndex=19
 	local gfxLayer3Index =  tonumber(map.gfxLayer3)
 	local gfxLayer3 = mapTileGraphicsLayer3[gfxLayer3Index]
 	if gfxLayer3 then
+		gfxLayer3.palettes[paletteIndex] = true
 		gfxLayer3.mapIndexes[mapIndex] = true
 	end
 
@@ -403,7 +402,7 @@ do local mapIndex=19
 
 	local function drawtile16x16(img, x, y, tile16x16, layer, zLevel)
 		if layer == 3 then
-			return layer3drawtile16x16(img, x, y, tile16x16, zLevel, gfxLayer3Index, palette)
+			return layer3drawtile16x16(img, x, y, tile16x16, gfxLayer3Index, palette)
 		else
 			return layer1and2drawtile16x16(img, x, y, tile16x16, tilesetIndexes[layer], zLevel, gfxIndexes, palette)
 		end
@@ -491,50 +490,19 @@ do local mapIndex=19
 	img.palette = palette
 	img:save((mappath/('map'..mapIndex..'.png')).path)
 
-	-- save all map tileset 16x16 graphics separately
-	for layer=1,3 do
-		local size = layer == 3 and vec2i(8, 8) or vec2i(16, 16)
-		local img = Image(16 * size.x, 16 * size.y, 1, 'uint8_t'):clear()
-		-- what is its format?
-		local tile16x16 = 0
-		for j=0,size.y-1 do
-			for i=0,size.x-1 do
-				local zMax = layer == 3 and 0 or 1
-				for z=0,zMax do
-					drawtile16x16(
-						img,
-						bit.lshift(i, 4),
-						bit.lshift(j, 4),
-						tile16x16,
-						layer,
-						z == 1
-					)
-				end
-				tile16x16 = tile16x16 + 1
-			end
-		end
-		img.palette = palette
-		img:save((mappath/('tile16x16_'..mapIndex..'_'..layer..'.png')).path)
-	end
-
 	-- save all map tile graphics separately
 	-- hmm why 40?  16x16 for gfx1, 16x16 for gfx2, 16x8 for gfx3 ... gfx4? 
 	-- ... gfx1 uses 256 values, gfx2,3,4 use 128 values each, total 640 values
 	-- 10 bits total ... the rest up to 1024 are other stuff like animation, menu, etc.
-	local function tile8x8toptr(layer, tile8x8)
-		if layer == 3 then
-			return layer3tile8x8toptr(tile8x8, gfxLayer3Index)
-		end
-		assert(layer == 1 or layer == 2)
-		return layer1and2tile8x8toptr(tile8x8, gfxIndexes)
-	end
-	for layer=2,3 do
-		local size = layer == 3 and vec2i(16,16) or vec2i(16,40)
+	do
+		-- no need to save layer's 8x8 tiles since all its 8x8 tiles are 1:1 in the layer-3 16x16-tile output
+		local layer = 2
+		local size = vec2i(16,40)
 		local img = Image(size.x * tileWidth, size.y * tileHeight, 1, 'uint8_t'):clear()
 		local tile8x8 = 0
 		for j=0,size.y-1 do
 			for i=0,size.x-1 do
-				local tileptr, bpp = tile8x8toptr(layer, tile8x8)
+				local tileptr, bpp = layer1and2tile8x8toptr(tile8x8, gfxIndexes)
 				if tileptr then
 					readTile(
 						img,
@@ -548,7 +516,7 @@ do local mapIndex=19
 			end
 		end
 		img.palette = palette
-		img:save((mappath/('tile8x8_'..mapIndex..'_'..(layer == 2 and '1and2' or '3')..'.png')).path)
+		img:save((mappath/('tile8x8_'..mapIndex..'_1and2.png')).path)
 	end
 end
 
@@ -565,7 +533,7 @@ for _,tilesetIndex in ipairs(mapTilesets:keys():sort()) do
 		local palette = makePalette(game.mapPalettes + paletteIndex, 4, 16*8)
 		
 		local gfxIndexes = string.split(gfxstr,'/'):mapi(function(s) return tonumber(s) end)
-print('drawing '..gfxstr..' with palette '..paletteIndex)
+--print('drawing '..gfxstr..' with palette '..paletteIndex)
 	
 		local size = vec2i(16, 16)
 		local img = Image(16 * size.x, 16 * size.y, 1, 'uint8_t'):clear()
@@ -605,9 +573,34 @@ end
 
 -- 8x8 tiles are going to be 16x16 = 256 in size
 -- 16x16 tiles are going to be 16x16 = 256 in size
-for _,i in ipairs(mapTileGraphicsLayer3:keys():sort()) do
-	local gfx = mapTileGraphicsLayer3[i]
-	local mapIndex = gfx.mapIndexes:keys():sort()[1] or 0
+for _,gfxLayer3Index in ipairs(mapTileGraphicsLayer3:keys():sort()) do
+	local gfxLayer3 = mapTileGraphicsLayer3[gfxLayer3Index]
+
+	-- layer3 always has the same layout, so it has no tileset, so just use that layout for the graphics tiles
+	local paletteIndex = gfxLayer3.palettes:keys():sort()[1] 
+	--or 0
+if paletteIndex then
+	local palette = makePalette(game.mapPalettes + paletteIndex, 4, 16*8)
+
+	local size = vec2i(8, 8)
+	local img = Image(16 * size.x, 16 * size.y, 1, 'uint8_t'):clear()
+	local tile16x16 = 0
+	for j=0,size.y-1 do
+		for i=0,size.x-1 do
+			layer3drawtile16x16(
+				img,
+				bit.lshift(i, 4),
+				bit.lshift(j, 4),
+				tile16x16,
+				gfxLayer3Index,
+				palette
+			)
+			tile16x16 = tile16x16 + 1
+		end
+	end
+	img.palette = palette
+	img:save((mappath/('tilesetlayer3_'..gfxLayer3Index..'.png')).path)
+end
 end
 
 
