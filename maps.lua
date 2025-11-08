@@ -428,6 +428,8 @@ for mapIndex=0,countof(game.maps)-1 do
 	local layout1Data = layouts[1] and layouts[1].data
 	local layer1Size = layerSizes[1]
 
+	-- TODO sometimes the map uses layer2/3's size ... not layer1's ...
+	-- check the .size variable?
 	local img = Image(
 		-- map size is in 16x16 tiles, right?
 		-- and should I size it by the first layer, or by the max of all layers?
@@ -509,12 +511,14 @@ for mapIndex=0,countof(game.maps)-1 do
 					local srcX = (dstX + posx) % layerSize.x
 					local srcY = (dstY + posy) % layerSize.y
 					local tile16x16 = layoutptr[((srcX + layerSize.x * srcY) % #layoutData)]
+					--local tile16x16 = layoutptr[((srcY + layerSize.y * srcX) % #layoutData)]
+					--local tile16x16 = layoutptr[((srcX + layerSize.y * srcY) % #layoutData)]
 					--]]
+
 					if layer == 3 then
 						layer3drawtile16x16(img, x, y, tile16x16, gfxLayer3Index, palette)
 					else
-						local zLevelFlags = bit.lshift(1, z)
-						layer1and2drawtile16x16(img, x, y, tile16x16, tilesetIndexes[layer], zLevelFlags, gfxIndexes, palette)
+						layer1and2drawtile16x16(img, x, y, tile16x16, tilesetIndexes[layer], bit.lshift(1, z), gfxIndexes, palette)
 					end
 				end
 			end
