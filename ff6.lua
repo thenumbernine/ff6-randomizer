@@ -2125,7 +2125,7 @@ local game_t = ff6struct{
 		{padding_1fd978 = 'uint8_t[136]'},										-- 0x1fd978 - 0x1fda00 = 0xFF filler
 		{mapTileGraphicsOffsets = 'uint24_t[0x52]'},							-- 0x1fda00 - 0x1fdaf6 = town tile graphics pointers (+0x1fdb00), points into mapTileGraphics
 		{padding_1fdaf6 = 'uint8_t[10]'},										-- 0x1fdaf6 - 0x1fdb00
-		{mapTileGraphics = 'uint8_t['..(0x25f400 - 0x1fdb00)..']'},				-- 0x1fdb00 - 0x25f400 = town tile graphics 4bpp
+		{mapTileGraphics = 'uint8_t['..(0x25f400 - 0x1fdb00)..']'},				-- 0x1fdb00 - 0x25f400 = map tile graphics for layers 1&2, 4bpp
 			-- (within it) 0x21c4c0 - 0x21e4c0 = battle background top graphics: building
 
 		{padding_25f400 = 'uint8_t['..(0x260000 - 0x25f400)..']'},				-- 0x25f400 - 0x260000
@@ -2133,14 +2133,14 @@ local game_t = ff6struct{
 		{mapAnimGraphics = 'uint8_t['..(0x268000 - 0x260000)..']'},				-- 0x260000 - 0x268000 = 4bpp
 		{characterPalettes = 'palette16_t['..numCharacterPalettes..']'},		-- 0x268000 - 0x268400	-- also town tile palettes?
 		{mapNameOffsets = 'uint16_t['..numMapNames..']'},						-- 0x268400 - 0x268780
-
-		{padding_268780 = 'uint8_t['..(0x26cda0 - 0x268780)..']'},				-- 0x268780 - 0x26cda0
-
-		{mapAnimGraphicsOffsets = 'uint24_t[0xa]'},								-- 0x26cda0 - 0x26cdbe = offset, add 0x26cdc0
+		{mapTileGraphicsLayer3 = 'uint8_t['..(0x26cd60 - 0x268780)..']'},		-- 0x268780 - 0x26cd60  map tile garphics for layer 3, 2bpp
+		{mapTileGraphicsLayer3Offsets = 'uint24_t[18]'},						-- 0x26cd60 - 0x26cd96 = offset, +0x268780 .. there's 19, but only 18 point to valid compressed data ...
+		{padding_26cd96 = 'uint8_t[10]'},										-- 0x26cd96 - 0x26cda0
+		{mapAnimGraphicsOffsets = 'uint24_t[10]'},								-- 0x26cda0 - 0x26cdbe = offset, +0x26cdc0 to mapAnimGraphicsLayer3
 		{padding_26cdbe = 'uint8_t[2]'},										-- 0x26cdbe - 0x26cdc0
 		{mapAnimGraphicsLayer3 = 'uint8_t['..(0x26f198 - 0x26cdc0)..']'},		-- 0x26cdc0 - 0x26f198 = 2bpp, compressed
 
-		{padding_26f198 = 'uint8_t['..(0x26f4a0 - 0x26f198)..']'},				-- 0x26f198 - 0x26f4a0 
+		{padding_26f198 = 'uint8_t['..(0x26f4a0 - 0x26f198)..']'},				-- 0x26f198 - 0x26f4a0
 
 		{hpIncPerLevelUp = 'uint8_t['..numLevels..']'},							-- 0x26f4a0 - 0x26f502
 		{mpIncPerLevelUp = 'uint8_t['..numLevels..']'},							-- 0x26f502 - 0x26f564
@@ -2314,7 +2314,7 @@ assertOffset('spellDescOffsets', spellDescOffsetsAddr)
 assertOffset('formationMPs', 0x1fb400)
 assertOffset('itemColosseumInfos', itemColosseumInfosAddr)
 assertOffset('mapTilesetOffsets', mapTilesetOfsAddr)
-assertOffset('characterPalettes', 0x268000) 
+assertOffset('characterPalettes', 0x268000)
 assertOffset('mapNameOffsets', 0x268400)
 assertOffset('mapAnimGraphicsOffsets', 0x26cda0)
 assertOffset('mapAnimGraphicsLayer3', 0x26cdc0)
