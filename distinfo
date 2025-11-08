@@ -20,4 +20,5 @@ deps = {
 	"image",
 	"struct",
 	"vec-ffi",
+	"gnuplot",
 }
