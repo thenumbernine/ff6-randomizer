@@ -483,12 +483,12 @@ for mapIndex=0,countof(game.maps)-1 do
 				local y = bit.lshift(dstY, 4)
 				for dstX=0,layer1Size.x-1 do
 					local x = bit.lshift(dstX, 4)
-					--[[ when do you reshape (map 15)
+					-- [[ when do you reshape (map 15, breaks map 6)
 					local srcX = (dstX + posx) % layer1Size.x
 					local srcY = (dstY + posy) % layer1Size.y
 					local tile16x16 = layoutptr[((srcX + layer1Size.x * srcY) % #layoutData)]
 					--]]
-					-- [[ and when do you just modulo to layer 2/3 size (map 6)?
+					--[[ and when do you just modulo to layer 2/3 size (map 6, breaks map 15)?
 					local srcX = (dstX + posx) % layerSize.x
 					local srcY = (dstY + posy) % layerSize.y
 					local tile16x16 = layoutptr[((srcX + layerSize.x * srcY) % #layoutData)]
