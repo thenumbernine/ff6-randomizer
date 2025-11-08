@@ -266,12 +266,13 @@ local function layer3tile8x8toptr(tile8x8, gfxLayer3Index)
 	return tileptr, bpp
 end
 
-local function layer1and2drawtile16x16(img, x, y, tile16x16, tilesetIndex, zLevel, gfxIndexes, palette)
+local function layer1and2drawtile16x16(img, x, y, tile16x16, tilesetIndex, zLevelFlags, gfxIndexes, palette)
 	local tileset = mapTilesets[tilesetIndex]
 	if not tileset then return end
 	local data = tileset.data
 	assert.len(data, 0x800)
 	if not data then return end
+	zLevelFlags = zLevelFlags or 3
 	local tilesetptr = ffi.cast('uint8_t*', data)
 	for yofs=0,1 do
 		for xofs=0,1 do
@@ -280,8 +281,8 @@ local function layer1and2drawtile16x16(img, x, y, tile16x16, tilesetIndex, zLeve
 				tilesetptr[tile16x16 + i],
 				bit.lshift(tilesetptr[tile16x16 + bit.bor(0x400, i)], 8)
 			)
-			local tileZLevel = bit.band(0x2000, tilesetTile) ~= 0
-			if tileZLevel == zLevel then
+			local tileZLevel = bit.band(bit.rshift(tilesetTile, 13), 1)
+			if bit.band(bit.lshift(1, tileZLevel), zLevelFlags) ~= 0 then
 				local tile8x8 = bit.band(tilesetTile, 0x3ff)
 				local tileptr, bpp = layer1and2tile8x8toptr(tile8x8, gfxIndexes)
 				if tileptr then
@@ -335,8 +336,8 @@ local function layer3drawtile16x16(img, x, y, tile16x16, gfxLayer3Index, palette
 	end
 end
 
---for mapIndex=0,countof(game.maps)-1 do
-do local mapIndex=19
+for mapIndex=0,countof(game.maps)-1 do
+--do local mapIndex=19
 	local map = game.maps + mapIndex
 	print('maps[0x'..mapIndex:hex()..'] = '..game.maps[mapIndex])
 	-- map.gfx* points into mapTileGraphicsOffsets into mapTileGraphics
@@ -487,8 +488,7 @@ do local mapIndex=19
 						bit.lshift(dstY, 4),
 						layoutptr[((srcX + layerSize.x * srcY) % #layoutData)],
 						layer,
-						z == 1,
-						blend)
+						bit.lshift(1, z))
 				end
 			end
 		end
@@ -535,13 +535,14 @@ end
 
 for _,tilesetIndex in ipairs(mapTilesets:keys():sort()) do
 	local tileset = mapTilesets[tilesetIndex]
+	local gfxstrs = table.keys(tileset.gfxstrs):sort()
 	if tileset then
 		print('mapTilesets[0x'..tilesetIndex:hex()..']')
 		print('','mapIndexes='..tolua(tileset.mapIndexes:keys():sort()))
 		print('','palettes='..tolua(tileset.palettes:keys():sort()))
-		print('','gfxstrs='..tolua(table.keys(tileset.gfxstrs):sort()))
+		print('','gfxstrs='..tolua(gfxstrs))
 	end
-	for tilesetGfxPerm,gfxstr in ipairs(table.keys(tileset.gfxstrs):sort()) do
+	for tilesetGfxPerm,gfxstr in ipairs(gfxstrs) do
 		local paletteIndex = tileset.paletteForGfxStr[gfxstr] or 0
 		local palette = makePalette(game.mapPalettes + paletteIndex, 4, 16*8)
 		
@@ -556,24 +557,23 @@ for _,tilesetIndex in ipairs(mapTilesets:keys():sort()) do
 			local y = bit.lshift(j, 4)
 			for i=0,size.x-1 do
 				local x = bit.lshift(i, 4)
-				-- TODO need z-test and to disable it here
-				for z=0,1 do
-					layer1and2drawtile16x16(
-						img,
-						x,
-						y,
-						tile16x16,
-						tilesetIndex,
-						z==1,
-						gfxIndexes,
-						palette
-					)
-				end
+				layer1and2drawtile16x16(
+					img,
+					x,
+					y,
+					tile16x16,
+					tilesetIndex,
+					nil,
+					gfxIndexes,
+					palette
+				)
 				tile16x16 = tile16x16 + 1
 			end
 		end
 		img.palette = palette
-		img:save((mappath/('tileset_'..tilesetIndex..'_'..tilesetGfxPerm..'.png')).path)
+		img:save((mappath/('tileset_'..tilesetIndex
+			..(#gfxstrs > 1 and ('_'..tilesetGfxPerm) or '')
+			..'.png')).path)
 	end
 end
 
