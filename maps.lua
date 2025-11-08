@@ -56,6 +56,7 @@ The 2 bytes describing rendering the 8x8 subtile provides a 10-bit index for loo
 That means a map's tileset is unique wrt its gfx1+2+3+4 (+ palette)
 --]]
 local mapTilesets = table()	-- 0-based
+local mapGfxStrs = {}	-- maps from gfxstr = gfx1/2/2/3 to sets of pairs of tileset/palette
 for i=0,countof(game.mapTilesetOffsets)-1 do
 	local offset = game.mapTilesetOffsets[i]:value()
 	local addr = 0xffffff
@@ -102,6 +103,7 @@ for i=0,countof(game.mapTileGraphicsOffsets)-1 do
 		offset = offset,
 		addr = addr,
 		mapIndexes = table(),
+		palettes = table(),
 	}
 end
 do	-- here decompress all 'mapTileGraphics' tiles irrespective of offset table
@@ -345,14 +347,14 @@ do local mapIndex=19
 	local gfxIndexes = range(4):mapi(function(i)
 		return tonumber(map['gfx'..i])
 	end)
-
 	local gfxs = table.mapi(gfxIndexes, function(i) return mapTileGraphics[i] end)
-
 	for i=1,4 do
 		if gfxs[i] then
+			gfxs[i].palettes[paletteIndex] = true
 			gfxs[i].mapIndexes[mapIndex] = true
 		end
 	end
+
 	local gfxLayer3Index =  tonumber(map.gfxLayer3)
 	local gfxLayer3 = mapTileGraphicsLayer3[gfxLayer3Index]
 	if gfxLayer3 then
@@ -363,7 +365,8 @@ do local mapIndex=19
 	local tilesetIndexes = table()
 	local tilesets = table()
 	for i=1,2 do
-		tilesetIndexes[i] = tonumber(map['tileset'..i])
+		local tilesetIndex = tonumber(map['tileset'..i])
+		tilesetIndexes[i] = tilesetIndex
 		tilesets[i] = mapTilesets[tilesetIndexes[i]]
 		print('map tileset'..i..' data size', tilesets[i] and #tilesets[i].data)
 		if tilesets[i] then
@@ -372,6 +375,10 @@ do local mapIndex=19
 			local gfxstr = gfxIndexes:mapi(tostring):concat'/'
 			tilesets[i].gfxstrs[gfxstr] = true
 			tilesets[i].paletteForGfxStr[gfxstr] = paletteIndex
+			-- map from gfxstr to tilesetIndex/paletteIndex
+			-- this is unique for each set of 640 tile8x8's rendered (used by tilesets) 
+			mapGfxStrs[gfxstr] = mapGfxStrs[gfxstr] or {}
+			mapGfxStrs[gfxstr][tilesetIndex..'/'..paletteIndex] = true
 		end
 	end
 
@@ -490,13 +497,18 @@ do local mapIndex=19
 	img.palette = palette
 	img:save((mappath/('map'..mapIndex..'.png')).path)
 
+	--[[ 
+	-- This draws all the 8x8 tiles that this map has access to via gfx1/2/3/4
+	-- It is unique to the map, however there are a lot of them.
+	-- So I'll just draw mapTileGraphics per palette used.
+	--
+	-- The tile8x8 will be unique per gfx-combination (and palette)
 	-- save all map tile graphics separately
 	-- hmm why 40?  16x16 for gfx1, 16x16 for gfx2, 16x8 for gfx3 ... gfx4? 
 	-- ... gfx1 uses 256 values, gfx2,3,4 use 128 values each, total 640 values
 	-- 10 bits total ... the rest up to 1024 are other stuff like animation, menu, etc.
 	do
 		-- no need to save layer's 8x8 tiles since all its 8x8 tiles are 1:1 in the layer-3 16x16-tile output
-		local layer = 2
 		local size = vec2i(16,40)
 		local img = Image(size.x * tileWidth, size.y * tileHeight, 1, 'uint8_t'):clear()
 		local tile8x8 = 0
@@ -518,6 +530,7 @@ do local mapIndex=19
 		img.palette = palette
 		img:save((mappath/('tile8x8_'..mapIndex..'_1and2.png')).path)
 	end
+	--]]
 end
 
 for _,tilesetIndex in ipairs(mapTilesets:keys():sort()) do
@@ -565,21 +578,43 @@ for _,tilesetIndex in ipairs(mapTilesets:keys():sort()) do
 end
 
 -- 8x8 tiles are going to be 16x40 = 640 in size
--- 16x16 tiles are going to be 16x16 = 256 in size
-for _,i in ipairs(mapTileGraphics:keys():sort()) do
-	local gfx = mapTileGraphics[i]
-	local mapIndex = gfx.mapIndexes:keys():sort()[1] or 0
+-- depending on whether it is pointed to by gfx1/2/3/4, or what combo are used, this might be 128 or 256 entries
+for _,gfxIndex in ipairs(mapTileGraphics:keys():sort()) do
+	local bpp = 4
+	local gfx = mapTileGraphics[gfxIndex]
+	if gfx then
+		-- draw the 8x8 of all tiles here
+		-- notice, some gfxs only ever use only 128 of them
+
+		local paletteIndex = gfx.palettes:keys():sort()[1] or 0
+		local palette = makePalette(game.mapPalettes + paletteIndex, 4, 16*8)
+
+		local size = vec2i(16, 16)
+		local img = Image(8 * size.x, 8 * size.y, 1, 'uint8_t'):clear()
+		local tile8x8 = 0
+		for j=0,size.y-1 do
+			for i=0,size.x-1 do
+				local tileptr = rom + gfx.addr + tile8x8 * bit.lshift(bpp, 3)
+				readTile(
+					img,
+					bit.lshift(i, 3),
+					bit.lshift(j, 3),
+					tileptr,
+					bpp
+				)
+				tile8x8 = tile8x8 + 1
+			end
+		end
+		img.palette = palette
+		img:save((mappath/('tilegfx4bpp_'..gfxIndex..'.png')).path)
+	end
 end
 
--- 8x8 tiles are going to be 16x16 = 256 in size
--- 16x16 tiles are going to be 16x16 = 256 in size
 for _,gfxLayer3Index in ipairs(mapTileGraphicsLayer3:keys():sort()) do
 	local gfxLayer3 = mapTileGraphicsLayer3[gfxLayer3Index]
 
 	-- layer3 always has the same layout, so it has no tileset, so just use that layout for the graphics tiles
-	local paletteIndex = gfxLayer3.palettes:keys():sort()[1] 
-	--or 0
-if paletteIndex then
+	local paletteIndex = gfxLayer3.palettes:keys():sort()[1] or 0
 	local palette = makePalette(game.mapPalettes + paletteIndex, 4, 16*8)
 
 	local size = vec2i(8, 8)
@@ -599,8 +634,7 @@ if paletteIndex then
 		end
 	end
 	img.palette = palette
-	img:save((mappath/('tilesetlayer3_'..gfxLayer3Index..'.png')).path)
-end
+	img:save((mappath/('tilegfx2bpp_'..gfxLayer3Index..'.png')).path)
 end
 
 
