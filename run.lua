@@ -6,6 +6,7 @@ local makePaletteSets = require 'graphics'.makePaletteSets
 local tileWidth = require 'graphics'.tileWidth
 local tileHeight = require 'graphics'.tileHeight
 local readTile = require 'graphics'.readTile
+local gnuplot = require 'gnuplot'
 require 'ext'
 
 local infn, outfn = ...
@@ -287,7 +288,7 @@ for i=0,game.numCharacters-1 do
 ::skip::
 	end
 end
-print((require'ext.tolua'({
+print((tolua({
 	mins = mins,
 	maxs = maxs,
 	avgs = table.map(sums, function(v) return v/game.numCharacters end),
@@ -444,7 +445,6 @@ end
 print()
 print()
 
-local gnuplot = require 'gnuplot'
 gnuplot{
 	terminal = 'png size 1024,768',
 	output = 'hp_inc_per_level.png',
@@ -467,6 +467,38 @@ gnuplot{
 	},
 	{using='1:2', notitle=true},
 }
+
+local totalHPIncPerLevel = range(1,game.numLevels):mapi(function(i,_,t)
+	return (i==1 and 0 or t[i-1]) + game.hpIncPerLevelUp[i-1]
+end)
+local totalMPIncPerLevel = range(1,game.numLevels):mapi(function(i,_,t)
+	return (i==1 and 0 or t[i-1]) + game.mpIncPerLevelUp[i-1]
+end)
+
+gnuplot{
+	terminal = 'png size 1024,768',
+	output = 'hp_total_at_level.png',
+	title = 'HP total at level',
+	style = 'data lines',
+	data = {
+		range(1,#totalHPIncPerLevel),
+		totalHPIncPerLevel,
+	},
+	{using='1:2', notitle=true},
+}
+gnuplot{
+	terminal = 'png size 1024,768',
+	output = 'mp_total_at_level.png',
+	title = 'MP total at level',
+	style = 'data lines',
+	data = {
+		range(1,#totalMPIncPerLevel),
+		totalMPIncPerLevel,
+	},
+	{using='1:2', notitle=true},
+}
+
+
 
 for i=0,game.numShops-1 do
 	print('shop #'..i..': '..game.shops[i])
