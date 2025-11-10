@@ -273,6 +273,8 @@ local function layer3tile8x8toptr(tile8x8, gfxLayer3Index)
 	local gfxLayer3 = mapTileGraphicsLayer3[gfxLayer3Index]
 	if not gfxLayer3 then return end
 	if not gfxLayer3.data then return end
+	-- 0x40 at the beginning of all layer3 tiles
+	-- also there's only 0x40 unique tiles (only 6 bits are used), so i'm betting this is an extra bitflag that goes along with them ... maybe zLevel?
 	local ofs = 0x40 + bit.band(0xff, tile8x8) * bit.lshift(bpp, 3)
 	assert.lt(ofs, #gfxLayer3.data)
 	local tileptr = ffi.cast('uint8_t*', gfxLayer3.data) + ofs
@@ -321,11 +323,16 @@ end
 local function layer3drawtile16x16(img, x, y, tile16x16, gfxLayer3Index, palette)
 	for yofs=0,1 do
 		for xofs=0,1 do
+			local hFlip = bit.band(0x40, tile16x16) ~= 0
+			local vFlip = bit.band(0x80, tile16x16) ~= 0
 			-- wait because tile16x16 << 2 has to be 8 bits
 			-- that means tile16x16 can only be 6 bits
 			-- and it also means that zLevel, hFlip, vFlip, highPal all must be 0
+			-- nope, in fact, hFlip is bit 6, vFlip  is bit 7
+			-- zLevel might be the bit of the extra 0x40 bytes at the beginning ...
+			-- or in fact 0x40 bytes means 8 bits per unique tile, so idk what goes in there ...
 			local tilesetTile = bit.bor(
-				bit.lshift(tile16x16, 2),
+				bit.lshift(bit.band(0x3f, tile16x16), 2),
 				bit.lshift(yofs, 1),
 				xofs
 			)
@@ -335,12 +342,12 @@ local function layer3drawtile16x16(img, x, y, tile16x16, gfxLayer3Index, palette
 			local tileptr, bpp = layer3tile8x8toptr(tile8x8, gfxLayer3Index)
 			if tileptr then
 				drawTile(img,
-					x + bit.lshift(xofs, 3),
-					y + bit.lshift(yofs, 3),
+					x + bit.lshift(hFlip and (1-xofs) or xofs, 3),
+					y + bit.lshift(vFlip and (1-yofs) or yofs, 3),
 					tileptr,
 					bpp,
-					nil,	-- hflip
-					nil,	-- vflip
+					hFlip,
+					vFlip,
 					nil,	-- palor
 					palette
 				)
@@ -635,7 +642,7 @@ for _,gfxLayer3Index in ipairs(mapTileGraphicsLayer3:keys():sort()) do
 	local paletteIndex = gfxLayer3.palettes:keys():sort()[1] or 0
 	local palette = makePalette(game.mapPalettes + paletteIndex, 4, 16*8)
 
-	local size = vec2i(8, 8)
+	local size = vec2i(16, 16)
 	local img = Image(16 * size.x, 16 * size.y, 1, 'uint8_t'):clear()
 	local tile16x16 = 0
 	for j=0,size.y-1 do
