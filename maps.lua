@@ -2,13 +2,11 @@
 problems remaining:
 - animated tiles don't work yet.  noticeable with map 38's torches and figaro castle.
 - map 8 blackjack parlor has tile glitches (and in everything's ff6tool too)
-- map 32 & 33 narshe clouds layer 3 layout is messed up
-	- looks like a layer-3 hflip/vflip issue
 - map 47 south figaro water layer is bad and proly needs animation.
 - map 54 figaro castle needs animation for fans and stuff.
 - map 61 figaro engine has tile glitches (and in everything's ff6tool too)
 - map 92 south figaro cave behind turtle has tile glitches (and in everything's ff6tool too)
-- map 97 clouds, same as narshe clouds
+- map 103 (and in everything's ff6tool)
 - map 130 phantom forest has glitches ... looks like a layer-3 hflip/vflip issue ...
 --]]
 local ffi = require 'ffi'
@@ -311,7 +309,7 @@ local function layer1and2drawtile16x16(img, x, y, tile16x16, tilesetIndex, zLeve
 						bpp,
 						hFlip8,
 						vFlip8,
-						bit.lshift(highPal, 4),
+						bit.lshift(highPal, bpp),
 						palette
 					)
 				end
@@ -445,18 +443,23 @@ for mapIndex=0,countof(game.maps)-1 do
 	for _,zAndLayer in ipairs(
 		map.layer3Priority == 0
 		and {
-			{0,3},	-- layer 3 has no zLevel
+			{0,3},
+			-- priority 0 sprites here
+			--{1,3},	-- does layer 3 have a zlevel?  where is it?
+			-- priority 1 sprites here
 			{0,2},
 			{0,1},
+			-- priority 2 sprites here
 			{1,2},
 			{1,1},
+			-- priority 3 sprites here
 		}
 		or {
 			{0,2},
 			{0,1},
 			{1,2},
 			{1,1},
-			{0,3},	-- layer 3 has no zLevel
+			{0,3},
 		}
 	)do
 		local z, layer = table.unpack(zAndLayer)
