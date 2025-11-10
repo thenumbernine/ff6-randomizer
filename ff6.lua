@@ -1719,13 +1719,13 @@ local map_t = struct{
 		{name='layer2Pos', type='xy8sb_t'},						-- 0x12
 		{name='layer3Pos', type='xy8sb_t'},						-- 0x14
 		{name='parallax', type='uint8_t'},					-- 0x16
-		{name='layer2WidthLog2Minus4', type='uint8_t:2'},		-- 0x17.0-1
 		{name='layer2HeightLog2Minus4', type='uint8_t:2'},		-- 0x17.2-3
+		{name='layer2WidthLog2Minus4', type='uint8_t:2'},		-- 0x17.0-1
 		{name='layer1HeightLog2Minus4', type='uint8_t:2'},		-- 0x17.4-5	layer1Height = 1 << (layer1HeightLog2Minus4 + 4)
 		{name='layer1WidthLog2Minus4', type='uint8_t:2'},		-- 0x17.6-7	layer1Width = 1 << (layer1WidthLog2Minus4 + 4)
 		{name='unknown_18_0', type='uint8_t:4'},				-- 0x18.0-3
-		{name='layer3WidthLog2Minus4', type='uint8_t:2'},		-- 0x18.4-5
 		{name='layer3HeightLog2Minus4', type='uint8_t:2'},		-- 0x18.6-7
+		{name='layer3WidthLog2Minus4', type='uint8_t:2'},		-- 0x18.4-5
 		{name='palette', type='uint8_t'},						-- 0x19
 		{name='paletteAnimation', type='uint8_t'},				-- 0x1a
 		{name='animatedLayers1And2', type='uint8_t:5'},			-- 0x1b.0-4

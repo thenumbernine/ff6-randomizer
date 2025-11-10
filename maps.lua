@@ -1,19 +1,15 @@
 --[[
 problems remaining:
 - animated tiles don't work yet.  noticeable with map 38's torches and figaro castle.
-- right now I have all maps use layer1's size. needed by map 15's layer 2, but breaks map 6's layer 2 and map 32 & 33's layer 3
 - map 8 blackjack parlor has tile glitches (and in everything's ff6tool too)
-- map 6 blackjack exterior layer2 layout needs layer2's size, map 15 layer2 layout needs layer1's size
-	- map 6 layer1 size 32x32, layer2,3 size 16x16
-	- map 15 chocobo stable interior layer1 size 128x64, layer2,3 size 64,128 (needs 128x64 to draw correctly)
 - map 32 & 33 narshe clouds layer 3 layout is messed up
-	- map 32 & 33's layer 1,2 sizes are 64x64, layer 3 size is 32x32 (probably needs 32x32)
+	- looks like a layer-3 hflip/vflip issue
 - map 47 south figaro water layer is bad and proly needs animation.
 - map 54 figaro castle needs animation for fans and stuff.
 - map 61 figaro engine has tile glitches (and in everything's ff6tool too)
 - map 92 south figaro cave behind turtle has tile glitches (and in everything's ff6tool too)
 - map 97 clouds, same as narshe clouds
-- map 130 phantom forest has glitches (and differing sized layers ... preference goes to 2/3 I guess)
+- map 130 phantom forest has glitches ... looks like a layer-3 hflip/vflip issue ...
 --]]
 local ffi = require 'ffi'
 local path = require 'ext.path'
@@ -502,18 +498,9 @@ for mapIndex=0,countof(game.maps)-1 do
 				local y = bit.lshift(dstY, 4)
 				for dstX=0,layer1Size.x-1 do
 					local x = bit.lshift(dstX, 4)
-					-- [[ when do you reshape (map 15, breaks map 6)
-					local srcX = (dstX + posx) % layer1Size.x
-					local srcY = (dstY + posy) % layer1Size.y
-					local tile16x16 = layoutptr[((srcX + layer1Size.x * srcY) % #layoutData)]
-					--]]
-					--[[ and when do you just modulo to layer 2/3 size (map 6, breaks map 15)?
 					local srcX = (dstX + posx) % layerSize.x
 					local srcY = (dstY + posy) % layerSize.y
 					local tile16x16 = layoutptr[((srcX + layerSize.x * srcY) % #layoutData)]
-					--local tile16x16 = layoutptr[((srcY + layerSize.y * srcX) % #layoutData)]
-					--local tile16x16 = layoutptr[((srcX + layerSize.y * srcY) % #layoutData)]
-					--]]
 
 					if layer == 3 then
 						layer3drawtile16x16(img, x, y, tile16x16, gfxLayer3Index, palette)
@@ -727,6 +714,5 @@ print('WoBMapDataDecompressed', #WoBMapDataDecompressed)
 path'WoBMapDataDecompressed.bin':write(WoBMapDataDecompressed)
 path'WoBMapDataDecompressed.hex':write(WoBMapDataDecompressed:hexdump())
 --]]
-
 
 end
