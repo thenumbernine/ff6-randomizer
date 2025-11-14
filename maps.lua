@@ -29,7 +29,7 @@ local decompress0x800 = require 'decompress'.decompress0x800
 
 -- util? ext.ffi or something?
 local function countof(array)
-	return ffi.sizeof(array) / ffi.sizeof(array[0])
+	return ffi.sizeof(array) / ffi.sizeof(ffi.typeof(array[0]))
 end
 
 return function(rom, game, romsize)
@@ -722,6 +722,38 @@ for i=0,game.numEntranceTriggerOfs-1 do
 	local entranceAreaTrigger = ffi.cast('entranceAreaTrigger_t*', rom + addr)
 	print(' '..entranceAreaTrigger)
 end
+
+-- can't do countof() on prim types that are auto converted to Lua numbers ... until I find out how to convert a ptr/ref type to a base type.
+for i=0,ffi.sizeof(game.treasureOfs)/2-1 do --countof(game.treasureOfs)-1 do
+	local addr = game.treasureOfs[i] + ffi.offsetof('game_t', 'treasures')
+	print('treasureOfs[0x'..i:hex()..']'
+		..' addr=$'..('%06x'):format(addr))
+end
+print()
+
+for i=0,countof(game.treasures) do
+	local addr = ffi.cast('uint8_t*', game.treasures + i) - rom
+	print('treasures[0x'..i:hex()..'] ='
+		..' addr=$'..('%06x'):format(addr)
+		..' '..game.treasures[i])
+end
+print()
+
+for i=0,ffi.sizeof(game.npcOfs)/2-1 do --countof(game.npcOfs)-1 do
+	local addr = game.npcOfs[i] + ffi.offsetof('game_t', 'npcOfs')
+	print('npcOfs[0x'..i:hex()..']'
+		..' addr=$'..('%06x'):format(addr))
+end
+print()
+
+for i=0,countof(game.npcs) do
+	local addr = ffi.cast('uint8_t*', game.npcs + i) - rom
+	print('npcs[0x'..i:hex()..']'
+		..' addr=$'..('%06x'):format(addr)
+		..' '..game.npcs[i])
+end
+print()
+
 
 print()
 print(game.mapNames)
