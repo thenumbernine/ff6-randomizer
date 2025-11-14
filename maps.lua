@@ -667,7 +667,7 @@ end
 
 
 print()
-for i=0,countof(game.mapEventTriggerOfs)-1 do
+for i=0,ffi.sizeof(game.mapEventTriggerOfs)/2-1 do
 	local addr = game.mapEventTriggerOfs[i] + ffi.offsetof('game_t', 'mapEventTriggerOfs')
 	local mapEventTrigger = ffi.cast('mapEventTrigger_t*', rom + addr)
 	print('mapEventTrigger[0x'..i:hex()..'] ='
@@ -680,15 +680,38 @@ print()
 -- all the entranceTriggerOfs point into entranceTriggers aligned to entranceTrigger_t:
 -- so I could dump the whole list of 0x469 entranceTrigger_t's
 --  instead of just the offset list
+-- These are for the world map I guess?
+-- The very first one is the chocobo stable next to Dragons Neck Colloseum in WoB.
+-- but I don't see the Narshe trigger in this list ...
 for i=0,game.numEntranceTriggerOfs-1 do
 	-- TODO use ref_t or whateever
 	local addr = game.entranceTriggerOfs[i] + ffi.offsetof('game_t', 'entranceTriggerOfs')
 	--assert.eq((addr - ffi.offsetof('game_t', 'entranceTriggers')) % ffi.sizeof'entranceTrigger_t', 0)
-	print('entranceTrigger[0x'..i:hex()..']')
-	print(' addr: $'..('%06x'):format(addr))
 	local entranceTrigger = ffi.cast('entranceTrigger_t*', rom + addr)
-	print(' '..entranceTrigger)
+	print('entranceTriggerOfs[0x'..i:hex()..'] ='
+		..' addr: $'..('%06x'):format(addr))
+		--..' '..entranceTrigger)
 end
+print()
+
+--[[
+ok so
+entrance trigger #4 is Narshe on the WoB map
+but it's not in the entranceTriggerOfs[] list
+so I'm betting the entranceTriggerOfs[] list is the start of each map.
+its size is 513 while the map size is 415 (and everything's ff6tool says the entranceTriggerOfs[] is just 415 so...)
+so if entranceTriggerOfs is the start per map then what is the length per map?
+Sure enough this matches with everything's tool, which says 44 <-> 0x2c entrances on world map, and I show Ofs[1] points to 0x2d ...
+--]]
+for i=0,countof(game.entranceTriggers)-1 do
+	-- TODO use ref_t or whateever
+	local entranceTrigger = game.entranceTriggers + i
+	local addr = ffi.cast('uint8_t*', entranceTrigger) - rom
+	print('entranceTriggers[0x'..i:hex()..'] ='
+		..' addr: $'..('%06x'):format(addr)
+		..' '..entranceTrigger)
+end
+print()
 
 -- there are more entrance area trigger offsets than entrance area triggers
 for i=0,game.numEntranceTriggerOfs-1 do
