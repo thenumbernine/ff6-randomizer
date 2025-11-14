@@ -667,11 +667,12 @@ end
 
 
 print()
-for i=0,(0x040342 - 0x040000)/2-1 do
+for i=0,countof(game.mapEventTriggerOfs)-1 do
 	local addr = game.mapEventTriggerOfs[i] + ffi.offsetof('game_t', 'mapEventTriggerOfs')
 	local mapEventTrigger = ffi.cast('mapEventTrigger_t*', rom + addr)
-	print('mapEventTrigger #'..i..': $'..('%04x'):format(addr))
-	print(' '..mapEventTrigger)
+	print('mapEventTrigger[0x'..i:hex()..'] ='
+		--..' $'..('%04x'):format(addr)
+		..' '..mapEventTrigger)
 end
 print()
 
