@@ -29,7 +29,15 @@ local decompress0x800 = require 'decompress'.decompress0x800
 
 -- util? ext.ffi or something?
 local function countof(array)
+	--[[ doesn't work on prims:
 	return ffi.sizeof(array) / ffi.sizeof(ffi.typeof(array[0]))
+	--]]
+	--[[ works on prims, doesn't work on structs:
+	return ffi.sizeof(array) / ffi.alignof(array, 0)
+	--]]
+	-- [[ works on both:
+	return ffi.sizeof(array) / (ffi.cast('uint8_t*', array+1) - ffi.cast('uint8_t*', array+0))
+	--]]
 end
 
 return function(rom, game, romsize)
@@ -51,11 +59,33 @@ for i=0,countof(game.mapLayoutOffsets)-1 do
 			data = data,
 		}
 	end
-	print('mapLayouts[0x'..i:hex()..'] offset=0x'
-		..offset:hex()
+	print('mapLayouts[0x'..i:hex()..']'
+		..' offset=0x'..offset:hex()
 		..' addr=0x'..('%06x'):format(addr)
 		..(data and ' size=0x'..(#data):hex() or '')
 	)
+	--if data then print(data:hexdump()) end
+end
+
+local mapTileProps = table()	-- 0-based
+for i=0,countof(game.mapTilePropsOfs)-1 do
+	local offset = game.mapTilePropsOfs[i]
+	local addr = 0xffffff
+	local data
+	if offset ~= 0xffff then
+		addr = offset + ffi.offsetof('game_t', 'mapTilePropsCompressed')
+		data = decompress0x800(rom + addr, ffi.sizeof(game.mapTilePropsCompressed))
+		mapTileProps[i] = {
+			index = i,
+			offset = offset,
+			addr = addr,
+			data = data,
+		}
+	end
+	print('mapTileProps[0x'..i:hex()..']'
+		..' offset=0x'..offset:hex()
+		..' addr=0x'..('%06x'):format(addr)
+		..(data and ' size=0x'..(#data):hex() or ''))
 	--if data then print(data:hexdump()) end
 end
 
@@ -568,6 +598,54 @@ for mapIndex=0,countof(game.maps)-1 do
 		img:save((mappath/('tile8x8_'..mapIndex..'_1and2.png')).path)
 	end
 	--]]
+
+
+	-- tile properties while we're here
+	local tileProps = mapTileProps[tonumber(map.tileProps)]
+	if tileProps then
+		if not layout1Data then
+			print('!!! got tile properties without layer 1 layout data !!!')
+		elseif not tileProps.data then
+			print('!!! got tileProps but with no data !!!')
+		else
+			-- each is 0x200 in size ... draw it I guess
+			local img = Image(
+				bit.lshift(layer1Size.x, 4),
+				bit.lshift(layer1Size.y, 4),
+				1,
+				'uint8_t'
+			):clear()
+
+			local layoutptr = ffi.cast('uint8_t*', layout1Data)
+			local tilePropsArray = ffi.cast('mapTileProps_t*', tileProps.data)
+			for dstY=0,layer1Size.y-1 do
+				for dstX=0,layer1Size.x-1 do
+					local props = tilePropsArray + layoutptr[0]
+					for py=0,15 do
+						for px=0,15 do
+							local pix = img.buffer +
+								px + 16 * dstX + img.width * (py + 16 * dstY)
+
+							pix[0] = ffi.cast('uint8_t*', props)[
+								bit.band(px + py, 1)
+							]
+						end
+					end
+					layoutptr = layoutptr + 1
+				end
+			end
+
+			img.palette = range(256):mapi(function(i)
+				return {
+					math.random(0,255),
+					math.random(0,255),
+					math.random(0,255),
+					255
+				}
+			end)
+			img:save((mappath/('tileprops'..mapIndex..'.png')).path)
+		end
+	end
 end
 
 for _,tilesetIndex in ipairs(mapTilesets:keys():sort()) do
@@ -732,8 +810,7 @@ for i=0,game.numEntranceTriggerOfs-1 do
 	print(' '..entranceAreaTrigger)
 end
 
--- can't do countof() on prim types that are auto converted to Lua numbers ... until I find out how to convert a ptr/ref type to a base type.
-for i=0,ffi.sizeof(game.treasureOfs)/2-1 do --countof(game.treasureOfs)-1 do
+for i=0,countof(game.treasureOfs)-1 do
 	local addr = game.treasureOfs[i] + ffi.offsetof('game_t', 'treasures')
 	print('treasureOfs[0x'..i:hex()..']'
 		..' addr=$'..('%06x'):format(addr))
@@ -748,7 +825,7 @@ for i=0,countof(game.treasures) do
 end
 print()
 
-for i=0,ffi.sizeof(game.npcOfs)/2-1 do --countof(game.npcOfs)-1 do
+for i=0,countof(game.npcOfs)-1 do
 	local addr = game.npcOfs[i] + ffi.offsetof('game_t', 'npcOfs')
 	print('npcOfs[0x'..i:hex()..']'
 		..' addr=$'..('%06x'):format(addr))

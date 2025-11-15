@@ -1653,7 +1653,7 @@ local map_t = struct{
 		{name='battleBackground', type='uint8_t:7'},			-- 2.0-6
 		{name='layer3Priority', type='uint8_t:1'},				-- 2.7
 		{name='unknown_3', type='uint8_t'},						-- 3
-		{name='tileProps', type='uint8_t'},						-- 4		mapTileProperties[]
+		{name='tileProps', type='uint8_t'},						-- 4		mapTilePropsOfs[]
 		{name='attacks', type='uint8_t:7'},						-- 5.0-6
 		{name='enableBattles', type='uint8_t:1'},				-- 5.7
 		{name='windowMask', type='uint8_t:2'},					-- 6.0-1: 0=default, 1=imperial camp, 2=ebot's rock, 3=kefka's tower spotlight
@@ -1741,6 +1741,27 @@ local map_t = struct{
 	end,
 }
 assert.eq(ffi.sizeof'map_t', 0x21)
+
+local mapTileProps_t = ff6struct{
+	name = 'mapTileProps_t',
+	fields = {
+		{zLevel = 'uint16_t:3'},				-- 0.0-0.2 = 0=none 1=upstairs 2=downstairs 3=upstairs & downstairs 4=bridge
+		{topSpritePriority = 'uint16_t:1'},		-- 0.3
+		{bottomSpritePriority = 'uint16_t:1'},	-- 0.4
+		{door = 'uint16_t:1'},					-- 0.5
+		{stairsUpRight = 'uint16_t:1'},			-- 0.6
+		{stairsUpLeft = 'uint16_t:1'},			-- 0.7
+		{passableRight = 'uint16_t:1'},			-- 1.0
+		{passableLeft = 'uint16_t:1'},			-- 1.1
+		{passableBottom = 'uint16_t:1'},		-- 1.2
+		{passableTop = 'uint16_t:1'},			-- 1.3
+		{unknown_1_4 = 'uint16_t:1'},			-- 1.4
+		{unknown_1_5 = 'uint16_t:1'},			-- 1.5
+		{ladder = 'uint16_t:1'},				-- 1.6
+		{passableNPC = 'uint16_t:1'},			-- 1.7
+	},
+}
+assert.eq(ffi.sizeof'mapTileProps_t', 2)
 
 local mapAnimProps_t = ff6struct{
 	name = 'mapAnimProps_t',
@@ -2185,35 +2206,36 @@ local game_t = ff6struct{
 
 		{darylAirshipPalette = 'palette16_t'},									-- 0x12ef00 - 0x12ef20
 
-		{padding_12ef20 = 'uint8_t['..(-(0x12ef20 - 0x130000))..']'},				-- 0x12ef20 - 0x130000
+		{padding_12ef20 = 'uint8_t['..(-(0x12ef20 - 0x130000))..']'},			-- 0x12ef20 - 0x130000
 
-		{battleAnimGraphics3bpp = 'uint8_t['..(-(0x130000 - 0x14c998))..']'},		-- 0x130000 - 0x14c998 ... 3bpp, so 4881 (= 3 x 1627 ?) tiles
+		{battleAnimGraphics3bpp = 'uint8_t['..(-(0x130000 - 0x14c998))..']'},	-- 0x130000 - 0x14c998 ... 3bpp, so 4881 (= 3 x 1627 ?) tiles
 
-		{padding_14c998 = 'uint8_t['..(-(0x14c998 - 0x14d000))..']'},				-- 0x14c998 - 0x14d000
+		{padding_14c998 = 'uint8_t['..(-(0x14c998 - 0x14d000))..']'},			-- 0x14c998 - 0x14d000
 
 		{battleAnimEffects = 'battleAnimEffect_t['..numBattleAnimEffects..']'},	-- 0x14d000 - 0x14df3c
 		{battleAnimFrame16x16TileOffsets = 'uint16_t[4194]'},					-- 0x14df3c - 0x150000	-- +0x110000 ... really just 2949 that are valid.  each is a uint16_t, add to 0x110000 to get the start of the variable-length battleAnim16x16Tile_t list into battleAnimFrame16x16Tiles
 
 		-- 0x150000 - ? = character images, 0x16a0 bytes each
-		{fieldSpriteGraphics = 'uint8_t['..(-(0x150000 - 0x185000))..']'},			-- 0x150000 - 0x185000
+		{fieldSpriteGraphics = 'uint8_t['..(-(0x150000 - 0x185000))..']'},		-- 0x150000 - 0x185000
 
 		{items = 'item_t['..numItems..']'},										-- 0x185000 - 0x186e00
 		{espers = 'esper_t['..numEspers..']'},									-- 0x186e00 - 0x186f29
 
-		{padding_186f29 = 'uint8_t['..(-(0x186f29 - 0x187000))..']'},				-- 0x186f29 - 0x187000
+		{padding_186f29 = 'uint8_t['..(-(0x186f29 - 0x187000))..']'},			-- 0x186f29 - 0x187000
 
-		{battleAnimGraphics2bpp = 'uint8_t['..(-(0x187000 - 0x18c9a0))..']'},		-- 0x187000 - 0x18c9a0	-- 2bpp, so 1434 tiles
-		{spellDescBase = 'uint8_t['..(-(0x18c9a0 - 0x18cea0))..']'},				-- 0x18c9a0 - 0x18cea0
+		{battleAnimGraphics2bpp = 'uint8_t['..(-(0x187000 - 0x18c9a0))..']'},	-- 0x187000 - 0x18c9a0	-- 2bpp, so 1434 tiles
+		{spellDescBase = 'uint8_t['..(-(0x18c9a0 - 0x18cea0))..']'},			-- 0x18c9a0 - 0x18cea0
 		{menuNames = 'menuName_t['..numMenuNames..']'},							-- 0x18cea0 - 0x18cf80
 		{spellDescOffsets = 'uint16_t[54]'},									-- 0x18cf80 - 0x18cfec
 
-		{padding_18cfec = 'uint8_t['..(-(0x18cfec - 0x19a800))..']'},				-- 0x18cfec - 0x19a800
+		{padding_18cfec = 'uint8_t['..(-(0x18cfec - 0x19a800))..']'},			-- 0x18cfec - 0x19a800
 
-		{mapTileProperties = 'uint8_t['..(-(0x19a800 - 0x19cd10))..']'},			-- 0x19a800 - 0x19cd10 = map tile properties
-		{mapTilePropertiesOffsets = 'uint16_t[0x40]'},							-- 0x19cd10 - 0x19cd90 = offsets to map tile properties (+0x19a800)
+		{mapTilePropsCompressed = 'uint8_t['..(-(0x19a800 - 0x19cd10))..']'},	-- 0x19a800 - 0x19cd10 = map tile properties (compressed)
+		{mapTilePropsOfs = 'uint16_t[0x2a]'},									-- 0x19cd10 - 0x19cd60 = offsets to map tile properties (+0x19a800) into mapTilePropsCompressed ... 0x40 but only 0x29 point to valid compressed data
+		{unused_19cd62 = 'uint16_t[0x16]'},										-- 0x19cd60 - 0x19cd90
 		{mapLayoutOffsets = 'uint24_t[0x160]'},									-- 0x19cd90 - 0x19d1b0 = offsets to map data (352 items), (+0x19d1b0)
 		{mapLayoutsCompressed = 'uint8_t['..(-(0x19d1b0 - 0x1e0000))..']'},		-- 0x19d1b0 - 0x1e0000 = map data (compressed)
-		{mapTilesetsCompressed = 'uint8_t['..(-(0x1e0000 - 0x1fb400))..']'},		-- 0x1e0000 - 0x1fb400 = map tile formation (compressed)
+		{mapTilesetsCompressed = 'uint8_t['..(-(0x1e0000 - 0x1fb400))..']'},	-- 0x1e0000 - 0x1fb400 = map tile formation (compressed)
 		{formationMPs = 'uint8_t['..numFormationMPs..']'},						-- 0x1fb400 - 0x1fb600
 		{itemColosseumInfos = 'itemColosseumInfo_t['..numItems..']'},			-- 0x1fb600 - 0x1fba00
 		{mapTilesetOffsets = 'uint24_t[0x4b]'},									-- 0x1fba00 - 0x1fbaff -- 24bit, offset by +0x1e0000, points into mapTilesetsCompressed ... last points to invalid data so I cut it off.
@@ -2223,27 +2245,27 @@ local game_t = ff6struct{
 		{padding_1fd978 = 'uint8_t[136]'},										-- 0x1fd978 - 0x1fda00 = 0xFF filler
 		{mapTileGraphicsOffsets = 'uint24_t[0x52]'},							-- 0x1fda00 - 0x1fdaf6 = town tile graphics pointers (+0x1fdb00), points into mapTileGraphics
 		{padding_1fdaf6 = 'uint8_t[10]'},										-- 0x1fdaf6 - 0x1fdb00
-		{mapTileGraphics = 'uint8_t['..(-(0x1fdb00 - 0x25f400))..']'},				-- 0x1fdb00 - 0x25f400 = map tile graphics for layers 1&2, 4bpp
+		{mapTileGraphics = 'uint8_t['..(-(0x1fdb00 - 0x25f400))..']'},			-- 0x1fdb00 - 0x25f400 = map tile graphics for layers 1&2, 4bpp
 			-- (within it) 0x21c4c0 - 0x21e4c0 = battle background top graphics: building
 
-		{padding_25f400 = 'uint8_t['..(-(0x25f400 - 0x260000))..']'},				-- 0x25f400 - 0x260000
+		{padding_25f400 = 'uint8_t['..(-(0x25f400 - 0x260000))..']'},			-- 0x25f400 - 0x260000
 
-		{mapAnimGraphics = 'uint8_t['..(-(0x260000 - 0x268000))..']'},				-- 0x260000 - 0x268000 = 4bpp
+		{mapAnimGraphics = 'uint8_t['..(-(0x260000 - 0x268000))..']'},			-- 0x260000 - 0x268000 = 4bpp
 		{characterPalettes = 'palette16_t['..numCharacterPalettes..']'},		-- 0x268000 - 0x268400	-- also town tile palettes?
 		{mapNameOffsets = 'uint16_t['..numMapNames..']'},						-- 0x268400 - 0x268780
-		{mapTileGraphicsLayer3 = 'uint8_t['..(-(0x268780 - 0x26cd60))..']'},		-- 0x268780 - 0x26cd60  map tile garphics for layer 3, 2bpp
+		{mapTileGraphicsLayer3 = 'uint8_t['..(-(0x268780 - 0x26cd60))..']'},	-- 0x268780 - 0x26cd60  map tile garphics for layer 3, 2bpp
 		{mapTileGraphicsLayer3Offsets = 'uint24_t[18]'},						-- 0x26cd60 - 0x26cd96 = offset, +0x268780 .. there's 19, but only 18 point to valid compressed data ...
 		{padding_26cd96 = 'uint8_t[10]'},										-- 0x26cd96 - 0x26cda0
 		{mapAnimGraphicsOffsets = 'uint24_t[10]'},								-- 0x26cda0 - 0x26cdbe = offset, +0x26cdc0 to mapAnimGraphicsLayer3
 		{padding_26cdbe = 'uint8_t[2]'},										-- 0x26cdbe - 0x26cdc0
-		{mapAnimGraphicsLayer3 = 'uint8_t['..(-(0x26cdc0 - 0x26f198))..']'},		-- 0x26cdc0 - 0x26f198 = 2bpp, compressed
+		{mapAnimGraphicsLayer3 = 'uint8_t['..(-(0x26cdc0 - 0x26f198))..']'},	-- 0x26cdc0 - 0x26f198 = 2bpp, compressed
 
-		{padding_26f198 = 'uint8_t['..(-(0x26f198 - 0x26f4a0))..']'},				-- 0x26f198 - 0x26f4a0
+		{padding_26f198 = 'uint8_t['..(-(0x26f198 - 0x26f4a0))..']'},			-- 0x26f198 - 0x26f4a0
 
 		{hpIncPerLevelUp = 'uint8_t['..numLevels..']'},							-- 0x26f4a0 - 0x26f502
 		{mpIncPerLevelUp = 'uint8_t['..numLevels..']'},							-- 0x26f502 - 0x26f564
 
-		{padding_26f564 = 'uint8_t['..(-(0x26f564 - 0x26f567))..']'},				-- 0x26f564 - 0x26f567
+		{padding_26f564 = 'uint8_t['..(-(0x26f564 - 0x26f567))..']'},			-- 0x26f564 - 0x26f567
 
 		{spellNames_0to53 = 'str7_t[54]'}, 										-- 0x26f567 - 0x26f6e1
 		{spellNames_54to80 = 'str8_t[27]'},                             		-- 0x26f6e1 - 0x26f7b9
@@ -2251,11 +2273,11 @@ local game_t = ff6struct{
 		{esperAttackNames = 'str10_t['..numEspers..']'},						-- 0x26fe8f - 0x26ff9d
 		{mogDanceNames = 'str12_t['..numMogDances..']'},						-- 0x26ff9d - 0x26fffd
 
-		{padding_26fffd = 'uint8_t['..(-(0x26fffd - 0x271650))..']'},				-- 0x26fffd - 0x271650
+		{padding_26fffd = 'uint8_t['..(-(0x26fffd - 0x271650))..']'},			-- 0x26fffd - 0x271650
 
 		-- 0x270150 - = bottom battle background palettes (16 colors each)
 
-		{topBackgroundPaletteOffset = 'uint16_t[252]'},						-- 0x271650 - 0x271848	-- pointers to top background palettes (168 elements, 75 used)
+		{topBackgroundPaletteOffset = 'uint16_t[252]'},							-- 0x271650 - 0x271848	-- pointers to top background palettes (168 elements, 75 used)
 
 		{padding_271848 = 'uint8_t['..(-(0x271848 - 0x297000))..']'},			-- 0x271848	- 0x297000
 
