@@ -608,7 +608,7 @@ for _,tilesetIndex in ipairs(mapTilesets:keys():sort()) do
 			end
 		end
 		img.palette = palette
-		img:save((mappath/('tileset_'..tilesetIndex
+		img:save((maptilesetpath/('tileset_'..tilesetIndex
 			..(#gfxstrs > 1 and ('_'..tilesetGfxPerm) or '')
 			..'.png')).path)
 	end
@@ -643,7 +643,7 @@ for _,gfxIndex in ipairs(mapTileGraphics:keys():sort()) do
 			end
 		end
 		img.palette = palette
-		img:save((mappath/('tilegfx4bpp_'..gfxIndex..'.png')).path)
+		img:save((maptilespath/('tilegfx4bpp_'..gfxIndex..'.png')).path)
 	end
 end
 
@@ -671,7 +671,7 @@ for _,gfxLayer3Index in ipairs(mapTileGraphicsLayer3:keys():sort()) do
 		end
 	end
 	img.palette = palette
-	img:save((mappath/('tilegfx2bpp_'..gfxLayer3Index..'.png')).path)
+	img:save((maptilespath/('tilegfx2bpp_'..gfxLayer3Index..'.png')).path)
 end
 
 
