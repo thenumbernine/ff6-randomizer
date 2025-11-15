@@ -98,6 +98,15 @@ print()
 local mappath = path'maps'
 mappath:mkdir()
 
+local maptilespath = path'maptiles8x8'
+maptilespath:mkdir()
+
+local maptilesetpath = path'maptiles16x16'
+maptilesetpath:mkdir()
+
+local mappalpath = path'mappals'
+mappalpath:mkdir()
+
 -- map tile graphics, 8x8x4bpp tiles for layers 1 & 2
 -- the last 3 are 0xffffff
 local mapTileGraphics = table()	-- 0-based
@@ -138,7 +147,7 @@ do	-- here decompress all 'mapTileGraphics' tiles irrespective of offset table
 	-- and I'm betting somewhere is the 16x16 info that points into this 8x8 tile data...
 	-- and I'm half-suspicious it is compressed ...
 	im.palette = makePalette(game.mapPalettes + 0xc, 4, 16 * 8)
-	im:save((mappath/'tiles-layers1and2.png').path)
+	im:save((maptilespath/'tiles-layers1and2.png').path)
 end
 
 -- each points to compressed data, which decompressed is of size 0x1040
@@ -187,11 +196,11 @@ do
 	-- and I'm betting somewhere is the 16x16 info that points into this 8x8 tile data...
 	-- and I'm half-suspicious it is compressed ...
 	im.palette = makePalette(game.mapPalettes + 0xc, 4, 16 * 8)
-	im:save((mappath/'tiles-layer3.png').path)
+	im:save((maptilespath/'tiles-layer3.png').path)
 end
 
 makePaletteSets(
-	mappath,
+	mappalpath,
 	game.mapPalettes,
 	ffi.sizeof(game.mapPalettes) / ffi.sizeof'color_t',
 	function(index) return bit.band(0xf, index) == 0 end
