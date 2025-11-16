@@ -1957,7 +1957,7 @@ local WorldTileProps_t = ff6struct{
 		{blocksMovement = 'uint16_t:1'},
 		{bottomCharTransparent = 'uint16_t:1'},
 		{enemyEncounters = 'uint16_t:1'},
-		-- now I can't tell from teh ascii art, but its either 1 unused and 3 for background, or its 4 for background ...
+		-- now I can't tell from the ascii art, but its either 1 unused and 3 for background, or its 4 for background ...
 		-- https://web.archive.org/web/20250429144337/https://www.ff6hacking.com/wiki/doku.php?id=ff3:ff3us:doc:asm:fmt:world_map_tile_properties
 		-- there's 56 total
 		-- https://www.spriters-resource.com/snes/ff6/asset/54685/
@@ -1979,8 +1979,8 @@ local game_t = ff6struct{
 	fields = {
 		{padding_000000 = 'uint8_t['..(-(0x000000 - 0x0051ba))..']'},							-- 0x000000 - 0x0051ba
 
-		{characterMenuImageOffsets = 'uint16_t[16]'},										-- 0x0051ba - 0x0051da
-		{characterMenuImageTileLayout = 'uint8_t[25]'},										-- 0x0051da - 0x0051f3
+		{characterMenuImageOffsets = 'uint16_t[16]'},											-- 0x0051ba - 0x0051da
+		{characterMenuImageTileLayout = 'uint8_t[25]'},											-- 0x0051da - 0x0051f3
 
 		-- 0x00c27f - 0x00c28f = something to do with battle background? -rpglegion
 		-- 0x0091d5-0x0091ff = map animation properties pointer table (+0x0091ff)
@@ -1991,40 +1991,40 @@ local game_t = ff6struct{
 
 		-- offset of map character sprite parts
 		-- interleaved row-major, 2x3
-		{characterFrameTileOffsets = 'uint16_t['..(numCharacterSpriteFrames * 6)..']'},		-- 0x00ce3a - 0x00d026
+		{characterFrameTileOffsets = 'uint16_t['..(numCharacterSpriteFrames * 6)..']'},			-- 0x00ce3a - 0x00d026
 
-		{padding_00d026 = 'uint8_t['..(0x00d0f2  - 0x00d026)..']'},							-- 0x00d026 - 0x00d0f2
+		{padding_00d026 = 'uint8_t['..(0x00d0f2  - 0x00d026)..']'},								-- 0x00d026 - 0x00d0f2
 
 		-- 0x00d0f2 - ? = pointer to map character graphics (2 bytes each)
-		{characterSpriteOffsetLo = 'uint16_t['..numCharacterSprites..']'},					-- 0x00d0f2 - 0x00d23c
+		{characterSpriteOffsetLo = 'uint16_t['..numCharacterSprites..']'},						-- 0x00d0f2 - 0x00d23c
 
-		{characterSpriteOffsetHiAndSize = 'charHiAndSize_t['..numCharacterSprites..']'},	-- 0x00d23c - 0x00d386
+		{characterSpriteOffsetHiAndSize = 'charHiAndSize_t['..numCharacterSprites..']'},		-- 0x00d23c - 0x00d386
 
 		-- 0x00d23c - ? = bank pointer & # bytes to copy for map char gfx (2 bytes each)
 		-- 0x00dfa0 - 0x00e0a0 = 'DTE table' -rgplegion
-		{padding_00d27c = 'uint8_t['..(-(0x00d386 - 0x02ce2b))..']'},							-- 0x00d386 - 0x02ce2b
+		{padding_00d27c = 'uint8_t['..(-(0x00d386 - 0x02ce2b))..']'},			-- 0x00d386 - 0x02ce2b
 
 		-- battle character palette assignment (1 byte each)
-		{characterPaletteIndexes = 'uint8_t['..numCharacterSprites..']'},					-- 0x02ce2b - 0x02ced0
+		{characterPaletteIndexes = 'uint8_t['..numCharacterSprites..']'},		-- 0x02ce2b - 0x02ced0
 
-		{padding_02ced0 = 'uint8_t['..(-(0x02ced0 - 0x02d01a))..']'},				-- 0x02ced0 - 0x02d01a
+		{padding_02ced0 = 'uint8_t['..(-(0x02ced0 - 0x02d01a))..']'},			-- 0x02ced0 - 0x02d01a
 
 		{formationSizeOffsets = 'uint16_t['..numFormationSizeOffsets..']'},		-- 0x02d01a - 0x02d034
 		{formationSizes = 'formationSize_t['..numFormationSizes..']'},			-- 0x02d034 - 0x02d0f4
 
 		-- 0x036f00 - ? = menu portrait palette assignment (1 byte each)
 		-- 0x036f1b - ? = pointer to menu portrait graphics (2 bytes each)
-		{padding_02d0f4 = 'uint8_t['..(-(0x02d0f4 - 0x03c00e))..']'},				-- 0x02d0f4 - 0x03c00e
+		{padding_02d0f4 = 'uint8_t['..(-(0x02d0f4 - 0x03c00e))..']'},			-- 0x02d0f4 - 0x03c00e
 
 		{positionedTextOffsets = 'uint16_t['..numPositionedText..']'},			-- 0x03c00e - 0x03c018
 
-		{padding = 'uint8_t['..(-(0x03c018 - 0x03c2fc))..']'},						-- 0x03c018 - 0x03c2fc
+		{padding = 'uint8_t['..(-(0x03c018 - 0x03c2fc))..']'},					-- 0x03c018 - 0x03c2fc
 
-		{positionedTextBase = 'uint8_t['..(-(0x03c2fc - 0x03c406))..']'},			-- 0x03c2fc - 0x03c406
+		{positionedTextBase = 'uint8_t['..(-(0x03c2fc - 0x03c406))..']'},		-- 0x03c2fc - 0x03c406
 
 		-- 0x03c326 - 0x03c406 = more positioned text (N items, var length) ... where are the offsets for this?
 		-- "P}BUY  SELL  EXITA:}GPAr GPAz}Owned:Az Equipped:AP Bat PwrAP DefenseAl â¦Af{Hi! Can I help you?Af{Help yourself!Af{How many?Af{Whatcha got?Af{How many?Af{Bye!          Af{You need more GP!Af{Too many!       Af{One's plenty! A"
-		{padding_03c406 = 'uint8_t['..(-(0x03c406 - 0x040000))..']'},				-- 0x03c406 - 0x040000
+		{padding_03c406 = 'uint8_t['..(-(0x03c406 - 0x040000))..']'},			-- 0x03c406 - 0x040000
 
 		{mapEventTriggerOfs = 'uint16_t['..((0x040342 - 0x040000)/2)..']'},		-- 0x040000 - 0x040342 = offset by +0x040000
 		{mapEventTriggerData = 'uint8_t['..(-(0x040342 - 0x041a10))..']'},		-- 0x040342 - 0x041a10 = map event triggers (5 bytes each)
@@ -2042,7 +2042,7 @@ local game_t = ff6struct{
 		{metamorphSets = 'itemref4_t['..numMetamorphSets..']'},					-- 0x047f40 - 0x047fa8
 
 		-- wait is this font too? it is 2048 + 32 bytes ...
-		{padding_047fa8 = 'uint8_t['..(-(0x047fa8 - 0x047fc0))..']'},				-- 0x047fa8 - 0x047fc0
+		{padding_047fa8 = 'uint8_t['..(-(0x047fa8 - 0x047fc0))..']'},			-- 0x047fa8 - 0x047fc0
 
 		-- font graphics (8x8x2bpp, 16 bytes each, 0x00-0xff) ... the first half is blank
 		{font = 'uint8_t['..(0x10 * 0x100)..']'},								-- 0x047fc0 - 0x048fc0
@@ -2050,7 +2050,7 @@ local game_t = ff6struct{
 		-- font character cell widths (0x00-0x7f)
 		{font16_widths = 'uint8_t['.. 0x80 ..']'},								-- 0x048fc0 - 0x049040
 
-		{padding_049040 = 'uint8_t['..(-(0x049040 - 0x0490c0))..']'},				-- 0x049040 - 0x0490c0
+		{padding_049040 = 'uint8_t['..(-(0x049040 - 0x0490c0))..']'},			-- 0x049040 - 0x0490c0
 
 		-- font graphics data (16x11x1, 22 bytes each, 0x20-0x7f)
 		{font16_20_to_7f = 'uint8_t['..(22 * (0x7f - 0x20 + 1))..']'},			-- 0x0490c0 - 0x049900 (or 0x04a4c0)
@@ -2060,15 +2060,15 @@ local game_t = ff6struct{
 		-- C4F477-C4F6FA   Ending Sprite Graphics (compressed)
 		-- C4F6FB-C4FFFF   Ending Sprite Graphics (compressed)
 
-		{padding_049900 = 'uint8_t['..(-(0x049900 - 0x05070e))..']'},				-- 0x049900 - 0x05070e
+		{padding_049900 = 'uint8_t['..(-(0x049900 - 0x05070e))..']'},			-- 0x049900 - 0x05070e
 
 		-- length of main SPC code loop
 		{spcMainCodeLoopLen = 'uint16_t'},										-- 0x05070e - 0x050710
 
 		-- main SPC code loop
-		{spcMainCode = 'uint8_t['..(-(0x050710 - 0x051ec7))..']'},					-- 0x050710 - 0x051ec7
+		{spcMainCode = 'uint8_t['..(-(0x050710 - 0x051ec7))..']'},				-- 0x050710 - 0x051ec7
 
-		{padding_051ec7 = 'uint8_t['..(-(0x051ec7 - 0x053c5f))..']'},				-- 0x051ec7 - 0x053c5f
+		{padding_051ec7 = 'uint8_t['..(-(0x051ec7 - 0x053c5f))..']'},			-- 0x051ec7 - 0x053c5f
 
 		-- BRR sample pointers (x63, 3 bytes each)
 		{brrSamplePtrs = 'uint24_t['..numBRRSamples..']'},						-- 0x053c5f - 0x053d1c
@@ -2082,24 +2082,24 @@ local game_t = ff6struct{
 		-- ADSR data (x63, 2 bytes each)
 		{adsrData = 'uint16_t['..numBRRSamples..']'},							-- 0x053e18 - 0x053e96
 
-		{padding_053e96 = 'uint8_t['..(-(0x053e96 - 0x054a35))..']'},				-- 0x053e96 - 0x054a35
+		{padding_053e96 = 'uint8_t['..(-(0x053e96 - 0x054a35))..']'},			-- 0x053e96 - 0x054a35
 
 		-- 0x054a35 - 0x085c7a = BRR samples (does divide evenly by  3195 x63...)
-		{brrSamples = 'uint8_t['..(-(0x054a35 - 0x085c7a))..']'},					-- 0x054a35 - 0x085c7a
+		{brrSamples = 'uint8_t['..(-(0x054a35 - 0x085c7a))..']'},				-- 0x054a35 - 0x085c7a
 
 		-- 0x0a0000 - 0x0ce600 = event code
 
-		{padding_085c7a = 'uint8_t['..(-(0x085c7a - 0x0ce600))..']'},				-- 0x085c7a - 0x0ce600
+		{padding_085c7a = 'uint8_t['..(-(0x085c7a - 0x0ce600))..']'},			-- 0x085c7a - 0x0ce600
 
 		-- the first dialog offset points to the dialog which needs the bank byte to increment
 		{dialogOffsets = 'uint16_t['..numDialogs..']'},							-- 0x0ce600 - 0x0d0000
-		{dialogBase = 'uint8_t['..(-(0x0d0000 - 0x0ef100))..']'},					-- 0x0d0000 - 0x0ef100
-		{mapNameBase = 'uint8_t['..(-(0x0ef100 - 0x0ef600))..']'},			-- 0x0ef100 - 0x0ef600
+		{dialogBase = 'uint8_t['..(-(0x0d0000 - 0x0ef100))..']'},				-- 0x0d0000 - 0x0ef100
+		{mapNameBase = 'uint8_t['..(-(0x0ef100 - 0x0ef600))..']'},				-- 0x0ef100 - 0x0ef600
 
 		-- 0x0ef600 - 0x0ef648 looks like offsets into something
 		-- 0x0ef648 - 0x0ef678 looks like arbitrary values
 		-- 0x0ef678 - 0x0efb60 is mostly '06' repeated
-		{padding_0ef600 = 'uint8_t['..(-(0x0ef600 - 0x0efb60))..']'},				-- 0x0ef600 - 0x0efb60
+		{padding_0ef600 = 'uint8_t['..(-(0x0ef600 - 0x0efb60))..']'},			-- 0x0ef600 - 0x0efb60
 
 		{rareItemDescOffsets = 'uint16_t['..numRareItems..']'},					-- 0x0efb60 - 0x0efb88
 
@@ -2118,24 +2118,24 @@ local game_t = ff6struct{
 
 		-- 0x0f3600 - 0x0f37c0 is mostly zeroes
 		-- 0x0f37c0 - 0x0f3940 is something
-		{padding_0f3600  = 'uint8_t['..(-(0x0f3600 - 0x0f3940))..']'},				-- 0x0f3600 - 0x0f3940
+		{padding_0f3600  = 'uint8_t['..(-(0x0f3600 - 0x0f3940))..']'},			-- 0x0f3600 - 0x0f3940
 
-		{esperDescBase = 'uint8_t['..(-(0x0f3940 - 0x0f3c40))..']'},				-- 0x0f3940 - 0x0f3c40
+		{esperDescBase = 'uint8_t['..(-(0x0f3940 - 0x0f3c40))..']'},			-- 0x0f3940 - 0x0f3c40
 		{swordTechNames = 'swordTechName_t['..numSwordTechs..']'},				-- 0x0f3c40 - 0x0f3ca0
 
 		-- all ff
-		{padding_0f3ca0  = 'uint8_t['..(-(0x0f3ca0 - 0x0f3d00))..']'},				-- 0x0f3ca0 - 0x0f3d00
+		{padding_0f3ca0  = 'uint8_t['..(-(0x0f3ca0 - 0x0f3d00))..']'},			-- 0x0f3ca0 - 0x0f3d00
 
 		{monsterSpells = 'spellref4_t['..numMonsters..']'},						-- 0x0f3d00 - 0x0f4300
 		{monsterSketches = 'spellref2_t['..numMonsters..']'},					-- 0x0f4300 - 0x0f4600
 		{monsterRages = 'spellref2_t['..numRages..']'},							-- 0x0f4600 - 0x0f4800
 
-		{padding_0f4800 = 'uint8_t['..(-(0x0f4800 - 0x0f5900))..']'},				-- 0x0f4800 - 0x0f5900
+		{padding_0f4800 = 'uint8_t['..(-(0x0f4800 - 0x0f5900))..']'},			-- 0x0f4800 - 0x0f5900
 
 		{formation2s = 'formation2_t['..numFormations..']'},					-- 0x0f5900 - 0x0f6200
 		{formations = 'formation_t['..numFormations..']'},						-- 0x0f6200 - 0x0f83c0
 
-		{padding_0f83c0 = 'uint8_t['..(-(0x0f83c0 - 0x0fc050))..']'},				-- 0x0f83c0 - 0x0fc050
+		{padding_0f83c0 = 'uint8_t['..(-(0x0f83c0 - 0x0fc050))..']'},			-- 0x0f83c0 - 0x0fc050
 
 		{monsterNames = 'monsterName_t['..numMonsters..']'},					-- 0x0fc050 - 0x0fcf50
 
@@ -2143,21 +2143,21 @@ local game_t = ff6struct{
 
 		{monsterAttackNames = 'monsterName_t['..numMonsters..']'},				-- 0x0fd0d0 - 0x0fdfd0
 
-		{padding_0fdfd0 = 'uint8_t['..(-(0x0fdfd0 - 0x0fdfe0))..']'},				-- 0x0fdfd0 - 0x0fdfe0
+		{padding_0fdfd0 = 'uint8_t['..(-(0x0fdfd0 - 0x0fdfe0))..']'},			-- 0x0fdfd0 - 0x0fdfe0
 
 		{battleDialogOffsets = 'uint16_t['..numBattleDialogs..']'},				-- 0x0fdfe0 - 0x0fe1e0
 		{battleDialogBase = 'uint8_t['..(-(0x0fe1e0 - 0x0ff450))..']'},			-- 0x0fe1e0 - 0x0ff450
 
-		{padding_0ff450  = 'uint8_t['..(-(0x0ff450 - 0x0ffc00))..']'},				-- 0x0ff450 - 0x0ffc00
+		{padding_0ff450  = 'uint8_t['..(-(0x0ff450 - 0x0ffc00))..']'},			-- 0x0ff450 - 0x0ffc00
 
-		{blitzDescBase = 'uint8_t['..(-(0x0ffc00 - 0x0ffd00))..']'},				-- 0x0ffc00 - 0x0ffd00
-		{swordTechDescBase = 'uint8_t['..(-(0x0ffd00 - 0x0ffe00))..']'},			-- 0x0ffd00 - 0xfffe00
+		{blitzDescBase = 'uint8_t['..(-(0x0ffc00 - 0x0ffd00))..']'},			-- 0x0ffc00 - 0x0ffd00
+		{swordTechDescBase = 'uint8_t['..(-(0x0ffd00 - 0x0ffe00))..']'},		-- 0x0ffd00 - 0xfffe00
 
-		{padding_0ffe00  = 'uint8_t['..(-(0x0ffe00 - 0x0ffe40))..']'},				-- 0x0ffe00 - 0x0ffe40
+		{padding_0ffe00  = 'uint8_t['..(-(0x0ffe00 - 0x0ffe40))..']'},			-- 0x0ffe00 - 0x0ffe40
 
 		{esperDescOffsets = 'uint16_t['..numEspers..']'},						-- 0x0ffe40 - 0x0ffe76
 
-		{padding_0ffe76  = 'uint8_t['..(-(0x0ffe76 - 0x0ffeae))..']'},				-- 0x0ffe76 - 0x0ffeae
+		{padding_0ffe76  = 'uint8_t['..(-(0x0ffe76 - 0x0ffeae))..']'},			-- 0x0ffe76 - 0x0ffeae
 
 		{esperBonusDescs = 'esperBonusDesc_t['..numEsperBonuses..']'},			-- 0x0ffeae - 0x0fff47
 
@@ -2165,31 +2165,31 @@ local game_t = ff6struct{
 
 		{blitzDescOffsets = 'uint16_t['..numBlitzes..']'},						-- 0x0fff9e - 0x0fffae
 		{swordTechDescOffsets = 'uint16_t['..numSwordTechs..']'},				-- 0x0fffae - 0x0fffbe
-		{battleAnimScripts = 'uint8_t['..(-(0x0fffbe - 0x107fb2))..']'},			-- 0x0fffbe - 0x107fb2 <- indexed into with battleAnimScriptOffsets[i] + 0x100000
+		{battleAnimScripts = 'uint8_t['..(-(0x0fffbe - 0x107fb2))..']'},		-- 0x0fffbe - 0x107fb2 <- indexed into with battleAnimScriptOffsets[i] + 0x100000
 		{battleAnimSets = 'battleAnimSet_t['..numBattleAnimSets..']'},			-- 0x107fb2 - 0x1097fa
 
-		{padding_1097fa = 'uint8_t['..(-(0x1097fa - 0x10d000))..']'},				-- 0x1097fa - 0x10d000
+		{padding_1097fa = 'uint8_t['..(-(0x1097fa - 0x10d000))..']'},			-- 0x1097fa - 0x10d000
 
 		{battleDialog2Offsets = 'uint16_t['..numBattleDialog2s..']'},			-- 0x10d000 - 0x10d200
-		{battleDialog2Base = 'uint8_t['..(-(0x10d200 - 0x10fd00))..']'},			-- 0x10d200 - 0x10fd00
+		{battleDialog2Base = 'uint8_t['..(-(0x10d200 - 0x10fd00))..']'},		-- 0x10d200 - 0x10fd00
 
-		{padding_10fd00 = 'uint8_t['..(-(0x10fd00 - 0x110141))..']'},				-- 0x10fd00 - 0x110141
+		{padding_10fd00 = 'uint8_t['..(-(0x10fd00 - 0x110141))..']'},			-- 0x10fd00 - 0x110141
 
 		{battleAnimFrame16x16Tiles = 'battleAnim16x16Tile_t[0x74cb]'},			-- 0x110141 - 0x11ead7 ... 2 bytes each ... pointers from battleAnimFrame16x16TileOffsets offset by 0x110000 but point into here
 
 		{padding_11ead7 = 'uint8_t'},											-- 0x11ead7 - 0x11ead8
 
 		{battleAnimScriptOffsets = 'uint16_t[660]'},							-- 0x11ead8 - 0x11f000 ... uint16 offsets +0x100000 ... maybe there are only 650 of these to match with `numBattleAnimEffects`?
-		{battleMessageBase = 'uint8_t['..(-(0x11f000 - 0x11f7a0))..']'},			-- 0x11f000 - 0x11f7a0
+		{battleMessageBase = 'uint8_t['..(-(0x11f000 - 0x11f7a0))..']'},		-- 0x11f000 - 0x11f7a0
 		{battleMessageOffsets = 'uint16_t['..numBattleMessages..']'},			-- 0x11f7a0 - 0x11f9a0
 
-		{padding_11f9a0 = 'uint8_t['..(-(0x11f9a0 - 0x120000))..']'},				-- 0x11f9a0 - 0x120000
+		{padding_11f9a0 = 'uint8_t['..(-(0x11f9a0 - 0x120000))..']'},			-- 0x11f9a0 - 0x120000
 
 		{battleAnimGraphicsSets3bpp = 'battleAnim8x8Tile_t['..(0x20 * 0x180)..']'},-- 0x120000 - 0x126000 - holds the 'graphicSet' uint16 offsets from battleAnimEffect_t * (0x20 entries == 0x40 bytes)
 		{battleAnimPalettes = 'palette8_t['..numBattleAnimPalettes..']'},		-- 0x126000 - 0x126f00
 		{itemTypeNames = 'str7_t['..numItemTypes..']'},							-- 0x126f00 - 0x126fe0
 
-		{padding_126fe0 = 'uint8_t['..(-(0x126fe0 - 0x127000))..']'},				-- 0x126fe0 - 0x127000
+		{padding_126fe0 = 'uint8_t['..(-(0x126fe0 - 0x127000))..']'},			-- 0x126fe0 - 0x127000
 
 		{monsterSprites = 'monsterSprite_t['..numMonsterSprites..']'},			-- 0x127000 - 0x127820
 		{monsterPalettes = 'palette8_t['..numMonsterPalettes..']'},				-- 0x127820 - 0x12a820
@@ -2202,7 +2202,7 @@ local game_t = ff6struct{
 		{WoRpalettes = 'palette16_8_t'},										-- 0x12ed00 - 0x12ee00
 		{setzerAirshipPalette = 'palette16_t'},									-- 0x12ee00 - 0x12ee20
 
-		{padding_12ee20 = 'uint8_t['..(-(0x12ee20 - 0x12ef00))..']'},				-- 0x12ee20 - 0x12ef00
+		{padding_12ee20 = 'uint8_t['..(-(0x12ee20 - 0x12ef00))..']'},			-- 0x12ee20 - 0x12ef00
 
 		{darylAirshipPalette = 'palette16_t'},									-- 0x12ef00 - 0x12ef20
 
@@ -2287,29 +2287,29 @@ local game_t = ff6struct{
 
 		{padding_2d0e00 = 'uint8_t['..(-(0x2d0e00 - 0x2d1c00))..']'},			-- 0x2d0e00 - 0x2d1c00
 
-		{menuWindowPalettes = 'palette16_8_t'},								-- 0x2d1c00 - 0x2d1d00 = menu window palettes, x8, 16 colors each, 2 bytes per color
+		{menuWindowPalettes = 'palette16_8_t'},									-- 0x2d1c00 - 0x2d1d00 = menu window palettes, x8, 16 colors each, 2 bytes per color
 		-- TODO struct multi dim arrays ...
 		--{characterMenuImages = 'uint8_t['..numMenuChars..'][5][5][8][4]'},	-- 0x2d1d00 - 0x2d5860 = character menu images [char][tx][ty][col][row] @ 4bpp
-		{characterMenuImages = 'uint8_t['..(numMenuChars * 5 * 5 * 8 * 4)..']'},	-- 0x2d1d00 - 0x2d5860 = character menu images [char][tx][ty][col][row] @ 4bpp
-		{menuPortraitPalette = 'palette16_t['..numMenuChars..']'},			-- 0x2d5860 - 0x2d5ac0 = menu portrait palettes (16 colors each)
+		{characterMenuImages = 'uint8_t['..(numMenuChars * 5 * 5 * 8 * 4)..']'},-- 0x2d1d00 - 0x2d5860 = character menu images [char][tx][ty][col][row] @ 4bpp
+		{menuPortraitPalette = 'palette16_t['..numMenuChars..']'},				-- 0x2d5860 - 0x2d5ac0 = menu portrait palettes (16 colors each)
 		{handCursorGraphics = 'uint8_t['..(-(0x2d5ac0 - 0x2d62c0))..']'},		-- 0x2d5ac0 - 0x2d62c0 ? = hand cursor graphics
-		{battleWhitePalette = 'palette4_t'},								-- 0x2d62c0 - 0x2d62c8 = battle standard (white) text palette, 4 colors
-		{battleGrayPalette = 'palette4_t'},									-- 0x2d62c8 - 0x2d62d0 = battle disabled (grey) text palette, 4 colors
-		{battleYellowPalette = 'palette4_t'},								-- 0x2d62d0 - 0x2d62d8 = battle active (yellow) text palette, 4 colors
-		{battleBluePalette = 'palette4_t'},									-- 0x2d62d8 - 0x2d62e0 = battle blue text palette, 4 colors
-		{battleEmptyPalette = 'palette4_t'},								-- 0x2d62e0 - 0x2d62e8 = empty color palette, 4 colors
-		{battleGrayPalette = 'palette4_t'},									-- 0x2d62e8 - 0x2d62f0 = battle gauge (grey) text palette, 4 colors
-		{battleGreenPalette = 'palette4_t'},								-- 0x2d62f0 - 0x2d62f8 = battle green text palette, 4 colors
-		{battleRedPalette = 'palette4_t'},									-- 0x2d62f8 - 0x2d6300 = battle red text palette, 4 colors
-		{battleMenuPalettes = 'palette16_8_t'},							-- 0x2d6300 - 0x2d6400 = battle/menu character sprite palettes, 8 palettes, 16 colors each
-		{itemDescBase = 'uint8_t['..(-(0x2d6400 - 0x2d77a0))..']'},			-- 0x2d6400 - 0x2d77a0
-		{loreDescBase = 'uint8_t['..(-(0x2d77a0 - 0x2d7a70))..']'},			-- 0x2d77a0 - 0x2d7a70
-		{loreDescOffsets = 'uint16_t['..numLores..']'},						-- 0x2d7a70 - 0x2d7aa0
-		{itemDescOffsets = 'uint16_t['..numItems..']'},						-- 0x2d7aa0 - 0x2d7ca0
-		{characters = 'character_t['..numCharacters..']'},					-- 0x2d7ca0 - 0x2d8220
-		{expForLevelUp = 'uint16_t['..numExpLevelUps..']'},					-- 0x2d8220 - 0x2d82f4
-		{treasureOfs = 'uint16_t[0x1a0]'},									-- 0x2d82f4 - 0x2d8634 	-- offset +0x2d8634 into treasures
-		{treasures = 'treasure_t[0x11e]'},									-- 0x2d8634 - 0x2d8bca
+		{battleWhitePalette = 'palette4_t'},									-- 0x2d62c0 - 0x2d62c8 = battle standard (white) text palette, 4 colors
+		{battleGrayPalette = 'palette4_t'},										-- 0x2d62c8 - 0x2d62d0 = battle disabled (grey) text palette, 4 colors
+		{battleYellowPalette = 'palette4_t'},									-- 0x2d62d0 - 0x2d62d8 = battle active (yellow) text palette, 4 colors
+		{battleBluePalette = 'palette4_t'},										-- 0x2d62d8 - 0x2d62e0 = battle blue text palette, 4 colors
+		{battleEmptyPalette = 'palette4_t'},									-- 0x2d62e0 - 0x2d62e8 = empty color palette, 4 colors
+		{battleGrayPalette = 'palette4_t'},										-- 0x2d62e8 - 0x2d62f0 = battle gauge (grey) text palette, 4 colors
+		{battleGreenPalette = 'palette4_t'},									-- 0x2d62f0 - 0x2d62f8 = battle green text palette, 4 colors
+		{battleRedPalette = 'palette4_t'},										-- 0x2d62f8 - 0x2d6300 = battle red text palette, 4 colors
+		{battleMenuPalettes = 'palette16_8_t'},									-- 0x2d6300 - 0x2d6400 = battle/menu character sprite palettes, 8 palettes, 16 colors each
+		{itemDescBase = 'uint8_t['..(-(0x2d6400 - 0x2d77a0))..']'},				-- 0x2d6400 - 0x2d77a0
+		{loreDescBase = 'uint8_t['..(-(0x2d77a0 - 0x2d7a70))..']'},				-- 0x2d77a0 - 0x2d7a70
+		{loreDescOffsets = 'uint16_t['..numLores..']'},							-- 0x2d7a70 - 0x2d7aa0
+		{itemDescOffsets = 'uint16_t['..numItems..']'},							-- 0x2d7aa0 - 0x2d7ca0
+		{characters = 'character_t['..numCharacters..']'},						-- 0x2d7ca0 - 0x2d8220
+		{expForLevelUp = 'uint16_t['..numExpLevelUps..']'},						-- 0x2d8220 - 0x2d82f4
+		{treasureOfs = 'uint16_t[0x1a0]'},										-- 0x2d82f4 - 0x2d8634 	-- offset +0x2d8634 into treasures
+		{treasures = 'treasure_t[0x11e]'},										-- 0x2d8634 - 0x2d8bca
 
 		{padding = 'uint8_t['..(-(0x2d8bca - 0x2d8f00))..']'},					-- 0x2d8bca - 0x2d8f00
 
@@ -2330,8 +2330,18 @@ local game_t = ff6struct{
 		{WoBTileProps = 'WorldTileProps_t[0x100]'},								-- 0x2e9b14 - 0x2e9d14
 		{WoRTileProps = 'WorldTileProps_t[0x100]'},								-- 0x2e9d14 - 0x2e9f14
 
-		{WoBMapData = 'uint8_t['..(-(0x2ed434 - 0x2f114f))..']'},				-- 0x2ed434 - 0x2f114f     World of Balance Map Data (compressed)
-		{WoBBackground = 'uint8_t['..(-(0x2f114f - 0x2f3250))..']'},			-- 0x2f114f - 0x2f3250     World of Balance Tile Graphics (compressed)
+		{WoBLayoutCompressed = 'uint8_t['..(-(0x2ed434 - 0x2f114f))..']'},		-- 0x2ed434 - 0x2f114f     World of Balance Map Data (compressed)
+		{WoBGfxDataCompressed = 'uint8_t['..(-(0x2f114f - 0x2f3250))..']'},		-- 0x2f114f - 0x2f3250     World of Balance Tile Graphics (compressed)
+
+		{padding_2f3250 = 'uint8_t['..(-(0x2f3250 - 0x2f4a46))..']'},			-- 0x2f3250 - 0x2f4a46 ... around 0x1800 bytes of *something* ...
+
+		{WoRGfxDataCompressed = 'uint8_t['..(-(0x2f4a46 - 0x2f6a56))..']'},		-- 0x2f4a46 - 0x2f6a56
+		{WoRLayoutCompressed = 'uint8_t['..(-(0x2f6a56 - 0x2f9d17))..']'},		-- 0x2f6a56 - 0x2f9d17
+		{SerpentTrenchLayoutCompressed = 'uint8_t['..(-(0x2f9d17 - 0x2fb631))..']'},-- 0x2f9d17 - 0x2fb631
+		{SerpentTrenchGfxDataCompressed = 'uint8_t['..(-(0x2fb631 - 0x2fc624))..']'},	-- 0x2fb631 - 0x2fc624
+
+		-- still something else at the end
+		-- 0x2fce77 - 0x2fce97 = vector approach palette
 	},
 }
 local function assertOffset(name, addr)

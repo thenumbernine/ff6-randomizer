@@ -856,15 +856,9 @@ print('WoB palette = '..game.WoBpalettes)
 print('WoR palette = '..game.WoRpalettes)
 
 
-
---[[
--- 141002 bytes ... needs 131072 bytes ... has 9930 extra bytes ...
-path'WoBMapDataCompressed.bin':write( ffi.string(game.WoBMapData+0, ffi.sizeof(game.WoBMapData)))
-path'WoBMapDataCompressed.hex':write( ffi.string(game.WoBMapData+0, ffi.sizeof(game.WoBMapData)):hexdump())
-local WoBMapDataDecompressed = decompress(game.WoBMapData+0, ffi.sizeof(game.WoBMapData))
-print('WoBMapDataDecompressed', #WoBMapDataDecompressed)
-path'WoBMapDataDecompressed.bin':write(WoBMapDataDecompressed)
-path'WoBMapDataDecompressed.hex':write(WoBMapDataDecompressed:hexdump())
---]]
+local WoBLayout = decompress0x800(
+	ffi.cast('uint8_t*', game.WoBLayoutCompressed),
+	ffi.sizeof(game.WoBLayoutCompressed)
+)
 
 end
