@@ -395,7 +395,7 @@ end
 
 -- key by layout1, layout2, layout3 ...
 -- I think I can safely group maps by layout1 alone ...
-local uniqueLayouts = table()
+local mapsForLayout1 = table()
 
 for mapIndex=0,countof(game.maps)-1 do
 --do local mapIndex=19
@@ -404,8 +404,9 @@ for mapIndex=0,countof(game.maps)-1 do
 	-- map.gfx* points into mapTileGraphicsOffsets into mapTileGraphics
 	-- these are 8x8 tiles
 
-	--uniqueLayouts[table{map.layout1, map.layout2, map.layout3}:concat'/'] = true
-	uniqueLayouts[tostring(map.layout1)] = true
+	--mapsForLayout1[table{map.layout1, map.layout2, map.layout3}:concat'/'] = true
+	mapsForLayout1[map.layout1] = mapsForLayout1[map.layout1] or table()
+	mapsForLayout1[map.layout1]:insert(mapIndex)
 
 	local paletteIndex = tonumber(map.palette)
 
@@ -656,22 +657,16 @@ for mapIndex=0,countof(game.maps)-1 do
 end
 print()
 
--- 415 unique maps[]
--- 352 unique mapLayoutOffsets[]
--- 183 unique combinations of maps[]' layout1/layout2/layout3
--- 148 unique values of layout1's of maps
+--[[
+415 unique maps[]
+352 unique mapLayoutOffsets[]
+183 unique combinations of maps[]' layout1/layout2/layout3
+148 unique values of layout1's of maps
+--]]
 -- [[
-print'map layouts:'
-for _,k in ipairs(uniqueLayouts:keys():sort(function(a,b)
-	local as = string.split(a, '/'):mapi(function(x) return tonumber(x) end)
-	local bs = string.split(b, '/'):mapi(function(x) return tonumber(x) end)
-	local n = #as
-	for i=1,n-1 do
-		if as[i] ~= bs[i] then return as[i] < bs[i] end
-	end
-	return as[n] < bs[n]
-end)) do
-	print('', k)
+print'maps for layout1s:'
+for _,layoutIndex in ipairs(mapsForLayout1:keys():sort()) do
+	print(layoutIndex, ':', mapsForLayout1[layoutIndex]:concat', ')
 end
 print()
 --]]
